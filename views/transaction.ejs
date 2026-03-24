@@ -31,7 +31,15 @@
               <td class="px-4 py-3"><%= item.quantity %></td>
               <td class="px-4 py-3"><%= item.category_name || "No Category" %></td>
               <td class="px-4 py-3">
-                <button type="button" class="add-transaction-item-button rounded-xl bg-sky-600 px-3 py-2 text-xs font-semibold text-white" data-id="<%= item.id %>" data-barcode="<%= item.barcode %>" data-name="<%= item.name %>" data-price="<%= item.price %>" data-stock="<%= item.quantity %>">Select</button>
+                <button type="button" class="add-transaction-item-button rounded-xl bg-sky-600 px-3 py-2 text-xs font-semibold text-white" 
+                  data-id="<%= item.id %>"
+                  data-barcode="<%= item.barcode %>"
+                  data-name="<%= item.name %>"
+                  data-price="<%= item.price %>"
+                  data-stock="<%= item.quantity %>"
+                >
+                  Select
+                </button>
               </td>
             </tr>
           <% }) %>
