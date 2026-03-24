@@ -7,12 +7,12 @@ const mysql = require("mysql2/promise");
 const bcrypt = require("bcryptjs");
 require("dotenv").config();
 
-//
+// Create the Express app and set the server address.
 const app = express();
 const PORT = Number(process.env.PORT || 4000);
 const HOST = process.env.HOST || "0.0.0.0";
 
-//
+// Set the database connection settings.
 const dbConfig = {
   host: process.env.DB_HOST || "localhost",
   port: Number(process.env.DB_PORT || 3306),
@@ -45,7 +45,7 @@ app.use(
 );
 app.use("/public", express.static(path.join(__dirname, "public")));
 
-//
+// Change a number into currency format.
 function formatCurrency(value) {
   return Number(value || 0).toLocaleString("en-PH", {
     minimumFractionDigits: 2,
@@ -53,7 +53,7 @@ function formatCurrency(value) {
   });
 }
 
-//
+// Change a date into a readable date and time.
 function formatDateTime(value) {
   if (!value) return "";
 
@@ -69,22 +69,22 @@ function formatDateTime(value) {
   });
 }
 
-//
+// Create an invoice number.
 function formatInvoice(id) {
   return `INV-${String(id).padStart(6, "0")}`;
 }
 
-//
+// Save a temporary message in the session.
 function flash(req, payload) {
   req.session.flash = payload;
 }
 
-//
+// Save the add item form state in the session.
 function setAddItemState(req, payload) {
   req.session.addItemState = payload;
 }
 
-//
+// Return a simple database error message.
 function getDatabaseErrorMessage(error) {
   if (error?.code === "ER_ACCESS_DENIED_ERROR") {
     return "Database connection failed. Check DB_USER and DB_PASSWORD in .env.";
@@ -97,7 +97,7 @@ function getDatabaseErrorMessage(error) {
   return "";
 }
 
-//
+// Check if the database connection is working.
 async function verifyDatabaseConnection() {
   try {
     await pool.query("SELECT 1");
@@ -113,7 +113,7 @@ async function verifyDatabaseConnection() {
   }
 }
 
-//
+// Make sure the user is logged in.
 function requireLogin(req, res, next) {
   if (!req.session.user) {
     return res.redirect("/login");
@@ -122,7 +122,7 @@ function requireLogin(req, res, next) {
   return next();
 }
 
-//
+// Get stock warning notifications.
 async function getStockNotifications() {
   const [items] = await pool.query(
     `SELECT items.*, categories.category_name
@@ -153,7 +153,7 @@ async function getStockNotifications() {
   };
 }
 
-//
+// Set shared data for all views before each request is handled.
 app.use(async (req, res, next) => {
   res.locals.title = "Inventory System";
   res.locals.currentPath = req.path;
@@ -181,7 +181,7 @@ app.use(async (req, res, next) => {
   return next();
 });
 
-//
+// Send users to the right starting page based on their login status.
 app.get("/", (req, res) => {
   if (req.session.user) {
     return res.redirect("/inventory");
@@ -190,7 +190,7 @@ app.get("/", (req, res) => {
   return res.redirect("/login");
 });
 
-//
+// Show the login page if the user is not already signed in.
 app.get("/login", (req, res) => {
   if (req.session.user) {
     return res.redirect("/inventory");
@@ -199,7 +199,7 @@ app.get("/login", (req, res) => {
   return res.render("login", { title: "Login" });
 });
 
-//
+// Check the user's login details and start a session when valid.
 app.post("/login", async (req, res) => {
   const username = String(req.body.username || "").trim();
   const password = String(req.body.password || "");
@@ -250,14 +250,14 @@ app.post("/login", async (req, res) => {
   }
 });
 
-//
+// End the current session and return the user to the login page.
 app.get("/logout", (req, res) => {
   req.session.destroy(() => {
     res.redirect("/login");
   });
 });
 
-//
+// Load and display the inventory page with categories and items.
 app.get("/inventory", requireLogin, async (req, res) => {
   try {
     const [categories] = await pool.query(
@@ -286,7 +286,7 @@ app.get("/inventory", requireLogin, async (req, res) => {
   }
 });
 
-//
+// Save a new item after validating the submitted form data.
 app.post("/inventory/items", requireLogin, async (req, res) => {
   const barcode = String(req.body.barcode || "").trim();
   const name = String(req.body.name || "").trim();
@@ -349,7 +349,7 @@ app.post("/inventory/items", requireLogin, async (req, res) => {
   }
 });
 
-//
+// Update an existing item's details after validation.
 app.post("/inventory/items/:id", requireLogin, async (req, res) => {
   const id = Number(req.params.id);
   const barcode = String(req.body.barcode || "").trim();
@@ -398,7 +398,7 @@ app.post("/inventory/items/:id", requireLogin, async (req, res) => {
   }
 });
 
-//
+// Save a new category from the inventory page form.
 app.post("/inventory/categories", requireLogin, async (req, res) => {
   const categoryName = String(req.body.category_name || "").trim();
 
@@ -422,7 +422,7 @@ app.post("/inventory/categories", requireLogin, async (req, res) => {
   }
 });
 
-//
+// Load the transaction page with the list of available items.
 app.get("/transaction", requireLogin, async (req, res) => {
   try {
     const [items] = await pool.query(
@@ -446,7 +446,7 @@ app.get("/transaction", requireLogin, async (req, res) => {
   }
 });
 
-//
+// Process a checkout transaction and reduce item stock levels.
 app.post("/transaction", requireLogin, async (req, res) => {
   const itemIds = Array.isArray(req.body.item_id)
     ? req.body.item_id
@@ -540,7 +540,7 @@ app.post("/transaction", requireLogin, async (req, res) => {
   }
 });
 
-//
+// Show the reports page with the list of completed transactions.
 app.get("/reports", requireLogin, async (req, res) => {
   try {
     const [transactions] = await pool.query(
@@ -563,7 +563,7 @@ app.get("/reports", requireLogin, async (req, res) => {
   }
 });
 
-//
+// Return the items that belong to a selected transaction report.
 app.get("/reports/:id/items", requireLogin, async (req, res) => {
   const transactionId = Number(req.params.id);
 
@@ -588,7 +588,7 @@ app.get("/reports/:id/items", requireLogin, async (req, res) => {
   }
 });
 
-//
+// Show the details page for a single inventory item.
 app.get("/inventory/items/:id", requireLogin, async (req, res) => {
   const id = Number(req.params.id);
 
@@ -628,7 +628,7 @@ app.get("/inventory/items/:id", requireLogin, async (req, res) => {
   }
 });
 
-//
+// Load the cost adjustment page and its change history for one item.
 app.get("/inventory/items/:id/cost", requireLogin, async (req, res) => {
   const id = Number(req.params.id);
 
@@ -663,7 +663,7 @@ app.get("/inventory/items/:id/cost", requireLogin, async (req, res) => {
   }
 });
 
-//
+// Update the cost of an item and save the adjustment history.
 app.post("/inventory/items/:id/cost", requireLogin, async (req, res) => {
   const id = Number(req.params.id);
   const newCost = Number(req.body.new_cost);
@@ -710,7 +710,7 @@ app.post("/inventory/items/:id/cost", requireLogin, async (req, res) => {
   }
 });
 
-//
+// Load the price adjustment page and its change history for one item.
 app.get("/inventory/items/:id/price", requireLogin, async (req, res) => {
   const id = Number(req.params.id);
 
@@ -745,7 +745,7 @@ app.get("/inventory/items/:id/price", requireLogin, async (req, res) => {
   }
 });
 
-//
+// Update the price of an item and save the adjustment history.
 app.post("/inventory/items/:id/price", requireLogin, async (req, res) => {
   const id = Number(req.params.id);
   const newPrice = Number(req.body.new_price);
@@ -792,11 +792,12 @@ app.post("/inventory/items/:id/price", requireLogin, async (req, res) => {
   }
 });
 
-//
+// Show the custom 404 page for routes that do not exist.
 app.use((req, res) => {
   res.status(404).render("404", { title: "Page Not Found" });
 });
 
+// Start the server after checking the database.
 async function startServer() {
   await verifyDatabaseConnection();
 
