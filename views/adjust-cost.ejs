@@ -1,0 +1,43 @@
+<%- include("partials/header", { title }) %>
+
+<section class="mx-auto max-w-4xl space-y-6">
+  <div class="rounded-3xl bg-white p-6 shadow-soft">
+    <p class="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-600">Cost Adjustment</p>
+    <h1 class="mt-2 text-3xl font-semibold"><%= item.name %></h1>
+    <p class="mt-2 text-sm text-slate-500">Item number: <span class="font-medium text-slate-700"><%= item.barcode %></span></p>
+    <p class="mt-1 text-sm text-slate-500">Current cost: <span class="font-medium text-slate-700">PHP <%= formatCurrency(item.cost) %></span></p>
+
+    <form action="/inventory/items/<%= item.id %>/cost" method="POST" class="mt-5 flex flex-wrap gap-3">
+      <input type="number" name="new_cost" step="0.01" min="0" required placeholder="New Cost" class="rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+      <button type="submit" class="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white">Update Cost</button>
+      <a href="/inventory" class="rounded-2xl border px-4 py-3 text-sm font-semibold text-slate-700">Back</a>
+    </form>
+  </div>
+
+  <div class="overflow-x-auto rounded-3xl bg-white shadow-soft">
+    <table class="min-w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-600">
+        <tr>
+          <th class="px-4 py-3">Old Cost</th>
+          <th class="px-4 py-3">New Cost</th>
+          <th class="px-4 py-3">Date</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-200">
+        <% if (historyList.length) { historyList.forEach((history) => { %>
+          <tr>
+            <td class="px-4 py-3">PHP <%= formatCurrency(history.old_cost) %></td>
+            <td class="px-4 py-3">PHP <%= formatCurrency(history.new_cost) %></td>
+            <td class="px-4 py-3 text-slate-500"><%= history.adjusted_at %></td>
+          </tr>
+        <% }) } else { %>
+          <tr>
+            <td colspan="3" class="px-4 py-8 text-center text-slate-500">No cost adjustments yet.</td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include("partials/footer") %>

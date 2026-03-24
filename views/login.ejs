@@ -1,0 +1,41 @@
+<%- include("partials/header", { title }) %>
+
+<section class="flex min-h-screen items-center justify-center px-4 py-10">
+  <div class="grid w-full max-w-5xl overflow-hidden rounded-[2rem] bg-white shadow-2xl lg:grid-cols-[1.1fr_0.9fr]">
+    <div class="hidden bg-gradient-to-br from-sky-700 via-cyan-600 to-emerald-500 p-10 text-white lg:block">
+      <div class="max-w-sm">
+        <p class="mb-4 inline-flex rounded-full bg-white/15 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-white/90">TWO J'S SARI-SARI STORE</p>
+        <h1 class="text-4xl font-semibold leading-tight">Inventory System</h1>
+        <p class="mt-5 text-sm leading-7 text-white/85">
+          This system streamlines inventory tracking, sales, and reporting for the sari-sari store, ensuring efficient and organized daily operations. This is for personal use only.
+        </p>
+      </div>
+    </div>
+
+    <div class="p-8 sm:p-10">
+      <div class="mx-auto max-w-md">
+        <p class="text-sm font-semibold uppercase tracking-[0.25em] text-sky-600">Welcome</p>
+        <h2 class="mt-3 text-3xl font-semibold text-slate-950">Sign in to continue</h2>
+        <p class="mt-2 text-sm text-slate-500">Use your inventory account to access stock management and transactions.</p>
+
+        <form action="/login" method="POST" class="mt-8 space-y-5">
+          <label class="block">
+            <span class="mb-2 block text-sm font-medium text-slate-700">Username</span>
+            <input type="text" name="username" required autocomplete="username" class="block w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+          </label>
+
+          <label class="block">
+            <span class="mb-2 block text-sm font-medium text-slate-700">Password</span>
+            <input type="password" name="password" required autocomplete="current-password" class="block w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+          </label>
+
+          <button type="submit" class="inline-flex w-full items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700">
+            Login
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<%- include("partials/footer") %>

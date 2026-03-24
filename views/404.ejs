@@ -1,0 +1,12 @@
+<%- include("partials/header", { title }) %>
+
+<section class="mx-auto max-w-2xl rounded-[2rem] bg-white p-10 text-center shadow-soft">
+  <p class="text-sm font-semibold uppercase tracking-[0.25em] text-slate-500">404</p>
+  <h1 class="mt-3 text-3xl font-semibold text-slate-950">Page not found</h1>
+  <p class="mt-3 text-sm leading-6 text-slate-500">The page you requested does not exist in the Node.js version of this project.</p>
+  <a href="<%= user ? '/inventory' : '/login' %>" class="mt-6 inline-flex rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700">
+    Go Back
+  </a>
+</section>
+
+<%- include("partials/footer") %>

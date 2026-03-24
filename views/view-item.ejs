@@ -1,0 +1,61 @@
+<%- include("partials/header", { title }) %>
+
+<section class="mx-auto max-w-5xl space-y-6">
+  <div class="rounded-3xl bg-white p-6 shadow-soft">
+    <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-600">View Item</p>
+    <h1 class="mt-2 text-3xl font-semibold"><%= item.name %></h1>
+    <p class="mt-2 text-sm text-slate-500">Update the item details below.</p>
+  </div>
+
+  <form action="/inventory/items/<%= item.id %>" method="POST" class="rounded-3xl bg-white p-6 shadow-soft">
+    <div class="grid gap-4 md:grid-cols-2">
+      <div>
+        <label for="barcode" class="mb-2 block text-sm font-medium text-slate-700">Item Number</label>
+        <input id="barcode" name="barcode" required value="<%= item.barcode %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+      </div>
+      <div>
+        <label for="name" class="mb-2 block text-sm font-medium text-slate-700">Item Name</label>
+        <input id="name" name="name" required value="<%= item.name %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+      </div>
+      <div>
+        <label for="cost" class="mb-2 block text-sm font-medium text-slate-700">Cost</label>
+        <input id="cost" type="number" name="cost" step="0.01" min="0" required value="<%= item.cost %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+      </div>
+      <div>
+        <label for="price" class="mb-2 block text-sm font-medium text-slate-700">Price</label>
+        <input id="price" type="number" name="price" step="0.01" min="0" required value="<%= item.price %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+      </div>
+      <div>
+        <label for="quantity" class="mb-2 block text-sm font-medium text-slate-700">Quantity</label>
+        <input id="quantity" type="number" name="quantity" min="0" required value="<%= item.quantity %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+      </div>
+      <div>
+        <label for="min_quantity" class="mb-2 block text-sm font-medium text-slate-700">Min Quantity</label>
+        <input id="min_quantity" type="number" name="min_quantity" min="0" required value="<%= item.min_quantity %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+      </div>
+      <div>
+        <label for="max_quantity" class="mb-2 block text-sm font-medium text-slate-700">Max Quantity</label>
+        <input id="max_quantity" type="number" name="max_quantity" min="1" required value="<%= item.max_quantity %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <label for="category_id" class="mb-2 block text-sm font-medium text-slate-700">Category</label>
+      <select id="category_id" name="category_id" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        <option value="">Select category</option>
+        <% categories.forEach((category) => { %>
+          <option value="<%= category.id %>" <%= String(item.category_id || "") === String(category.id) ? "selected" : "" %>><%= category.category_name %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div class="mt-6 flex flex-wrap gap-3">
+      <button type="submit" class="rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white">Save Changes</button>
+      <a href="/inventory/items/<%= item.id %>/price" class="rounded-2xl border border-amber-300 px-4 py-3 text-sm font-semibold text-amber-700">Price History</a>
+      <a href="/inventory/items/<%= item.id %>/cost" class="rounded-2xl border border-emerald-300 px-4 py-3 text-sm font-semibold text-emerald-700">Cost History</a>
+      <a href="/inventory" class="rounded-2xl border px-4 py-3 text-sm font-semibold text-slate-700">Back to Inventory</a>
+    </div>
+  </form>
+</section>
+
+<%- include("partials/footer") %>
