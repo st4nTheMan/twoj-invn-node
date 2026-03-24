@@ -6,6 +6,27 @@
   <h1 class="mt-2 text-3xl font-semibold">Stock overview</h1>
 </section>
 
+<!-- Add Item and Add Category Button -->
+<section class="rounded-3xl bg-white p-5 shadow-soft">
+  <div class="flex flex-wrap gap-3">
+    <button
+      type="button"
+      data-open-modal="add-item-modal"
+      class="rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white"
+    >
+      Add Item
+    </button>
+
+    <button
+      type="button"
+      data-open-modal="add-category-modal"
+      class="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white"
+    >
+      Add Category
+    </button>
+  </div>
+</section>
+
 <section class="mb-6 rounded-3xl bg-white p-5 shadow-soft">
   <input id="inventory-search" type="text" placeholder="Search by item number, name, or category..." class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
 </section>
@@ -52,27 +73,6 @@
 <% if (state.error) { %>
   <div id="page-state" data-open-modal="add-item-modal" hidden></div>
 <% } %>
-
-<!-- Add Item and Add Category Button -->
-<section class="rounded-3xl bg-white p-6 shadow-soft">
-  <div class="flex flex-wrap gap-3">
-    <button
-      type="button"
-      data-open-modal="add-item-modal"
-      class="rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white"
-    >
-      Add Item
-    </button>
-
-    <button
-      type="button"
-      data-open-modal="add-category-modal"
-      class="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white"
-    >
-      Add Category
-    </button>
-  </div>
-</section>
 
 <!-- Add Item Modal -->
 <section id="add-item-modal" data-modal class="hidden fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 sm:p-6">
