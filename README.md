@@ -38,14 +38,14 @@ This project has been migrated from PHP to a Node.js app using Express, EJS, MyS
 
 1. Make sure your PC and Android phone are connected to the same Wi-Fi network.
 2. Start the app with `npm start`.
-3. Check the terminal for a message like `http://192.168.x.x:3000`.
+3. Check the terminal for a message like `https://192.168.x.x:4000`.
 4. Open that URL in your Android phone's browser.
 
 If the phone cannot connect:
 
-- Make sure Windows Firewall allows inbound access on port `3000`.
+- Make sure Windows Firewall allows inbound access on port `4000`.
 - Keep the app running on your PC while using the phone.
-- If you changed the port in `.env`, use that port instead of `3000`.
+- If you changed the port in `.env`, use that port instead of `4000`.
 
 ## Notes
 
