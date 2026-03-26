@@ -1,6 +1,8 @@
 const path = require("path");
 const os = require("os");
 const crypto = require("crypto");
+const fs = require("fs");
+const https = require("https");
 const express = require("express");
 const session = require("express-session");
 const mysql = require("mysql2/promise");
@@ -11,6 +13,8 @@ require("dotenv").config();
 const app = express();
 const PORT = Number(process.env.PORT || 4000);
 const HOST = process.env.HOST || "0.0.0.0";
+const SSL_KEY_PATH = process.env.SSL_KEY_PATH || path.join(__dirname, "certs", "localhost-key.pem");
+const SSL_CERT_PATH = process.env.SSL_CERT_PATH || path.join(__dirname, "certs", "localhost.pem");
 
 // Set the database connection settings.
 const dbConfig = {
@@ -39,10 +43,12 @@ app.use(
     cookie: {
       httpOnly: true,
       sameSite: "lax",
+      secure: true,
       maxAge: 1000 * 60 * 60 * 8
     }
   })
 );
+
 app.use("/public", express.static(path.join(__dirname, "public")));
 
 // Change a number into currency format.
@@ -72,6 +78,10 @@ function formatDateTime(value) {
 // Create an invoice number.
 function formatInvoice(id) {
   return `INV-${String(id).padStart(6, "0")}`;
+}
+
+function toUppercaseText(value) {
+  return String(value || "").trim().toUpperCase();
 }
 
 // Save a temporary message in the session.
@@ -289,7 +299,7 @@ app.get("/inventory", requireLogin, async (req, res) => {
 // Save a new item after validating the submitted form data.
 app.post("/inventory/items", requireLogin, async (req, res) => {
   const barcode = String(req.body.barcode || "").trim();
-  const name = String(req.body.name || "").trim();
+  const name = toUppercaseText(req.body.name);
   const cost = String(req.body.cost || "").trim();
   const price = String(req.body.price || "").trim();
   const quantity = Number(req.body.quantity || 0);
@@ -353,7 +363,7 @@ app.post("/inventory/items", requireLogin, async (req, res) => {
 app.post("/inventory/items/:id", requireLogin, async (req, res) => {
   const id = Number(req.params.id);
   const barcode = String(req.body.barcode || "").trim();
-  const name = String(req.body.name || "").trim();
+  const name = toUppercaseText(req.body.name);
   const cost = String(req.body.cost || "").trim();
   const price = String(req.body.price || "").trim();
   const quantity = Number(req.body.quantity || 0);
@@ -400,7 +410,7 @@ app.post("/inventory/items/:id", requireLogin, async (req, res) => {
 
 // Save a new category from the inventory page form.
 app.post("/inventory/categories", requireLogin, async (req, res) => {
-  const categoryName = String(req.body.category_name || "").trim();
+  const categoryName = toUppercaseText(req.body.category_name);
 
   if (!categoryName) {
     flash(req, { type: "error", message: "Category name is required." });
@@ -801,8 +811,13 @@ app.use((req, res) => {
 async function startServer() {
   await verifyDatabaseConnection();
 
-  app.listen(PORT, HOST, () => {
-    console.log(`Inventory system running at http://localhost:${PORT}`);
+  const sslOptions = {
+    key: fs.readFileSync(SSL_KEY_PATH),
+    cert: fs.readFileSync(SSL_CERT_PATH)
+  };
+
+  https.createServer(sslOptions, app).listen(PORT, HOST, () => {
+    console.log(`Inventory system running at https://localhost:${PORT}`);
 
     const networkInterfaces = os.networkInterfaces();
     const lanAddresses = [];
@@ -818,7 +833,7 @@ async function startServer() {
     if (lanAddresses.length) {
       console.log("Open from your Android phone using one of these URLs:");
       for (const address of lanAddresses) {
-        console.log(`http://${address}:${PORT}`);
+        console.log(`https://${address}:${PORT}`);
       }
     }
   });

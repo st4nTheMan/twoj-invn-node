@@ -78,6 +78,56 @@ document.addEventListener("DOMContentLoaded", () => {
   let barcodeDetectedHandler = null;
   let activeBarcodeInput = null;
   let returnModalId = null;
+  let barcodeDetectionState = null;
+
+  const MIN_BARCODE_MATCHES = 3;
+  const MAX_BARCODE_AVERAGE_ERROR = 0.18;
+
+  function isLocalHostname(hostname) {
+    return ["localhost", "127.0.0.1", "::1"].includes(hostname);
+  }
+
+  function ensureCameraApi() {
+    if (navigator.mediaDevices?.getUserMedia) {
+      return true;
+    }
+
+    const legacyGetUserMedia =
+      navigator.getUserMedia ||
+      navigator.webkitGetUserMedia ||
+      navigator.mozGetUserMedia ||
+      navigator.msGetUserMedia;
+
+    if (!legacyGetUserMedia) {
+      return false;
+    }
+
+    if (!navigator.mediaDevices) {
+      navigator.mediaDevices = {};
+    }
+
+    navigator.mediaDevices.getUserMedia = (constraints) =>
+      new Promise((resolve, reject) => {
+        legacyGetUserMedia.call(navigator, constraints, resolve, reject);
+      });
+
+    return true;
+  }
+
+  function getCameraSupportError() {
+    const hostname = window.location.hostname;
+    const isSecureOrigin = window.isSecureContext || isLocalHostname(hostname);
+
+    if (!isSecureOrigin) {
+      return "Camera scanning only works on HTTPS or localhost. Open this page from a secure URL and try again.";
+    }
+
+    if (!ensureCameraApi()) {
+      return "This browser does not support camera scanning.";
+    }
+
+    return null;
+  }
 
   function setBarcodeScannerStatus(message, isError = false) {
     if (!barcodeScannerStatus) return;
@@ -85,6 +135,22 @@ document.addEventListener("DOMContentLoaded", () => {
     barcodeScannerStatus.className = isError
       ? "rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
       : "rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600";
+  }
+
+  function syncBarcodeScannerViewport() {
+    if (!barcodeScannerViewport) return;
+
+    barcodeScannerViewport.className = "relative aspect-[4/3] w-full overflow-hidden bg-slate-950";
+
+    const layers = barcodeScannerViewport.querySelectorAll("video, canvas");
+    layers.forEach((layer) => {
+      layer.style.position = "absolute";
+      layer.style.inset = "0";
+      layer.style.width = "100%";
+      layer.style.height = "100%";
+      layer.style.objectFit = "cover";
+      layer.style.display = "block";
+    });
   }
 
   function stopBarcodeScanner() {
@@ -104,10 +170,49 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     barcodeScannerActive = false;
+    barcodeDetectionState = null;
 
     if (barcodeScannerViewport) {
       barcodeScannerViewport.innerHTML = "";
     }
+  }
+
+  function getBarcodeAverageError(result) {
+    const errors = (result?.codeResult?.decodedCodes || [])
+      .map((entry) => entry?.error)
+      .filter((value) => typeof value === "number");
+
+    if (!errors.length) {
+      return 1;
+    }
+
+    return errors.reduce((total, value) => total + value, 0) / errors.length;
+  }
+
+  function registerBarcodeDetection(code, result) {
+    const averageError = getBarcodeAverageError(result);
+
+    if (averageError > MAX_BARCODE_AVERAGE_ERROR) {
+      return {
+        accepted: false,
+        message: "Barcode detected, but the scan is still noisy. Hold it steady a little longer."
+      };
+    }
+
+    if (!barcodeDetectionState || barcodeDetectionState.code !== code) {
+      barcodeDetectionState = { code, matches: 1 };
+    } else {
+      barcodeDetectionState.matches += 1;
+    }
+
+    if (barcodeDetectionState.matches < MIN_BARCODE_MATCHES) {
+      return {
+        accepted: false,
+        message: `Reading barcode... ${barcodeDetectionState.matches}/${MIN_BARCODE_MATCHES} matches`
+      };
+    }
+
+    return { accepted: true, message: `Scanned barcode: ${code}` };
   }
 
   function startBarcodeScanner(targetInput, modalIdToReturn = null) {
@@ -122,13 +227,16 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setBarcodeScannerStatus("This browser does not support camera scanning.", true);
+    const supportError = getCameraSupportError();
+    if (supportError) {
+      setBarcodeScannerStatus(supportError, true);
       openModal("barcode-scanner-modal");
       return;
     }
 
     stopBarcodeScanner();
+    barcodeDetectionState = null;
+    syncBarcodeScannerViewport();
     setBarcodeScannerStatus("Starting camera...");
     openModal("barcode-scanner-modal");
 
@@ -138,12 +246,14 @@ document.addEventListener("DOMContentLoaded", () => {
           type: "LiveStream",
           target: barcodeScannerViewport,
           constraints: {
-            facingMode: "environment"
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
           }
         },
         locator: {
-          patchSize: "medium",
-          halfSample: true
+          patchSize: "large",
+          halfSample: false
         },
         numOfWorkers: Math.max((navigator.hardwareConcurrency || 4) - 1, 1),
         decoder: {
@@ -160,7 +270,24 @@ document.addEventListener("DOMContentLoaded", () => {
       (error) => {
         if (error) {
           console.error("Failed to start barcode scanner.", error);
-          setBarcodeScannerStatus("Unable to access the camera. Please allow camera access and try again.", true);
+          const permissionDenied =
+            error.name === "NotAllowedError" ||
+            error.name === "PermissionDeniedError";
+          const insecureOrigin =
+            error.name === "SecurityError" ||
+            error.name === "NotSupportedError";
+
+          if (permissionDenied) {
+            setBarcodeScannerStatus("Camera permission was blocked. Allow camera access in your browser and try again.", true);
+            return;
+          }
+
+          if (insecureOrigin && !window.isSecureContext && !isLocalHostname(window.location.hostname)) {
+            setBarcodeScannerStatus("Camera scanning requires HTTPS or localhost. Open the app from a secure URL and try again.", true);
+            return;
+          }
+
+          setBarcodeScannerStatus("Unable to access the camera. Check camera permission and make sure the page is opened on HTTPS or localhost.", true);
           return;
         }
 
@@ -168,9 +295,15 @@ document.addEventListener("DOMContentLoaded", () => {
           const code = result?.codeResult?.code;
           if (!code || !activeBarcodeInput) return;
 
+          const detection = registerBarcodeDetection(code, result);
+          if (!detection.accepted) {
+            setBarcodeScannerStatus(detection.message);
+            return;
+          }
+
           activeBarcodeInput.value = code;
           activeBarcodeInput.dispatchEvent(new Event("input", { bubbles: true }));
-          setBarcodeScannerStatus(`Scanned barcode: ${code}`);
+          setBarcodeScannerStatus(detection.message);
           stopBarcodeScanner();
           closeModal(barcodeScannerModal);
 
@@ -184,6 +317,9 @@ document.addEventListener("DOMContentLoaded", () => {
         window.Quagga.onDetected(barcodeDetectedHandler);
         window.Quagga.start();
         barcodeScannerActive = true;
+        syncBarcodeScannerViewport();
+        window.requestAnimationFrame(syncBarcodeScannerViewport);
+        window.setTimeout(syncBarcodeScannerViewport, 250);
         setBarcodeScannerStatus("Camera is live. Hold the barcode steady inside the frame.");
       }
     );
