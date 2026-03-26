@@ -7,11 +7,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!modal) return;
     modal.classList.remove("hidden");
     body.classList.add("modal-open");
+    modal.dispatchEvent(new CustomEvent("modal:open"));
   }
 
   function closeModal(modal) {
     if (!modal) return;
     modal.classList.add("hidden");
+    modal.dispatchEvent(new CustomEvent("modal:close"));
     const openModals = document.querySelectorAll("[data-modal]:not(.hidden)");
     if (!openModals.length) body.classList.remove("modal-open");
   }
@@ -62,6 +64,156 @@ document.addEventListener("DOMContentLoaded", () => {
   bindSearch("inventory-search", "inventory-table", "inventory-empty-search");
   bindSearch("transaction-search", "transaction-table", "transaction-empty-search");
   bindSearch("reports-search", "reports-table", "reports-empty-search");
+
+  const addItemModal = document.getElementById("add-item-modal");
+  const addBarcodeInput = document.getElementById("barcode");
+  const viewBarcodeInput = document.getElementById("view_item_barcode");
+  const openBarcodeScannerButton = document.getElementById("open-barcode-scanner");
+  const openViewBarcodeScannerButton = document.getElementById("open-view-barcode-scanner");
+  const barcodeScannerModal = document.getElementById("barcode-scanner-modal");
+  const barcodeScannerViewport = document.getElementById("barcode-scanner-viewport");
+  const barcodeScannerStatus = document.getElementById("barcode-scanner-status");
+
+  let barcodeScannerActive = false;
+  let barcodeDetectedHandler = null;
+  let activeBarcodeInput = null;
+  let returnModalId = null;
+
+  function setBarcodeScannerStatus(message, isError = false) {
+    if (!barcodeScannerStatus) return;
+    barcodeScannerStatus.textContent = message;
+    barcodeScannerStatus.className = isError
+      ? "rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+      : "rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600";
+  }
+
+  function stopBarcodeScanner() {
+    if (!window.Quagga) return;
+
+    if (barcodeDetectedHandler) {
+      window.Quagga.offDetected(barcodeDetectedHandler);
+      barcodeDetectedHandler = null;
+    }
+
+    if (!barcodeScannerActive) return;
+
+    try {
+      window.Quagga.stop();
+    } catch (error) {
+      console.error("Failed to stop barcode scanner.", error);
+    }
+
+    barcodeScannerActive = false;
+
+    if (barcodeScannerViewport) {
+      barcodeScannerViewport.innerHTML = "";
+    }
+  }
+
+  function startBarcodeScanner(targetInput, modalIdToReturn = null) {
+    if (!barcodeScannerModal || !barcodeScannerViewport || !targetInput) return;
+
+    activeBarcodeInput = targetInput;
+    returnModalId = modalIdToReturn;
+
+    if (!window.Quagga) {
+      setBarcodeScannerStatus("Barcode scanner failed to load. Please refresh the page and try again.", true);
+      openModal("barcode-scanner-modal");
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setBarcodeScannerStatus("This browser does not support camera scanning.", true);
+      openModal("barcode-scanner-modal");
+      return;
+    }
+
+    stopBarcodeScanner();
+    setBarcodeScannerStatus("Starting camera...");
+    openModal("barcode-scanner-modal");
+
+    window.Quagga.init(
+      {
+        inputStream: {
+          type: "LiveStream",
+          target: barcodeScannerViewport,
+          constraints: {
+            facingMode: "environment"
+          }
+        },
+        locator: {
+          patchSize: "medium",
+          halfSample: true
+        },
+        numOfWorkers: Math.max((navigator.hardwareConcurrency || 4) - 1, 1),
+        decoder: {
+          readers: [
+            "code_128_reader",
+            "ean_reader",
+            "ean_8_reader",
+            "upc_reader",
+            "upc_e_reader"
+          ]
+        },
+        locate: true
+      },
+      (error) => {
+        if (error) {
+          console.error("Failed to start barcode scanner.", error);
+          setBarcodeScannerStatus("Unable to access the camera. Please allow camera access and try again.", true);
+          return;
+        }
+
+        barcodeDetectedHandler = (result) => {
+          const code = result?.codeResult?.code;
+          if (!code || !activeBarcodeInput) return;
+
+          activeBarcodeInput.value = code;
+          activeBarcodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+          setBarcodeScannerStatus(`Scanned barcode: ${code}`);
+          stopBarcodeScanner();
+          closeModal(barcodeScannerModal);
+
+          if (returnModalId) {
+            openModal(returnModalId);
+          }
+
+          activeBarcodeInput.focus();
+        };
+
+        window.Quagga.onDetected(barcodeDetectedHandler);
+        window.Quagga.start();
+        barcodeScannerActive = true;
+        setBarcodeScannerStatus("Camera is live. Hold the barcode steady inside the frame.");
+      }
+    );
+  }
+
+  if (openBarcodeScannerButton && addBarcodeInput) {
+    openBarcodeScannerButton.addEventListener("click", () => {
+      if (addItemModal) closeModal(addItemModal);
+      startBarcodeScanner(addBarcodeInput, "add-item-modal");
+    });
+  }
+
+  if (openViewBarcodeScannerButton && viewBarcodeInput) {
+    openViewBarcodeScannerButton.addEventListener("click", () => {
+      startBarcodeScanner(viewBarcodeInput, null);
+    });
+  }
+
+  if (barcodeScannerModal) {
+    barcodeScannerModal.addEventListener("modal:close", () => {
+      stopBarcodeScanner();
+
+      if (returnModalId) {
+        const returnModal = document.getElementById(returnModalId);
+        if (returnModal?.classList.contains("hidden")) {
+          openModal(returnModalId);
+        }
+      }
+    });
+  }
 
   const viewItemForm = document.getElementById("view-item-form");
   const editItemButton = document.getElementById("edit-item-button");

@@ -10,29 +10,52 @@
   <form action="/inventory/items/<%= item.id %>" method="POST" class="rounded-3xl bg-white p-6 shadow-soft">
     <div class="grid gap-4 md:grid-cols-2">
       <div>
-        <label for="barcode" class="mb-2 block text-sm font-medium text-slate-700">Item Number</label>
-        <input id="barcode" name="barcode" required value="<%= item.barcode %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        <label for="view_item_barcode" class="mb-2 block text-sm font-medium text-slate-700">Item Number</label>
+
+        <div class="flex flex-col gap-2 sm:flex-row">
+          <input
+            id="view_item_barcode"
+            name="barcode"
+            required
+            value="<%= item.barcode %>"
+            class="flex-1 rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm"
+          >
+
+          <button
+            id="open-view-barcode-scanner"
+            type="button"
+            class="shrink-0 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
+          >
+            Scan barcode
+          </button>
+        </div>
       </div>
+
       <div>
         <label for="name" class="mb-2 block text-sm font-medium text-slate-700">Item Name</label>
         <input id="name" name="name" required value="<%= item.name %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
       </div>
+
       <div>
         <label for="cost" class="mb-2 block text-sm font-medium text-slate-700">Cost</label>
         <input id="cost" type="number" name="cost" step="0.01" min="0" required value="<%= item.cost %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
       </div>
+
       <div>
         <label for="price" class="mb-2 block text-sm font-medium text-slate-700">Price</label>
         <input id="price" type="number" name="price" step="0.01" min="0" required value="<%= item.price %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
       </div>
+
       <div>
         <label for="quantity" class="mb-2 block text-sm font-medium text-slate-700">Quantity</label>
         <input id="quantity" type="number" name="quantity" min="0" required value="<%= item.quantity %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
       </div>
+
       <div>
         <label for="min_quantity" class="mb-2 block text-sm font-medium text-slate-700">Min Quantity</label>
         <input id="min_quantity" type="number" name="min_quantity" min="0" required value="<%= item.min_quantity %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
       </div>
+
       <div>
         <label for="max_quantity" class="mb-2 block text-sm font-medium text-slate-700">Max Quantity</label>
         <input id="max_quantity" type="number" name="max_quantity" min="1" required value="<%= item.max_quantity %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
@@ -56,6 +79,37 @@
       <a href="/inventory" class="rounded-2xl border px-4 py-3 text-sm font-semibold text-slate-700">Back to Inventory</a>
     </div>
   </form>
+</section>
+
+<!-- Barcode Scanner Modal -->
+<section id="barcode-scanner-modal" data-modal class="hidden fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/75 p-4 sm:p-6">
+  <div class="my-8 w-full max-w-2xl rounded-3xl bg-white shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+      <div>
+        <h2 class="text-xl font-semibold text-slate-900">Scan barcode</h2>
+        <p class="text-sm text-slate-500">Point the camera at the barcode to fill the item number automatically.</p>
+      </div>
+      <button
+        type="button"
+        data-close-modal
+        class="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+      >
+        Close
+      </button>
+    </div>
+
+    <div class="space-y-4 p-6">
+      <div id="barcode-scanner-status" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        Camera is starting...
+      </div>
+      <div class="overflow-hidden rounded-3xl bg-slate-950">
+        <div id="barcode-scanner-viewport" class="aspect-[4/3] w-full"></div>
+      </div>
+      <p class="text-xs text-slate-500">
+        If the camera does not start, allow camera access in your browser and try again.
+      </p>
+    </div>
+  </div>
 </section>
 
 <%- include("partials/footer") %>
