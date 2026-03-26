@@ -29,7 +29,7 @@ This project has been migrated from PHP to a Node.js app using Express, EJS, MyS
 3. Update the database values in `.env`.
 4. Set `DB_USER` and `DB_PASSWORD` to a MySQL account that can access `DB_NAME`.
 5. If your local MySQL `root` user has a password, put that value in `DB_PASSWORD`. Leaving it blank makes the app connect with no password.
-6. Import [database.sql](/c:/xampp/htdocs/two-js-invn/db/database.sql) into MySQL if needed.
+6. Import [database.sql](/db/database.sql) into MySQL if needed.
 7. Run `npm install`
 8. Run `npm start`
 9. Open `http://localhost:3000`
