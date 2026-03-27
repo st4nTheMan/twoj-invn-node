@@ -1,10 +1,14 @@
 document.addEventListener("DOMContentLoaded", () => {
   const body = document.body;
   const pageState = document.getElementById("page-state");
+  const MODAL_EXIT_DURATION_MS = 220;
 
   function openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (!modal) return;
+    window.clearTimeout(modal.closeTimer);
+    delete modal.closeTimer;
+    modal.dataset.modalState = "opening";
     modal.classList.remove("hidden");
     body.classList.add("modal-open");
     modal.dispatchEvent(new CustomEvent("modal:open"));
@@ -12,10 +16,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function closeModal(modal) {
     if (!modal) return;
-    modal.classList.add("hidden");
+    if (modal.classList.contains("hidden") || modal.dataset.modalState === "closing") return;
+    modal.dataset.modalState = "closing";
     modal.dispatchEvent(new CustomEvent("modal:close"));
-    const openModals = document.querySelectorAll("[data-modal]:not(.hidden)");
-    if (!openModals.length) body.classList.remove("modal-open");
+    modal.closeTimer = window.setTimeout(() => {
+      modal.classList.add("hidden");
+      delete modal.dataset.modalState;
+      delete modal.closeTimer;
+      const openModals = document.querySelectorAll("[data-modal]:not(.hidden)");
+      if (!openModals.length) body.classList.remove("modal-open");
+    }, MODAL_EXIT_DURATION_MS);
   }
 
   document.querySelectorAll("[data-open-modal]").forEach((button) => {
