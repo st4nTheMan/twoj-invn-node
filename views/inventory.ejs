@@ -106,7 +106,7 @@
             <input
               id="barcode"
               name="barcode"
-              required
+              data-required="true"
               value="<%= old.barcode || '' %>"
               placeholder="Item Number"
               class="flex-1 rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm"
@@ -124,27 +124,27 @@
 
         <div>
           <label for="name" class="mb-2 block text-sm font-medium text-slate-700">Item Name</label>
-          <input name="name" required value="<%= old.name || '' %>" placeholder="Item Name" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+          <input name="name" data-required="true" value="<%= old.name || '' %>" placeholder="Item Name" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
         </div>
         <div>
           <label for="cost" class="mb-2 block text-sm font-medium text-slate-700">Cost</label>
-          <input type="number" name="cost" step="0.01" min="0" required value="<%= old.cost || '' %>" placeholder="Cost" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+          <input type="number" name="cost" step="0.01" min="0" data-required="true" value="<%= old.cost || '' %>" placeholder="Cost" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
         </div>
         <div>
           <label for="price" class="mb-2 block text-sm font-medium text-slate-700">Price</label>
-          <input type="number" name="price" step="0.01" min="0" required value="<%= old.price || '' %>" placeholder="Price" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+          <input type="number" name="price" step="0.01" min="0" data-required="true" value="<%= old.price || '' %>" placeholder="Price" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
         </div>
         <div class="md:col-span-2">
           <label for="quantity" class="mb-2 block text-sm font-medium text-slate-700">Quantity</label>
-          <input type="number" name="quantity" min="0" required value="<%= old.quantity ?? 0 %>" placeholder="OH Quantity" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+          <input type="number" name="quantity" min="0" data-required="true" value="<%= old.quantity ?? 0 %>" placeholder="OH Quantity" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
         </div>
         <div>
           <label for="min_quantity" class="mb-2 block text-sm font-medium text-slate-700">Min Quantity</label>
-          <input type="number" name="min_quantity" min="0" required value="<%= old.min_quantity ?? 5 %>" placeholder="Min Qty" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+          <input type="number" name="min_quantity" min="0" data-required="true" value="<%= old.min_quantity ?? 5 %>" placeholder="Min Qty" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
         </div>
         <div>
           <label for="max_quantity" class="mb-2 block text-sm font-medium text-slate-700">Max Quantity</label>
-          <input type="number" name="max_quantity" min="1" required value="<%= old.max_quantity ?? 100 %>" placeholder="Max Qty" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+          <input type="number" name="max_quantity" min="1" data-required="true" value="<%= old.max_quantity ?? 10 %>" placeholder="Max Qty" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
         </div>
       </div>
 
@@ -223,7 +223,7 @@
       <input
         type="text"
         name="category_name"
-        required
+        data-required="true"
         placeholder="Category Name"
         class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm"
       >
