@@ -1,8 +1,8 @@
   </main>
 
   <% if (user) { %>
-    <section id="stock-notifications-modal" data-modal class="hidden fixed inset-0 z-50 bg-slate-950/60 p-4">
-      <div class="mx-auto mt-10 max-w-2xl rounded-3xl bg-white shadow-2xl">
+    <section id="stock-notifications-modal" data-modal class="hidden fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 sm:p-6">
+      <div class="my-8 flex max-h-[calc(100vh-4rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
         <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <div>
             <h2 class="text-lg font-semibold text-slate-900">Stock Notifications</h2>
@@ -11,7 +11,7 @@
           <button type="button" data-close-modal class="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100">Close</button>
         </div>
 
-        <div class="space-y-6 px-6 py-5">
+        <div class="space-y-6 overflow-y-auto px-6 py-5">
           <% if (!notifications.lowStockItems.length && !notifications.overStockItems.length) { %>
             <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
               No stock notifications.

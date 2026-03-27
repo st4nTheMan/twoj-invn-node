@@ -1,5 +1,10 @@
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  overflow-y: scroll;
 }
 
 [data-modal].hidden {
