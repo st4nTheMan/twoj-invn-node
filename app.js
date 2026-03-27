@@ -74,6 +74,11 @@ function formatInvoice(id) {
   return `INV-${String(id).padStart(6, "0")}`;
 }
 
+//Convert text to uppercase
+function toUppercaseText(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
 // Save a temporary message in the session.
 function flash(req, payload) {
   req.session.flash = payload;
@@ -289,7 +294,7 @@ app.get("/inventory", requireLogin, async (req, res) => {
 // Save a new item after validating the submitted form data.
 app.post("/inventory/items", requireLogin, async (req, res) => {
   const barcode = String(req.body.barcode || "").trim();
-  const name = String(req.body.name || "").trim();
+  const name = toUppercaseText(req.body.name);
   const cost = String(req.body.cost || "").trim();
   const price = String(req.body.price || "").trim();
   const quantity = Number(req.body.quantity || 0);
@@ -353,7 +358,7 @@ app.post("/inventory/items", requireLogin, async (req, res) => {
 app.post("/inventory/items/:id", requireLogin, async (req, res) => {
   const id = Number(req.params.id);
   const barcode = String(req.body.barcode || "").trim();
-  const name = String(req.body.name || "").trim();
+  const name = toUppercaseText(req.body.name);
   const cost = String(req.body.cost || "").trim();
   const price = String(req.body.price || "").trim();
   const quantity = Number(req.body.quantity || 0);
@@ -400,7 +405,7 @@ app.post("/inventory/items/:id", requireLogin, async (req, res) => {
 
 // Save a new category from the inventory page form.
 app.post("/inventory/categories", requireLogin, async (req, res) => {
-  const categoryName = String(req.body.category_name || "").trim();
+  const categoryName = toUppercaseText(req.body.category_name);
 
   if (!categoryName) {
     flash(req, { type: "error", message: "Category name is required." });
