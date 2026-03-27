@@ -6,8 +6,76 @@ body {
   display: none;
 }
 
+[data-modal] {
+  animation: modal-backdrop-fade 180ms ease-out;
+}
+
+[data-modal] > :first-child {
+  transform-origin: top center;
+  animation: modal-drop-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+[data-modal][data-modal-state="closing"] {
+  animation: modal-backdrop-fade-out 180ms ease-in forwards;
+}
+
+[data-modal][data-modal-state="closing"] > :first-child {
+  animation: modal-rise-out 220ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
 body.modal-open {
   overflow: hidden;
+}
+
+@keyframes modal-backdrop-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-28px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modal-backdrop-fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes modal-rise-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-24px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-modal],
+  [data-modal] > :first-child {
+    animation: none;
+  }
 }
 
 .table-scroll::-webkit-scrollbar {
