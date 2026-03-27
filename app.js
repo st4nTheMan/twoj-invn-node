@@ -821,7 +821,7 @@ async function startServer() {
     }
 
     if (lanAddresses.length) {
-      console.log("Open from your Android phone using one of these URLs:");
+      console.log("Open from your phone using one of these URLs:");
       for (const address of lanAddresses) {
         console.log(`http://${address}:${PORT}`);
       }
