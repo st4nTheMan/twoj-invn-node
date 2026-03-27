@@ -27,6 +27,19 @@ body.modal-open {
   overflow: hidden;
 }
 
+.field-invalid {
+  border-color: #f43f5e !important;
+  background-color: #fff1f2;
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.15);
+}
+
+.field-error-message {
+  margin-top: 0.5rem;
+  color: #be123c;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
 @keyframes modal-backdrop-fade {
   from {
     opacity: 0;

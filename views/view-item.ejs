@@ -16,7 +16,7 @@
           <input
             id="view_item_barcode"
             name="barcode"
-            required
+            data-required="true"
             value="<%= item.barcode %>"
             class="flex-1 rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm"
           >
@@ -33,32 +33,32 @@
 
       <div>
         <label for="name" class="mb-2 block text-sm font-medium text-slate-700">Item Name</label>
-        <input id="name" name="name" required value="<%= item.name %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        <input id="name" name="name" data-required="true" value="<%= item.name %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
       </div>
 
       <div>
         <label for="cost" class="mb-2 block text-sm font-medium text-slate-700">Cost</label>
-        <input id="cost" type="number" name="cost" step="0.01" min="0" required value="<%= item.cost %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        <input id="cost" type="number" name="cost" step="0.01" min="0" data-required="true" value="<%= item.cost %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
       </div>
 
       <div>
         <label for="price" class="mb-2 block text-sm font-medium text-slate-700">Price</label>
-        <input id="price" type="number" name="price" step="0.01" min="0" required value="<%= item.price %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        <input id="price" type="number" name="price" step="0.01" min="0" data-required="true" value="<%= item.price %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
       </div>
 
       <div>
         <label for="quantity" class="mb-2 block text-sm font-medium text-slate-700">Quantity</label>
-        <input id="quantity" type="number" name="quantity" min="0" required value="<%= item.quantity %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        <input id="quantity" type="number" name="quantity" min="0" data-required="true" value="<%= item.quantity %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
       </div>
 
       <div>
         <label for="min_quantity" class="mb-2 block text-sm font-medium text-slate-700">Min Quantity</label>
-        <input id="min_quantity" type="number" name="min_quantity" min="0" required value="<%= item.min_quantity %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        <input id="min_quantity" type="number" name="min_quantity" min="0" data-required="true" value="<%= item.min_quantity %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
       </div>
 
       <div>
         <label for="max_quantity" class="mb-2 block text-sm font-medium text-slate-700">Max Quantity</label>
-        <input id="max_quantity" type="number" name="max_quantity" min="1" required value="<%= item.max_quantity %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        <input id="max_quantity" type="number" name="max_quantity" min="1" data-required="true" value="<%= item.max_quantity %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
       </div>
     </div>
 
