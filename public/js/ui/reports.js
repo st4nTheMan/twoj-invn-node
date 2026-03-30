@@ -33,11 +33,11 @@
 
           reportItemsBody.innerHTML = items.map((item) => `
             <tr class="border-b border-slate-200">
-              <td class="px-4 py-3">${item.barcode}</td>
-              <td class="px-4 py-3">${item.name}</td>
-              <td class="px-4 py-3">PHP ${Number(item.price || 0).toFixed(2)}</td>
-              <td class="px-4 py-3">${Number(item.quantity || 0)}</td>
-              <td class="px-4 py-3">PHP ${Number(item.subtotal || 0).toFixed(2)}</td>
+              <td data-label="Item Number" class="px-4 py-3">${item.barcode}</td>
+              <td data-label="Item Name" class="px-4 py-3">${item.name}</td>
+              <td data-label="Price" class="px-4 py-3">PHP ${Number(item.price || 0).toFixed(2)}</td>
+              <td data-label="Qty" class="px-4 py-3">${Number(item.quantity || 0)}</td>
+              <td data-label="Subtotal" class="px-4 py-3">PHP ${Number(item.subtotal || 0).toFixed(2)}</td>
             </tr>
           `).join("");
         } catch (error) {
