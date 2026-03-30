@@ -1,0 +1,54 @@
+<% /* Global modal that summarizes low-stock and over-stock inventory alerts. */ %>
+<section id="stock-notifications-modal" data-modal class="hidden fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 sm:p-6">
+  <div class="my-8 flex max-h-[calc(100vh-4rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+      <div>
+        <h2 class="text-lg font-semibold text-slate-900">Stock Notifications</h2>
+        <p class="text-sm text-slate-500">Items that need your attention</p>
+      </div>
+      <button type="button" data-close-modal class="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100">Close</button>
+    </div>
+
+    <div class="space-y-6 overflow-y-auto px-6 py-5">
+      <% if (!notifications.lowStockItems.length && !notifications.overStockItems.length) { %>
+        <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+          No stock notifications.
+        </div>
+      <% } %>
+
+      <% if (notifications.lowStockItems.length) { %>
+        <div>
+          <h3 class="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-amber-600">Low Stock</h3>
+          <div class="space-y-3">
+            <% notifications.lowStockItems.forEach((item) => { %>
+              <div class="flex items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <div>
+                  <p class="font-semibold text-slate-900"><%= item.name %></p>
+                  <p class="text-sm text-slate-500"><%= item.barcode %><%= item.category_name ? ` - ${item.category_name}` : "" %></p>
+                </div>
+                <span class="rounded-full bg-amber-200 px-3 py-1 text-xs font-bold text-amber-900"><%= item.quantity %> / min <%= item.min_quantity %></span>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+      <% } %>
+
+      <% if (notifications.overStockItems.length) { %>
+        <div>
+          <h3 class="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-rose-600">Over Stock</h3>
+          <div class="space-y-3">
+            <% notifications.overStockItems.forEach((item) => { %>
+              <div class="flex items-center justify-between rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+                <div>
+                  <p class="font-semibold text-slate-900"><%= item.name %></p>
+                  <p class="text-sm text-slate-500"><%= item.barcode %><%= item.category_name ? ` - ${item.category_name}` : "" %></p>
+                </div>
+                <span class="rounded-full bg-rose-200 px-3 py-1 text-xs font-bold text-rose-900"><%= item.quantity %> / max <%= item.max_quantity %></span>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</section>

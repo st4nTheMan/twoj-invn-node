@@ -1,0 +1,96 @@
+<% /* Modal for creating a new inventory item from the inventory dashboard. */ %>
+<section id="add-item-modal" data-modal class="hidden fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 sm:p-6">
+  <div class="my-8 w-full max-w-3xl rounded-3xl bg-white shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+      <div>
+        <h2 class="text-xl font-semibold text-slate-900">Add Item</h2>
+        <p class="text-sm text-slate-500">Create a new inventory item.</p>
+      </div>
+      <button
+        type="button"
+        data-close-modal
+        class="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+      >
+        Close
+      </button>
+    </div>
+
+    <form action="/inventory/items" method="POST" class="p-6">
+      <% if (state.error) { %>
+        <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          <%= state.error %>
+        </div>
+      <% } %>
+
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <div>
+          <label for="barcode" class="mb-2 block text-sm font-medium text-slate-700">Item Number</label>
+
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <input
+              id="barcode"
+              name="barcode"
+              data-required="true"
+              value="<%= old.barcode || '' %>"
+              placeholder="Item Number"
+              class="flex-1 rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm"
+            >
+
+            <button
+              id="open-barcode-scanner"
+              type="button"
+              class="shrink-0 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
+            >
+              Scan barcode
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label for="name" class="mb-2 block text-sm font-medium text-slate-700">Item Name</label>
+          <input name="name" data-required="true" value="<%= old.name || '' %>" placeholder="Item Name" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        </div>
+        <div>
+          <label for="cost" class="mb-2 block text-sm font-medium text-slate-700">Cost</label>
+          <input type="number" name="cost" step="0.01" min="0" data-required="true" value="<%= old.cost || '' %>" placeholder="Cost" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        </div>
+        <div>
+          <label for="price" class="mb-2 block text-sm font-medium text-slate-700">Price</label>
+          <input type="number" name="price" step="0.01" min="0" data-required="true" value="<%= old.price || '' %>" placeholder="Price" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        </div>
+        <div class="md:col-span-2">
+          <label for="quantity" class="mb-2 block text-sm font-medium text-slate-700">Quantity</label>
+          <input type="number" name="quantity" min="0" data-required="true" value="<%= old.quantity ?? 0 %>" placeholder="OH Quantity" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        </div>
+        <div>
+          <label for="min_quantity" class="mb-2 block text-sm font-medium text-slate-700">Min Quantity</label>
+          <input type="number" name="min_quantity" min="0" data-required="true" value="<%= old.min_quantity ?? 5 %>" placeholder="Min Qty" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        </div>
+        <div>
+          <label for="max_quantity" class="mb-2 block text-sm font-medium text-slate-700">Max Quantity</label>
+          <input type="number" name="max_quantity" min="1" data-required="true" value="<%= old.max_quantity ?? 10 %>" placeholder="Max Qty" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        </div>
+      </div>
+
+      <select name="category_id" class="mt-4 w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        <option value="">Select category</option>
+        <% categories.forEach((category) => { %>
+          <option value="<%= category.id %>" <%= String(old.category_id || '') === String(category.id) ? 'selected' : '' %>><%= category.category_name %></option>
+        <% }) %>
+      </select>
+
+      <div class="mt-6 flex justify-end gap-3">
+        <button
+          type="button"
+          data-close-modal
+          class="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700"
+        >
+          Cancel
+        </button>
+        <button type="submit" class="rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white">
+          Save Item
+        </button>
+      </div>
+    </form>
+  </div>
+</section>

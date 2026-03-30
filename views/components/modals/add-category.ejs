@@ -1,0 +1,48 @@
+<% /* Modal for adding a new item category from the inventory page. */ %>
+<section id="add-category-modal" data-modal class="hidden fixed inset-0 z-50 bg-slate-950/60 p-4">
+  <div class="mx-auto mt-10 max-w-xl rounded-3xl bg-white shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+      <div>
+        <h2 class="text-xl font-semibold text-slate-900">Add Category</h2>
+        <p class="text-sm text-slate-500">Create a new item category.</p>
+      </div>
+      <button
+        type="button"
+        data-close-modal
+        class="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+      >
+        Close
+      </button>
+    </div>
+
+    <form action="/inventory/categories" method="POST" class="p-6">
+      <input
+        type="text"
+        name="category_name"
+        data-required="true"
+        placeholder="Category Name"
+        class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm"
+      >
+
+      <select class="mt-4 w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+        <option>Existing categories</option>
+        <% categories.forEach((category) => { %>
+          <option><%= category.category_name %></option>
+        <% }) %>
+      </select>
+
+      <div class="mt-6 flex justify-end gap-3">
+        <button
+          type="button"
+          data-close-modal
+          class="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700"
+        >
+          Cancel
+        </button>
+        <button type="submit" class="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white">
+          Save Category
+        </button>
+      </div>
+    </form>
+  </div>
+</section>

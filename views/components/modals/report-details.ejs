@@ -1,0 +1,29 @@
+<% /* Modal that displays the itemized contents of a selected transaction report. */ %>
+<section id="report-details-modal" data-modal class="hidden fixed inset-0 z-50 bg-slate-950/60 p-4">
+  <div class="mx-auto mt-10 max-w-4xl rounded-3xl bg-white p-6 shadow-2xl">
+    <div class="mb-4 flex items-center justify-between">
+      <h2 class="text-xl font-semibold">Transaction Details</h2>
+      <button type="button" data-close-modal class="rounded-full border px-3 py-1 text-sm">Close</button>
+    </div>
+    <div class="mb-4 grid gap-4 rounded-2xl bg-slate-50 p-4 md:grid-cols-3">
+      <div><p class="text-xs uppercase tracking-[0.2em] text-slate-400">Invoice</p><p id="report_invoice_no" class="mt-1 font-semibold"></p></div>
+      <div><p class="text-xs uppercase tracking-[0.2em] text-slate-400">Date</p><p id="report_date" class="mt-1 font-semibold"></p></div>
+      <div><p class="text-xs uppercase tracking-[0.2em] text-slate-400">Total</p><p class="mt-1 font-semibold">PHP <span id="report_total_amount"></span></p></div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-600">
+          <tr>
+            <th class="px-4 py-3">Item Number</th>
+            <th class="px-4 py-3">Item Name</th>
+            <th class="px-4 py-3">Price</th>
+            <th class="px-4 py-3">Qty</th>
+            <th class="px-4 py-3">Subtotal</th></tr>
+        </thead>
+        <tbody id="report-items-body">
+          <tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">Select a report to view details.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
