@@ -1,0 +1,17 @@
+<% /* Shared page footer scripts and global stock notification modal mount. */ %>
+  </main>
+
+  <% if (user) { %>
+    <%- include("../components/modals/stock-notifications") %>
+  <% } %>
+
+  <script src="https://cdn.jsdelivr.net/npm/quagga/dist/quagga.min.js"></script>
+  <script src="/public/js/ui/core.js"></script>
+  <script src="/public/js/ui/modals.js"></script>
+  <script src="/public/js/ui/forms.js"></script>
+  <script src="/public/js/ui/search.js"></script>
+  <script src="/public/js/ui/barcode-scanner.js"></script>
+  <script src="/public/js/ui/transactions.js"></script>
+  <script src="/public/js/ui/reports.js"></script>
+</body>
+</html>
