@@ -1,4 +1,5 @@
-<%- include("partials/header", { title }) %>
+<% /* Checkout page for building and submitting item transactions. */ %>
+<%- include("../includes/header", { title }) %>
 
 <section class="mb-6 rounded-3xl bg-slate-950 p-6 text-white shadow-soft">
   <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-300">Transaction</p>
@@ -66,12 +67,6 @@
   </form>
 </section>
 
-<section id="out-of-stock-modal" data-modal class="hidden fixed inset-0 z-50 bg-slate-950/60 p-4">
-  <div class="mx-auto mt-24 max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl">
-    <h2 class="text-lg font-semibold">Out of Stock</h2>
-    <p class="mt-2 text-sm text-slate-500">This item does not have enough stock for checkout.</p>
-    <button type="button" data-close-modal class="mt-4 rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white">OK</button>
-  </div>
-</section>
+<%- include("../components/modals/out-of-stock") %>
 
-<%- include("partials/footer") %>
+<%- include("../includes/footer") %>

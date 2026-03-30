@@ -1,4 +1,5 @@
-<%- include("partials/header", { title }) %>
+<% /* Detailed inventory item page used for editing a single item. */ %>
+<%- include("../includes/header", { title }) %>
 
 <section class="mx-auto max-w-5xl space-y-6">
   <div class="rounded-3xl bg-white p-6 shadow-soft">
@@ -81,35 +82,10 @@
   </form>
 </section>
 
-<!-- Barcode Scanner Modal -->
-<section id="barcode-scanner-modal" data-modal class="hidden fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/75 p-4 sm:p-6">
-  <div class="my-8 w-full max-w-2xl rounded-3xl bg-white shadow-2xl">
-    <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-      <div>
-        <h2 class="text-xl font-semibold text-slate-900">Scan barcode</h2>
-        <p class="text-sm text-slate-500">Point the camera at the barcode to fill the item number automatically.</p>
-      </div>
-      <button
-        type="button"
-        data-close-modal
-        class="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
-      >
-        Close
-      </button>
-    </div>
+<%- include("../components/modals/barcode-scanner", {
+  scannerMessage: "Point the camera at the barcode to fill the item number automatically.",
+  enableBarcodeUpload: false,
+  scannerHint: "If the camera does not start, allow camera access in your browser and try again."
+}) %>
 
-    <div class="space-y-4 p-6">
-      <div id="barcode-scanner-status" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-        Camera is starting...
-      </div>
-      <div class="overflow-hidden rounded-3xl bg-slate-950">
-        <div id="barcode-scanner-viewport" class="aspect-[4/3] w-full"></div>
-      </div>
-      <p class="text-xs text-slate-500">
-        If the camera does not start, allow camera access in your browser and try again.
-      </p>
-    </div>
-  </div>
-</section>
-
-<%- include("partials/footer") %>
+<%- include("../includes/footer") %>

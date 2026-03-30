@@ -1,11 +1,11 @@
-<%- include("partials/header", { title }) %>
+<% /* Reports page that lists completed transactions and opens report details. */ %>
+<%- include("../includes/header", { title }) %>
 
 <section class="mb-6 rounded-3xl bg-gradient-to-r from-amber-400 to-rose-400 p-6 text-slate-950 shadow-soft">
   <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-800/70">Reports</p>
   <h1 class="mt-2 text-3xl font-semibold">Completed transactions</h1>
 </section>
 
-<!-- Transaction Report Table-->
 <section class="rounded-3xl bg-white shadow-soft">
   <div class="border-b border-slate-200 p-5">
     <input id="reports-search" type="text" placeholder="Search by invoice number..." class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
@@ -38,34 +38,6 @@
   <p id="reports-empty-search" class="hidden p-6 text-center text-sm text-slate-500">No reports found.</p>
 </section>
 
-<!-- Transaction Details Modal -->
-<section id="report-details-modal" data-modal class="hidden fixed inset-0 z-50 bg-slate-950/60 p-4">
-  <div class="mx-auto mt-10 max-w-4xl rounded-3xl bg-white p-6 shadow-2xl">
-    <div class="mb-4 flex items-center justify-between">
-      <h2 class="text-xl font-semibold">Transaction Details</h2>
-      <button type="button" data-close-modal class="rounded-full border px-3 py-1 text-sm">Close</button>
-    </div>
-    <div class="mb-4 grid gap-4 rounded-2xl bg-slate-50 p-4 md:grid-cols-3">
-      <div><p class="text-xs uppercase tracking-[0.2em] text-slate-400">Invoice</p><p id="report_invoice_no" class="mt-1 font-semibold"></p></div>
-      <div><p class="text-xs uppercase tracking-[0.2em] text-slate-400">Date</p><p id="report_date" class="mt-1 font-semibold"></p></div>
-      <div><p class="text-xs uppercase tracking-[0.2em] text-slate-400">Total</p><p class="mt-1 font-semibold">PHP <span id="report_total_amount"></span></p></div>
-    </div>
-    <div class="overflow-x-auto">
-      <table class="min-w-full text-left text-sm">
-        <thead class="bg-slate-50 text-slate-600">
-          <tr>
-            <th class="px-4 py-3">Item Number</th>
-            <th class="px-4 py-3">Item Name</th>
-            <th class="px-4 py-3">Price</th>
-            <th class="px-4 py-3">Qty</th>
-            <th class="px-4 py-3">Subtotal</th></tr>
-        </thead>
-        <tbody id="report-items-body">
-          <tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">Select a report to view details.</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</section>
+<%- include("../components/modals/report-details") %>
 
-<%- include("partials/footer") %>
+<%- include("../includes/footer") %>
