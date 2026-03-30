@@ -18,7 +18,6 @@ two-js-invn/
 |   `-- transaction.routes.js
 |-- database/
 |   `-- pool.js
-|-- db/
 |   `-- database.sql
 |-- includes/
 |   `-- helpers.js
