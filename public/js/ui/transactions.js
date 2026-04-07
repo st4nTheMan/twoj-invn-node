@@ -92,19 +92,19 @@
         row.className = "selected-item-row border-b border-slate-200";
         row.dataset.id = id;
         row.innerHTML = `
-          <td class="px-4 py-3 align-top">
+          <td data-label="Item" class="px-4 py-3 align-top">
             <div class="font-semibold text-slate-900">${barcode}</div>
             <div class="text-xs text-slate-500">${name}</div>
             <input type="hidden" name="item_id" value="${id}">
             <input type="hidden" name="price" value="${price}" class="selected-item-price">
           </td>
-          <td class="px-4 py-3 text-slate-700">${price.toFixed(2)}</td>
-          <td class="px-4 py-3">
+          <td data-label="Price" class="px-4 py-3 text-slate-700">${price.toFixed(2)}</td>
+          <td data-label="Qty" class="px-4 py-3">
             <input type="number" name="quantity" value="1" min="1" max="${stock}" class="selected-item-qty w-20 rounded-xl border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200">
           </td>
-          <td class="px-4 py-3 text-slate-700">PHP <span class="selected-item-subtotal">${price.toFixed(2)}</span></td>
-          <td class="px-4 py-3">
-            <button type="button" class="remove-selected-item-button rounded-xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50">Remove</button>
+          <td data-label="Subtotal" class="px-4 py-3 text-slate-700">PHP <span class="selected-item-subtotal">${price.toFixed(2)}</span></td>
+          <td data-label="Remove" class="px-4 py-3">
+            <button type="button" class="remove-selected-item-button w-full rounded-xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 sm:w-auto">Remove</button>
           </td>
         `;
 

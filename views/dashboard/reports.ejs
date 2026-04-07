@@ -1,17 +1,17 @@
 <% /* Reports page that lists completed transactions and opens report details. */ %>
 <%- include("../includes/header", { title }) %>
 
-<section class="mb-6 rounded-3xl bg-gradient-to-r from-amber-400 to-rose-400 p-6 text-slate-950 shadow-soft">
+<section class="mb-6 rounded-3xl bg-gradient-to-r from-amber-400 to-rose-400 p-5 text-slate-950 shadow-soft sm:p-6">
   <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-800/70">Reports</p>
-  <h1 class="mt-2 text-3xl font-semibold">Completed transactions</h1>
+  <h1 class="mt-2 text-2xl font-semibold sm:text-3xl">Completed transactions</h1>
 </section>
 
 <section class="rounded-3xl bg-white shadow-soft">
   <div class="border-b border-slate-200 p-5">
     <input id="reports-search" type="text" placeholder="Search by invoice number..." class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
   </div>
-  <div class="overflow-x-auto">
-    <table id="reports-table" class="min-w-full text-left text-sm">
+  <div class="table-scroll overflow-x-auto">
+    <table id="reports-table" class="responsive-table min-w-full text-left text-sm">
       <thead class="bg-slate-50 text-slate-600">
         <tr>
           <th class="px-4 py-3">Invoice</th>
@@ -22,11 +22,11 @@
       <tbody class="divide-y divide-slate-200">
         <% if (transactions.length) { transactions.forEach((transaction) => { %>
           <tr data-row class="hover:bg-slate-50">
-            <td class="px-4 py-3 font-medium"><%= formatInvoice(transaction.id) %></td>
-            <td class="px-4 py-3">PHP <%= formatCurrency(transaction.total_amount) %></td>
-            <td class="px-4 py-3 text-slate-500"><%= formatDateTime(transaction.created_at) %></td>
-            <td class="px-4 py-3">
-              <button type="button" class="report-details-trigger rounded-xl bg-slate-950 px-3 py-2 text-xs font-semibold text-white" data-id="<%= transaction.id %>" data-invoice="<%= formatInvoice(transaction.id) %>" data-total="<%= formatCurrency(transaction.total_amount) %>" data-date="<%= formatDateTime(transaction.created_at) %>">View Details</button>
+            <td data-label="Invoice" class="px-4 py-3 font-medium"><%= formatInvoice(transaction.id) %></td>
+            <td data-label="Total" class="px-4 py-3">PHP <%= formatCurrency(transaction.total_amount) %></td>
+            <td data-label="Date" class="px-4 py-3 text-slate-500"><%= formatDateTime(transaction.created_at) %></td>
+            <td data-label="Action" class="px-4 py-3">
+              <button type="button" class="report-details-trigger w-full rounded-xl bg-slate-950 px-3 py-2 text-xs font-semibold text-white sm:w-auto" data-id="<%= transaction.id %>" data-invoice="<%= formatInvoice(transaction.id) %>" data-total="<%= formatCurrency(transaction.total_amount) %>" data-date="<%= formatDateTime(transaction.created_at) %>">View Details</button>
             </td>
           </tr>
         <% }) } else { %>
