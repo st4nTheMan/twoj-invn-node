@@ -1,0 +1,38 @@
+<% /* Searchable item price list with only item number, name, and price columns. */ %>
+<%- include("../includes/header", { title }) %>
+
+<section class="mb-6 rounded-3xl bg-white p-5 shadow-soft sm:p-6">
+  <p class="text-xs font-semibold uppercase tracking-[0.25em] text-amber-600">Price Lookup</p>
+  <h1 class="mt-2 text-2xl font-semibold sm:text-3xl">Live price search</h1>
+  <p class="mt-2 text-sm text-slate-500">Search by item number or item name to quickly check the current selling price.</p>
+</section>
+
+<section class="mb-6 rounded-3xl bg-white p-5 shadow-soft">
+  <input id="price-lookup-search" type="text" placeholder="Search by item number or name..." data-initial-visible-count="5" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+</section>
+
+<section class="table-scroll mb-6 overflow-x-auto rounded-3xl bg-white shadow-soft">
+  <table id="price-lookup-table" class="responsive-table min-w-full text-left text-sm">
+    <thead class="bg-slate-50 text-slate-600">
+      <tr>
+        <th class="px-4 py-3">Item Number</th>
+        <th class="px-4 py-3">Item Name</th>
+        <th class="px-4 py-3">Price</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-200">
+      <% if (items.length) { items.forEach((item) => { %>
+        <tr data-row class="hover:bg-slate-50">
+          <td data-label="Item Number" class="px-4 py-3 font-medium"><%= item.barcode %></td>
+          <td data-label="Item Name" class="px-4 py-3"><%= item.name %></td>
+          <td data-label="Price" class="px-4 py-3">PHP <%= formatCurrency(item.price) %></td>
+        </tr>
+      <% }) } else { %>
+        <tr><td colspan="3" class="px-4 py-8 text-center text-slate-500">No items found.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+  <p id="price-lookup-empty-search" class="hidden p-6 text-center text-sm text-slate-500">No items found.</p>
+</section>
+
+<%- include("../includes/footer") %>

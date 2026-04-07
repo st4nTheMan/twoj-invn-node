@@ -11,14 +11,19 @@
 
       const rows = table.querySelectorAll("tbody tr[data-row]");
       const hideUntilSearch = searchInput.dataset.hideUntilSearch === "true";
+      const initialVisibleCount = Number(searchInput.dataset.initialVisibleCount || 0);
 
       function updateSearchResults() {
         const searchValue = searchInput.value.toLowerCase().trim();
         let visibleCount = 0;
 
-        rows.forEach((row) => {
+        rows.forEach((row, index) => {
           const matches = searchValue && row.textContent.toLowerCase().includes(searchValue);
-          const shouldShowRow = hideUntilSearch ? matches : (!searchValue || matches);
+          const shouldShowRow = searchValue
+            ? matches
+            : initialVisibleCount > 0
+              ? index < initialVisibleCount
+              : !hideUntilSearch;
 
           row.classList.toggle("hidden", !shouldShowRow);
           if (shouldShowRow) {
@@ -28,9 +33,14 @@
 
         if (!emptyState) return;
 
-        if (hideUntilSearch && !searchValue) {
-          emptyState.textContent = "Search for an item number, name, or category to view results.";
+        if (!searchValue && hideUntilSearch && initialVisibleCount === 0) {
+          emptyState.textContent = searchInput.dataset.emptyPrompt || "Search for an item number, name, or category to view results.";
           emptyState.classList.remove("hidden");
+          return;
+        }
+
+        if (!searchValue && initialVisibleCount > 0) {
+          emptyState.classList.add("hidden");
           return;
         }
 
@@ -43,6 +53,7 @@
     }
 
     bindSearch("inventory-search", "inventory-table", "inventory-empty-search");
+    bindSearch("price-lookup-search", "price-lookup-table", "price-lookup-empty-search");
     bindSearch("transaction-search", "transaction-table", "transaction-empty-search");
     bindSearch("reports-search", "reports-table", "reports-empty-search");
   });
