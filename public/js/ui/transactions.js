@@ -6,9 +6,50 @@
     const selectedItemsBody = document.getElementById("selected-items-body");
     const noSelectedItemsRow = document.getElementById("no-selected-items-row");
     const transactionTotal = document.getElementById("transaction-total");
+    const transactionForm = document.getElementById("transaction-form");
+    const paymentModal = document.getElementById("transaction-payment-modal");
+    const paymentModalTotal = document.getElementById("payment-modal-total");
+    const paymentCashInput = document.getElementById("payment-cash-input");
+    const paymentChange = document.getElementById("payment-modal-change");
+    const paymentMessage = document.getElementById("payment-modal-message");
+    const confirmTransactionButton = document.getElementById("confirm-transaction-button");
 
     if (!selectedItemsBody || !transactionTotal) {
       return;
+    }
+
+    let isSubmittingTransaction = false;
+
+    function getTransactionTotalValue() {
+      return Number(transactionTotal.textContent || 0);
+    }
+
+    function updatePaymentSummary() {
+      if (!paymentModalTotal || !paymentCashInput || !paymentChange || !paymentMessage || !confirmTransactionButton) {
+        return true;
+      }
+
+      const total = getTransactionTotalValue();
+      const cash = Number(paymentCashInput.value || 0);
+      const change = cash - total;
+      const hasItems = selectedItemsBody.querySelectorAll(".selected-item-row").length > 0;
+      const hasEnoughCash = cash >= total;
+
+      paymentModalTotal.textContent = total.toFixed(2);
+      paymentChange.textContent = Math.max(change, 0).toFixed(2);
+
+      if (!hasItems) {
+        paymentMessage.textContent = "Select at least one item before completing the transaction.";
+      } else if (cash <= 0) {
+        paymentMessage.textContent = "Enter the cash received from the customer.";
+      } else if (!hasEnoughCash) {
+        paymentMessage.textContent = `Insufficient cash. Need PHP ${(total - cash).toFixed(2)} more.`;
+      } else {
+        paymentMessage.textContent = "";
+      }
+
+      confirmTransactionButton.disabled = !hasItems || cash <= 0 || !hasEnoughCash;
+      return hasItems && cash > 0 && hasEnoughCash;
     }
 
     function updateTransactionTotal() {
@@ -28,6 +69,7 @@
       });
 
       transactionTotal.textContent = total.toFixed(2);
+      updatePaymentSummary();
     }
 
     function toggleSelectedItemsEmptyState() {
@@ -114,5 +156,39 @@
         updateTransactionTotal();
       });
     });
+
+    paymentModal?.addEventListener("modal:open", () => {
+      if (!paymentCashInput) return;
+
+      paymentCashInput.value = "";
+      updatePaymentSummary();
+      paymentCashInput.focus();
+    });
+
+    paymentCashInput?.addEventListener("input", () => {
+      updatePaymentSummary();
+    });
+
+    confirmTransactionButton?.addEventListener("click", () => {
+      if (!transactionForm || !updatePaymentSummary()) return;
+
+      isSubmittingTransaction = true;
+      InventoryUi.closeModal?.(paymentModal);
+      transactionForm.requestSubmit();
+    });
+
+    transactionForm?.addEventListener("submit", (event) => {
+      if (isSubmittingTransaction) {
+        isSubmittingTransaction = false;
+        return;
+      }
+
+      event.preventDefault();
+      updatePaymentSummary();
+      InventoryUi.openModal?.("transaction-payment-modal");
+    });
+
+    toggleSelectedItemsEmptyState();
+    updateTransactionTotal();
   });
 }());
