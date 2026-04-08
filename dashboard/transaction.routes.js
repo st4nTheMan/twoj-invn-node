@@ -13,7 +13,7 @@ router.get("/transaction", requireLogin, async (req, res) => {
       `SELECT items.*, categories.category_name
        FROM items
        LEFT JOIN categories ON items.category_id = categories.id
-       ORDER BY items.name ASC`
+       ORDER BY items.id DESC`
     );
 
     return res.render("dashboard/transaction", {

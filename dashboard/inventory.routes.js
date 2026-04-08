@@ -39,6 +39,29 @@ router.get("/inventory", requireLogin, async (req, res) => {
   }
 });
 
+// Loads a lightweight price lookup page with searchable item prices.
+router.get("/price-lookup", requireLogin, async (req, res) => {
+  try {
+    const [items] = await pool.query(
+      `SELECT id, barcode, name, price
+       FROM items
+       ORDER BY id DESC`
+    );
+
+    return res.render("dashboard/price-lookup", {
+      title: "Price Lookup",
+      items
+    });
+  } catch (error) {
+    console.error("Failed to load price lookup page:", error);
+    flash(req, { type: "error", message: "Unable to load price lookup." });
+    return res.render("dashboard/price-lookup", {
+      title: "Price Lookup",
+      items: []
+    });
+  }
+});
+
 // Creates a new inventory item and preserves form state on validation errors.
 router.post("/inventory/items", requireLogin, async (req, res) => {
   const barcode = String(req.body.barcode || "").trim();
