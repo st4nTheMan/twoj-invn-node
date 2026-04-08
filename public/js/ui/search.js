@@ -54,6 +54,7 @@
 
     bindSearch("inventory-search", "inventory-table", "inventory-empty-search");
     bindSearch("adjustments-search", "adjustments-table", "adjustments-empty-search");
+    bindSearch("history-search", "history-table", "history-empty-search");
     bindSearch("price-lookup-search", "price-lookup-table", "price-lookup-empty-search");
     bindSearch("transaction-search", "transaction-table", "transaction-empty-search");
     bindSearch("reports-search", "reports-table", "reports-empty-search");

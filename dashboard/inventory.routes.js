@@ -91,6 +91,30 @@ router.get("/inventory/adjustments", requireLogin, async (req, res) => {
   }
 });
 
+// Loads the global history page with items that can open their history hub.
+router.get("/history", requireLogin, async (req, res) => {
+  try {
+    const [items] = await pool.query(
+      `SELECT items.*, categories.category_name
+       FROM items
+       LEFT JOIN categories ON items.category_id = categories.id
+       ORDER BY items.id DESC`
+    );
+
+    return res.render("dashboard/history", {
+      title: "History",
+      items
+    });
+  } catch (error) {
+    console.error("Failed to load history page:", error);
+    flash(req, { type: "error", message: "Unable to load history." });
+    return res.render("dashboard/history", {
+      title: "History",
+      items: []
+    });
+  }
+});
+
 // Creates a new inventory item and preserves form state on validation errors.
 router.post("/inventory/items", requireLogin, async (req, res) => {
   const barcode = String(req.body.barcode || "").trim();
@@ -223,6 +247,42 @@ router.get("/inventory/items/:id", requireLogin, async (req, res) => {
   }
 });
 
+// Loads the history hub page for a single inventory item.
+router.get("/inventory/items/:id/history", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!id) {
+    flash(req, { type: "error", message: "Item not found." });
+    return res.redirect("/inventory");
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT items.*, categories.category_name
+       FROM items
+       LEFT JOIN categories ON items.category_id = categories.id
+       WHERE items.id = ?
+       LIMIT 1`,
+      [id]
+    );
+    const item = rows[0];
+
+    if (!item) {
+      flash(req, { type: "error", message: "Item not found." });
+      return res.redirect("/inventory");
+    }
+
+    return res.render("dashboard/item-history", {
+      title: "History",
+      item
+    });
+  } catch (error) {
+    console.error("Failed to load item history hub:", error);
+    flash(req, { type: "error", message: "Unable to load item history." });
+    return res.redirect("/inventory");
+  }
+});
+
 // Loads the cost adjustment page and historical cost changes for one item.
 router.get("/inventory/items/:id/cost", requireLogin, async (req, res) => {
   const id = Number(req.params.id);
@@ -254,6 +314,76 @@ router.get("/inventory/items/:id/cost", requireLogin, async (req, res) => {
   } catch (error) {
     console.error("Failed to load cost adjustment page:", error);
     flash(req, { type: "error", message: "Unable to load cost history." });
+    return res.redirect("/inventory");
+  }
+});
+
+// Loads the quantity adjustment history page for one item.
+router.get("/inventory/items/:id/quantity", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!id) {
+    return res.redirect("/inventory");
+  }
+
+  try {
+    const itemPromise = pool.query("SELECT * FROM items WHERE id = ? LIMIT 1", [id]);
+    const historyPromise = pool.query(
+      "SELECT * FROM quantity_adjustments WHERE item_id = ? ORDER BY adjusted_at DESC",
+      [id]
+    );
+    const [itemResult, historyResult] = await Promise.all([itemPromise, historyPromise]);
+    const item = itemResult[0][0];
+    const historyList = historyResult[0];
+
+    if (!item) {
+      flash(req, { type: "error", message: "Item not found." });
+      return res.redirect("/inventory");
+    }
+
+    return res.render("dashboard/adjust-quantity", {
+      title: "OH Qty History",
+      item,
+      historyList
+    });
+  } catch (error) {
+    console.error("Failed to load quantity adjustment page:", error);
+    flash(req, { type: "error", message: "Unable to load OH qty history." });
+    return res.redirect("/inventory");
+  }
+});
+
+// Loads the min/max quantity adjustment history page for one item.
+router.get("/inventory/items/:id/min-max", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!id) {
+    return res.redirect("/inventory");
+  }
+
+  try {
+    const itemPromise = pool.query("SELECT * FROM items WHERE id = ? LIMIT 1", [id]);
+    const historyPromise = pool.query(
+      "SELECT * FROM min_max_adjustments WHERE item_id = ? ORDER BY adjusted_at DESC",
+      [id]
+    );
+    const [itemResult, historyResult] = await Promise.all([itemPromise, historyPromise]);
+    const item = itemResult[0][0];
+    const historyList = historyResult[0];
+
+    if (!item) {
+      flash(req, { type: "error", message: "Item not found." });
+      return res.redirect("/inventory");
+    }
+
+    return res.render("dashboard/adjust-min-max", {
+      title: "Min/Max Qty History",
+      item,
+      historyList
+    });
+  } catch (error) {
+    console.error("Failed to load min/max adjustment page:", error);
+    flash(req, { type: "error", message: "Unable to load min/max qty history." });
     return res.redirect("/inventory");
   }
 });
@@ -341,6 +471,11 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
   try {
     await connection.beginTransaction();
 
+    const [categoryRows] = await connection.query(
+      "SELECT id FROM categories"
+    );
+    const validCategoryIds = new Set(categoryRows.map((category) => Number(category.id)));
+
     const [rows] = await connection.query(
       `SELECT id, quantity, min_quantity, max_quantity, cost, price, category_id
        FROM items
@@ -368,6 +503,13 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
           "UPDATE items SET quantity = ? WHERE id = ?",
           [quantity, itemId]
         );
+
+        if (Number(currentItem.quantity) !== quantity) {
+          await connection.query(
+            "INSERT INTO quantity_adjustments (item_id, old_quantity, new_quantity) VALUES (?, ?, ?)",
+            [itemId, currentItem.quantity, quantity]
+          );
+        }
       }
 
       if (adjustmentType === "min_max") {
@@ -386,6 +528,19 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
           "UPDATE items SET min_quantity = ?, max_quantity = ? WHERE id = ?",
           [minQuantity, maxQuantity, itemId]
         );
+
+        if (Number(currentItem.min_quantity) !== minQuantity || Number(currentItem.max_quantity) !== maxQuantity) {
+          await connection.query(
+            `INSERT INTO min_max_adjustments (
+              item_id,
+              old_min_quantity,
+              new_min_quantity,
+              old_max_quantity,
+              new_max_quantity
+            ) VALUES (?, ?, ?, ?, ?)`,
+            [itemId, currentItem.min_quantity, minQuantity, currentItem.max_quantity, maxQuantity]
+          );
+        }
       }
 
       if (adjustmentType === "cost") {
@@ -436,15 +591,8 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
           throw new Error("All selected category values must be valid.");
         }
 
-        if (categoryId !== null) {
-          const [categoryRows] = await connection.query(
-            "SELECT id FROM categories WHERE id = ? LIMIT 1",
-            [categoryId]
-          );
-
-          if (!categoryRows.length) {
-            throw new Error("One or more selected categories could not be found.");
-          }
+        if (categoryId !== null && !validCategoryIds.has(categoryId)) {
+          throw new Error("One or more selected categories could not be found.");
         }
 
         await connection.query(
