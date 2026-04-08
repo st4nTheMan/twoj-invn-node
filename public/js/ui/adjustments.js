@@ -7,12 +7,16 @@
     if (!root) return;
 
     const modalId = "exclude-adjustment-row-modal";
+    const form = root.querySelector("form");
     const typeInput = document.getElementById("adjustment-type");
+    const payloadInput = document.getElementById("adjustment-payload");
+    const adjustmentsJsonInput = document.getElementById("adjustments-json");
     const saveButton = document.getElementById("adjustments-save-button");
     const modeButtons = root.querySelectorAll("[data-adjustment-mode]");
     const rows = root.querySelectorAll("[data-adjustment-row]");
     const confirmExcludeButton = document.getElementById("exclude-adjustment-row-confirm");
     const cancelExcludeButton = document.getElementById("exclude-adjustment-row-cancel");
+    const excludeMessage = document.getElementById("exclude-adjustment-row-message");
     const modeLabels = {
       quantity: "OH QTY",
       min_max: "MIN/MAX QTY",
@@ -21,10 +25,70 @@
       category: "CATEGORY"
     };
     let pendingRow = null;
+    let pendingMode = null;
     let suppressCheckboxChange = false;
 
     function getInputsForMode(row, mode) {
       return row.querySelectorAll(`[data-adjustment-input="${mode}"]`);
+    }
+
+    function syncAdjustmentPayload() {
+      if (!payloadInput) return;
+
+      const payload = rows
+        .map((row) => buildRowPayload(row))
+        .filter(Boolean);
+
+      payloadInput.value = JSON.stringify(payload);
+    }
+
+    function buildRowPayload(row) {
+      const checkbox = row.querySelector("[data-adjustment-checkbox]");
+      if (!checkbox || !checkbox.checked) return null;
+
+      const itemId = Number(checkbox.value);
+      const currentMode = typeInput.value;
+
+      if (!Number.isInteger(itemId) || itemId <= 0) {
+        return null;
+      }
+
+      if (currentMode === "quantity") {
+        const input = row.querySelector('[data-adjustment-input="quantity"]');
+        const rawValue = input ? String(input.value || "").trim() : "";
+        return { item_id: itemId, quantity: rawValue };
+      }
+
+      if (currentMode === "min_max") {
+        const inputs = row.querySelectorAll('[data-adjustment-input="min_max"]');
+        const minValue = inputs[0] ? String(inputs[0].value || "").trim() : "";
+        const maxValue = inputs[1] ? String(inputs[1].value || "").trim() : "";
+        return {
+          item_id: itemId,
+          min_quantity: minValue,
+          max_quantity: maxValue
+        };
+      }
+
+      if (currentMode === "cost") {
+        const input = row.querySelector('[data-adjustment-input="cost"]');
+        const rawValue = input ? String(input.value || "").trim() : "";
+        return { item_id: itemId, cost: rawValue };
+      }
+
+      if (currentMode === "price") {
+        const input = row.querySelector('[data-adjustment-input="price"]');
+        const rawValue = input ? String(input.value || "").trim() : "";
+        return { item_id: itemId, price: rawValue };
+      }
+
+      if (currentMode === "category") {
+        const select = row.querySelector('[data-adjustment-input="category"]');
+        const rawValue = select ? String(select.value || "").trim() : "";
+        return { item_id: itemId, category_id: rawValue };
+      }
+
+      return null;
     }
 
     function syncCategoryHiddenValue(row) {
@@ -34,6 +98,16 @@
       if (!select || !hiddenInput) return;
 
       hiddenInput.value = select.value;
+    }
+
+    function syncHiddenValue(row, inputType, hiddenType = inputType, inputIndex = 0) {
+      const inputs = row.querySelectorAll(`[data-adjustment-input="${inputType}"]`);
+      const input = inputs[inputIndex];
+      const hiddenInput = row.querySelector(`[data-adjustment-hidden="${hiddenType}"]`);
+
+      if (!input || !hiddenInput) return;
+
+      hiddenInput.value = input.value;
     }
 
     function getOriginalValue(input) {
@@ -46,6 +120,17 @@
 
     function isRowEdited(row) {
       return Array.from(row.querySelectorAll("[data-adjustment-input]")).some(isInputEdited);
+    }
+
+    function isRowEditedForMode(row, mode) {
+      return Array.from(getInputsForMode(row, mode)).some(isInputEdited);
+    }
+
+    function hasEditedCheckedRowsForMode(mode) {
+      return Array.from(rows).some((row) => {
+        const checkbox = row.querySelector("[data-adjustment-checkbox]");
+        return Boolean(checkbox?.checked) && isRowEditedForMode(row, mode);
+      });
     }
 
     function resetRowValues(row) {
@@ -73,19 +158,43 @@
       }
     }
 
+    function openDiscardModal(message) {
+      if (excludeMessage) {
+        excludeMessage.textContent = message;
+      }
+
+      if (InventoryUi.openModal) {
+        InventoryUi.openModal(modalId);
+      }
+    }
+
     function handleUncheck(row) {
       if (isRowEdited(row)) {
         pendingRow = row;
-
-        if (InventoryUi.openModal) {
-          InventoryUi.openModal(modalId);
-        }
+        pendingMode = null;
+        openDiscardModal("Are you sure you want to exclude this edited row or item?");
 
         return;
       }
 
       resetRowValues(row);
       syncAllRows();
+    }
+
+    function discardCheckedRowsForMode(mode) {
+      rows.forEach((row) => {
+        const checkbox = row.querySelector("[data-adjustment-checkbox]");
+
+        if (!checkbox?.checked) {
+          return;
+        }
+
+        if (isRowEditedForMode(row, mode)) {
+          resetRowValues(row);
+        }
+
+        setRowChecked(row, false);
+      });
     }
 
     function syncRow(row) {
@@ -124,9 +233,7 @@
       });
 
       if (saveButton) {
-        saveButton.disabled = checkedCount === 0;
         saveButton.classList.toggle("opacity-50", checkedCount === 0);
-        saveButton.classList.toggle("cursor-not-allowed", checkedCount === 0);
       }
     }
 
@@ -158,7 +265,20 @@
 
     modeButtons.forEach((button) => {
       button.addEventListener("click", () => {
-        setMode(button.dataset.adjustmentMode);
+        const nextMode = button.dataset.adjustmentMode;
+
+        if (nextMode === typeInput.value) {
+          return;
+        }
+
+        if (hasEditedCheckedRowsForMode(typeInput.value)) {
+          pendingRow = null;
+          pendingMode = nextMode;
+          openDiscardModal(`Are you sure you want to discard the edited rows from ${modeLabels[typeInput.value]}?`);
+          return;
+        }
+
+        setMode(nextMode);
       });
     });
 
@@ -204,18 +324,123 @@
         });
       }
 
+      const quantityInput = row.querySelector('[data-adjustment-input="quantity"]');
+      if (quantityInput) {
+        quantityInput.addEventListener("input", () => {
+          syncHiddenValue(row, "quantity");
+        });
+      }
+
+      const minMaxInputs = row.querySelectorAll('[data-adjustment-input="min_max"]');
+      if (minMaxInputs[0]) {
+        minMaxInputs[0].addEventListener("input", () => {
+          syncHiddenValue(row, "min_max", "min_quantity", 0);
+        });
+      }
+
+      if (minMaxInputs[1]) {
+        minMaxInputs[1].addEventListener("input", () => {
+          syncHiddenValue(row, "min_max", "max_quantity", 1);
+        });
+      }
+
+      const costInput = row.querySelector('[data-adjustment-input="cost"]');
+      if (costInput) {
+        costInput.addEventListener("input", () => {
+          syncHiddenValue(row, "cost");
+        });
+      }
+
+      const priceInput = row.querySelector('[data-adjustment-input="price"]');
+      if (priceInput) {
+        priceInput.addEventListener("input", () => {
+          syncHiddenValue(row, "price");
+        });
+      }
+
+      syncHiddenValue(row, "quantity");
+      syncHiddenValue(row, "min_max", "min_quantity", 0);
+      syncHiddenValue(row, "min_max", "max_quantity", 1);
+      syncHiddenValue(row, "cost");
+      syncHiddenValue(row, "price");
       syncCategoryHiddenValue(row);
 
     });
 
+    if (form) {
+      form.addEventListener("submit", () => {
+        rows.forEach((row) => {
+          syncHiddenValue(row, "quantity");
+          syncHiddenValue(row, "min_max", "min_quantity", 0);
+          syncHiddenValue(row, "min_max", "max_quantity", 1);
+          syncHiddenValue(row, "cost");
+          syncHiddenValue(row, "price");
+          syncCategoryHiddenValue(row);
+        });
+        syncAdjustmentPayload();
+      });
+    }
+
+    if (saveButton) {
+      saveButton.addEventListener("click", () => {
+        const checkedRows = Array.from(rows).filter((row) => {
+          const checkbox = row.querySelector("[data-adjustment-checkbox]");
+          return Boolean(checkbox?.checked);
+        });
+
+        if (!checkedRows.length) {
+          return;
+        }
+
+        checkedRows.forEach((row) => {
+          syncHiddenValue(row, "quantity");
+          syncHiddenValue(row, "min_max", "min_quantity", 0);
+          syncHiddenValue(row, "min_max", "max_quantity", 1);
+          syncHiddenValue(row, "cost");
+          syncHiddenValue(row, "price");
+          syncCategoryHiddenValue(row);
+        });
+
+        const adjustments = checkedRows
+          .map((row) => buildRowPayload(row))
+          .filter(Boolean);
+
+        if (payloadInput) {
+          payloadInput.value = JSON.stringify(adjustments);
+        }
+
+        if (adjustmentsJsonInput) {
+          adjustmentsJsonInput.value = JSON.stringify({
+            adjustmentType: typeInput.value,
+            adjustments
+          });
+        }
+
+        form.submit();
+      });
+    }
+
     if (confirmExcludeButton) {
       confirmExcludeButton.addEventListener("click", () => {
-        if (!pendingRow) return;
+        if (pendingRow) {
+          resetRowValues(pendingRow);
+          setRowChecked(pendingRow, false);
+          syncAllRows();
+          pendingRow = null;
+          closeExcludeModal();
+          return;
+        }
 
-        resetRowValues(pendingRow);
-        setRowChecked(pendingRow, false);
-        syncAllRows();
-        pendingRow = null;
+        if (pendingMode) {
+          discardCheckedRowsForMode(typeInput.value);
+          syncAllRows();
+          const nextMode = pendingMode;
+          pendingMode = null;
+          closeExcludeModal();
+          setMode(nextMode);
+          return;
+        }
+
         closeExcludeModal();
       });
     }
@@ -227,16 +452,19 @@
           syncAllRows();
         }
 
+        pendingMode = null;
         pendingRow = null;
         closeExcludeModal();
       });
     }
 
     document.getElementById(modalId)?.addEventListener("modal:close", () => {
-      if (!pendingRow) return;
+      if (pendingRow) {
+        setRowChecked(pendingRow, true);
+        syncAllRows();
+      }
 
-      setRowChecked(pendingRow, true);
-      syncAllRows();
+      pendingMode = null;
       pendingRow = null;
     });
 

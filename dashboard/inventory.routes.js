@@ -10,6 +10,85 @@ const {
 // Defines inventory pages and form actions for items and categories.
 const router = express.Router();
 
+function parseWholeNumber(value) {
+  const normalized = String(value ?? "").trim();
+
+  if (normalized === "") {
+    return null;
+  }
+
+  const parsedValue = Number(normalized);
+
+  if (!Number.isFinite(parsedValue) || parsedValue < 0 || !Number.isInteger(parsedValue)) {
+    return null;
+  }
+
+  return parsedValue;
+}
+
+function extractSubmittedItems(body) {
+  const extractedItems = {};
+
+  if (body?.items && typeof body.items === "object") {
+    for (const [itemId, fields] of Object.entries(body.items)) {
+      if (!fields || typeof fields !== "object") {
+        continue;
+      }
+
+      extractedItems[itemId] = { ...fields };
+    }
+  }
+
+  for (const [key, value] of Object.entries(body || {})) {
+    const match = key.match(/^items\[(\d+)\]\[([a-z_]+)\]$/i);
+    if (!match) continue;
+
+    const [, itemId, fieldName] = match;
+    if (!extractedItems[itemId]) {
+      extractedItems[itemId] = {};
+    }
+
+    extractedItems[itemId][fieldName] = value;
+  }
+
+  return extractedItems;
+}
+
+function getSubmittedField({ body, submittedItems, payloadItem, itemId, fieldName }) {
+  if (payloadItem && payloadItem[fieldName] !== undefined) {
+    return payloadItem[fieldName];
+  }
+
+  const submittedItem = submittedItems[String(itemId)];
+  if (submittedItem && submittedItem[fieldName] !== undefined) {
+    return submittedItem[fieldName];
+  }
+
+  const literalKey = `items[${itemId}][${fieldName}]`;
+  if (body && body[literalKey] !== undefined) {
+    return body[literalKey];
+  }
+
+  return undefined;
+}
+
+function isJsonRequest(req) {
+  return String(req.get("content-type") || "").includes("application/json");
+}
+
+function respondAdjustmentResult(req, res, type, message) {
+  flash(req, { type, message });
+
+  if (isJsonRequest(req)) {
+    return res.status(type === "success" ? 200 : 400).json({
+      ok: type === "success",
+      redirectUrl: "/inventory/adjustments"
+    });
+  }
+
+  return res.redirect("/inventory/adjustments");
+}
+
 // Loads the inventory dashboard with categories and the latest item list.
 router.get("/inventory", requireLogin, async (req, res) => {
   try {
@@ -443,7 +522,25 @@ router.post("/inventory/items/:id/price", requireLogin, async (req, res) => {
 
 // Saves one type of adjustment for all checked items in a single transaction.
 router.post("/inventory/adjustments", requireLogin, async (req, res) => {
-  const adjustmentType = String(req.body.adjustment_type || "").trim();
+  const jsonRequest = isJsonRequest(req);
+  let adjustmentType = "";
+  let payloadRows = [];
+
+  if (jsonRequest) {
+    adjustmentType = String(req.body.adjustmentType || "").trim();
+    payloadRows = Array.isArray(req.body.adjustments) ? req.body.adjustments : [];
+  } else if (req.body.adjustments_json) {
+    try {
+      const parsed = JSON.parse(req.body.adjustments_json);
+      adjustmentType = String(parsed?.adjustmentType || req.body.adjustment_type || "").trim();
+      payloadRows = Array.isArray(parsed?.adjustments) ? parsed.adjustments : [];
+    } catch (error) {
+      return respondAdjustmentResult(req, res, "error", "Unable to read the submitted adjustment data.");
+    }
+  } else {
+    adjustmentType = String(req.body.adjustment_type || "").trim();
+  }
+
   const selectedIds = Array.isArray(req.body.selected_item_ids)
     ? req.body.selected_item_ids
     : req.body.selected_item_ids
@@ -452,18 +549,19 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
   const parsedIds = selectedIds
     .map((value) => Number(value))
     .filter((value) => Number.isInteger(value) && value > 0);
-  const uniqueIds = [...new Set(parsedIds)];
-  const submittedItems = req.body.items || {};
+  const payloadIds = payloadRows
+    .map((row) => Number(row?.item_id))
+    .filter((value) => Number.isInteger(value) && value > 0);
+  const uniqueIds = [...new Set(payloadIds.length ? payloadIds : parsedIds)];
+  const submittedItems = jsonRequest ? {} : extractSubmittedItems(req.body);
   const validTypes = new Set(["quantity", "min_max", "cost", "price", "category"]);
 
   if (!validTypes.has(adjustmentType)) {
-    flash(req, { type: "error", message: "Select a valid adjustment type." });
-    return res.redirect("/inventory/adjustments");
+    return respondAdjustmentResult(req, res, "error", "Select a valid adjustment type.");
   }
 
   if (!uniqueIds.length) {
-    flash(req, { type: "error", message: "Select at least one item to update." });
-    return res.redirect("/inventory/adjustments");
+    return respondAdjustmentResult(req, res, "error", "Select at least one item to update.");
   }
 
   const connection = await pool.getConnection();
@@ -490,12 +588,18 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
 
     for (const itemId of uniqueIds) {
       const currentItem = itemsById.get(itemId);
-      const formItem = submittedItems[String(itemId)] || {};
+      const payloadItem = payloadRows.find((row) => Number(row?.item_id) === itemId) || null;
 
       if (adjustmentType === "quantity") {
-        const quantity = Number(formItem.quantity);
+        const quantity = parseWholeNumber(getSubmittedField({
+          body: req.body,
+          submittedItems,
+          payloadItem,
+          itemId,
+          fieldName: "quantity"
+        }));
 
-        if (!Number.isInteger(quantity) || quantity < 0) {
+        if (quantity === null) {
           throw new Error("All selected OH qty values must be whole numbers 0 or higher.");
         }
 
@@ -513,10 +617,22 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
       }
 
       if (adjustmentType === "min_max") {
-        const minQuantity = Number(formItem.min_quantity);
-        const maxQuantity = Number(formItem.max_quantity);
+        const minQuantity = parseWholeNumber(getSubmittedField({
+          body: req.body,
+          submittedItems,
+          payloadItem,
+          itemId,
+          fieldName: "min_quantity"
+        }));
+        const maxQuantity = parseWholeNumber(getSubmittedField({
+          body: req.body,
+          submittedItems,
+          payloadItem,
+          itemId,
+          fieldName: "max_quantity"
+        }));
 
-        if (!Number.isInteger(minQuantity) || minQuantity < 0 || !Number.isInteger(maxQuantity) || maxQuantity < 0) {
+        if (minQuantity === null || maxQuantity === null) {
           throw new Error("All selected min and max qty values must be whole numbers 0 or higher.");
         }
 
@@ -544,7 +660,13 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
       }
 
       if (adjustmentType === "cost") {
-        const newCost = Number(formItem.cost);
+        const newCost = Number(getSubmittedField({
+          body: req.body,
+          submittedItems,
+          payloadItem,
+          itemId,
+          fieldName: "cost"
+        }));
 
         if (Number.isNaN(newCost) || newCost < 0) {
           throw new Error("All selected cost values must be valid numbers 0 or higher.");
@@ -564,7 +686,13 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
       }
 
       if (adjustmentType === "price") {
-        const newPrice = Number(formItem.price);
+        const newPrice = Number(getSubmittedField({
+          body: req.body,
+          submittedItems,
+          payloadItem,
+          itemId,
+          fieldName: "price"
+        }));
 
         if (Number.isNaN(newPrice) || newPrice < 0) {
           throw new Error("All selected price values must be valid numbers 0 or higher.");
@@ -584,7 +712,13 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
       }
 
       if (adjustmentType === "category") {
-        const rawCategoryId = String(formItem.category_id || "").trim();
+        const rawCategoryId = String(getSubmittedField({
+          body: req.body,
+          submittedItems,
+          payloadItem,
+          itemId,
+          fieldName: "category_id"
+        }) || "").trim();
         const categoryId = rawCategoryId ? Number(rawCategoryId) : null;
 
         if (rawCategoryId && (!Number.isInteger(categoryId) || categoryId <= 0)) {
@@ -603,13 +737,11 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
     }
 
     await connection.commit();
-    flash(req, { type: "success", message: "Selected items updated successfully." });
-    return res.redirect("/inventory/adjustments");
+    return respondAdjustmentResult(req, res, "success", "Selected items updated successfully.");
   } catch (error) {
     await connection.rollback();
     console.error("Failed to save adjustments:", error);
-    flash(req, { type: "error", message: error.message || "Unable to save adjustments right now." });
-    return res.redirect("/inventory/adjustments");
+    return respondAdjustmentResult(req, res, "error", error.message || "Unable to save adjustments right now.");
   } finally {
     connection.release();
   }
