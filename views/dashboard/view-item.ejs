@@ -1,91 +1,61 @@
-<% /* Detailed inventory item page used for editing a single item. */ %>
+<% /* Detailed inventory item page used for read-only item review. */ %>
 <%- include("../includes/header", { title }) %>
 
 <section class="mx-auto max-w-5xl space-y-6">
   <div class="rounded-3xl bg-white p-6 shadow-soft">
     <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-600">View Item</p>
     <h1 class="mt-2 text-3xl font-semibold"><%= item.name %></h1>
-    <p class="mt-2 text-sm text-slate-500">Update the item details below.</p>
+    <p class="mt-2 text-sm text-slate-500">Item details are view-only on this page.</p>
   </div>
 
-  <form action="/inventory/items/<%= item.id %>" method="POST" class="rounded-3xl bg-white p-6 shadow-soft">
+  <section class="rounded-3xl bg-white p-6 shadow-soft">
     <div class="grid gap-4 md:grid-cols-2">
       <div>
-        <label for="view_item_barcode" class="mb-2 block text-sm font-medium text-slate-700">Item Number</label>
-
-        <div class="flex flex-col gap-2 sm:flex-row">
-          <input
-            id="view_item_barcode"
-            name="barcode"
-            data-required="true"
-            value="<%= item.barcode %>"
-            class="flex-1 rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm"
-          >
-
-          <button
-            id="open-view-barcode-scanner"
-            type="button"
-            class="shrink-0 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
-          >
-            Scan barcode
-          </button>
-        </div>
+        <p class="mb-2 text-sm font-medium text-slate-700">Item Number</p>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"><%= item.barcode %></div>
       </div>
 
       <div>
-        <label for="name" class="mb-2 block text-sm font-medium text-slate-700">Item Name</label>
-        <input id="name" name="name" data-required="true" value="<%= item.name %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        <p class="mb-2 text-sm font-medium text-slate-700">Item Name</p>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"><%= item.name %></div>
       </div>
 
       <div>
-        <label for="cost" class="mb-2 block text-sm font-medium text-slate-700">Cost</label>
-        <input id="cost" type="number" name="cost" step="0.01" min="0" data-required="true" value="<%= item.cost %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        <p class="mb-2 text-sm font-medium text-slate-700">Cost</p>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">PHP <%= formatCurrency(item.cost) %></div>
       </div>
 
       <div>
-        <label for="price" class="mb-2 block text-sm font-medium text-slate-700">Price</label>
-        <input id="price" type="number" name="price" step="0.01" min="0" data-required="true" value="<%= item.price %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        <p class="mb-2 text-sm font-medium text-slate-700">Price</p>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">PHP <%= formatCurrency(item.price) %></div>
       </div>
 
       <div>
-        <label for="quantity" class="mb-2 block text-sm font-medium text-slate-700">Quantity</label>
-        <input id="quantity" type="number" name="quantity" min="0" data-required="true" value="<%= item.quantity %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        <p class="mb-2 text-sm font-medium text-slate-700">OH Qty</p>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"><%= item.quantity %></div>
       </div>
 
       <div>
-        <label for="min_quantity" class="mb-2 block text-sm font-medium text-slate-700">Min Quantity</label>
-        <input id="min_quantity" type="number" name="min_quantity" min="0" data-required="true" value="<%= item.min_quantity %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        <p class="mb-2 text-sm font-medium text-slate-700">Min Quantity</p>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"><%= item.min_quantity %></div>
       </div>
 
       <div>
-        <label for="max_quantity" class="mb-2 block text-sm font-medium text-slate-700">Max Quantity</label>
-        <input id="max_quantity" type="number" name="max_quantity" min="1" data-required="true" value="<%= item.max_quantity %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+        <p class="mb-2 text-sm font-medium text-slate-700">Max Quantity</p>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"><%= item.max_quantity %></div>
       </div>
-    </div>
 
-    <div class="mt-4">
-      <label for="category_id" class="mb-2 block text-sm font-medium text-slate-700">Category</label>
-      <select id="category_id" name="category_id" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
-        <option value="">Select category</option>
-        <% categories.forEach((category) => { %>
-          <option value="<%= category.id %>" <%= String(item.category_id || "") === String(category.id) ? "selected" : "" %>><%= category.category_name %></option>
-        <% }) %>
-      </select>
+      <div>
+        <p class="mb-2 text-sm font-medium text-slate-700">Category</p>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"><%= item.category_name || "No Category" %></div>
+      </div>
     </div>
 
     <div class="mt-6 flex flex-wrap gap-3">
-      <button type="submit" class="rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white">Save Changes</button>
-      <a href="/inventory/items/<%= item.id %>/price" class="rounded-2xl border border-amber-300 px-4 py-3 text-sm font-semibold text-amber-700">Price History</a>
-      <a href="/inventory/items/<%= item.id %>/cost" class="rounded-2xl border border-emerald-300 px-4 py-3 text-sm font-semibold text-emerald-700">Cost History</a>
+      <a href="/inventory/adjustments" class="rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950">Open Adjustments</a>
       <a href="/inventory" class="rounded-2xl border px-4 py-3 text-sm font-semibold text-slate-700">Back to Inventory</a>
     </div>
-  </form>
+  </section>
 </section>
-
-<%- include("../components/modals/barcode-scanner", {
-  scannerMessage: "Point the camera at the barcode to fill the item number automatically.",
-  enableBarcodeUpload: true,
-  scannerHint: "You can scan with the camera or upload a clear barcode photo from your device."
-}) %>
 
 <%- include("../includes/footer") %>

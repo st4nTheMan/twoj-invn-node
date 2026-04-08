@@ -1,0 +1,201 @@
+<% /* Bulk adjustments page for updating one inventory field across checked items. */ %>
+<%- include("../includes/header", { title }) %>
+
+<section id="adjustments-page" class="space-y-6">
+  <div class="rounded-3xl bg-white p-5 shadow-soft sm:p-6">
+    <p class="text-xs font-semibold uppercase tracking-[0.25em] text-amber-600">Adjustments</p>
+    <h1 class="mt-2 text-2xl font-semibold sm:text-3xl">Bulk inventory updates</h1>
+    <p class="mt-2 text-sm text-slate-500">Choose one adjustment type, check the items you want to update, edit only that field, then save all checked items together.</p>
+  </div>
+
+  <section class="rounded-3xl bg-white p-5 shadow-soft">
+    <div class="flex flex-wrap gap-3">
+      <button type="button" data-adjustment-mode="quantity" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition">OH Qty</button>
+      <button type="button" data-adjustment-mode="min_max" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition">Min/Max Qty</button>
+      <button type="button" data-adjustment-mode="cost" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition">Cost</button>
+      <button type="button" data-adjustment-mode="price" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition">Price</button>
+      <button type="button" data-adjustment-mode="category" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition">Category</button>
+    </div>
+    <p data-adjustment-title class="mt-4 text-sm font-medium text-slate-700">Active adjustment: OH QTY</p>
+  </section>
+
+  <section class="rounded-3xl bg-white p-5 shadow-soft">
+    <input id="adjustments-search" type="text" placeholder="Search by item number, name, or category..." class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+  </section>
+
+  <form action="/inventory/adjustments" method="POST" class="space-y-6">
+    <input id="adjustment-type" type="hidden" name="adjustment_type" value="quantity">
+
+    <section class="table-scroll overflow-x-auto rounded-3xl bg-white shadow-soft">
+      <table id="adjustments-table" class="responsive-table min-w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-600">
+          <tr>
+            <th class="px-4 py-3">Select</th>
+            <th class="px-4 py-3">Item Number</th>
+            <th class="px-4 py-3">Name</th>
+            <th class="px-4 py-3">Category</th>
+            <th class="px-4 py-3">Current</th>
+            <th data-adjustment-cell="quantity" class="px-4 py-3">New OH Qty</th>
+            <th data-adjustment-cell="min_max" class="hidden px-4 py-3">New Min Qty</th>
+            <th data-adjustment-cell="min_max" class="hidden px-4 py-3">New Max Qty</th>
+            <th data-adjustment-cell="cost" class="hidden px-4 py-3">New Cost</th>
+            <th data-adjustment-cell="price" class="hidden px-4 py-3">New Price</th>
+            <th data-adjustment-cell="category" class="hidden px-4 py-3">New Category</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-200">
+          <% if (items.length) { items.forEach((item) => { %>
+            <tr data-row data-adjustment-row class="hover:bg-slate-50">
+              <td data-label="Select" class="px-4 py-3">
+                <input
+                  type="checkbox"
+                  name="selected_item_ids[]"
+                  value="<%= item.id %>"
+                  data-adjustment-checkbox
+                  class="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                >
+              </td>
+              <td data-label="Item Number" class="px-4 py-3 font-medium"><%= item.barcode %></td>
+              <td data-label="Name" class="px-4 py-3"><%= item.name %></td>
+              <td data-label="Category" class="px-4 py-3"><%= item.category_name || "No Category" %></td>
+              <td data-label="Current" class="px-4 py-3 text-xs text-slate-500">
+                OH: <%= item.quantity %><br>
+                Min/Max: <%= item.min_quantity %>/<%= item.max_quantity %><br>
+                Cost: PHP <%= formatCurrency(item.cost) %><br>
+                Price: PHP <%= formatCurrency(item.price) %>
+              </td>
+              <td data-label="New OH Qty" data-adjustment-cell="quantity" class="px-4 py-3">
+                <input
+                  type="number"
+                  name="items[<%= item.id %>][quantity]"
+                  value="<%= item.quantity %>"
+                  data-original-value="<%= item.quantity %>"
+                  min="0"
+                  step="1"
+                  disabled
+                  data-adjustment-input="quantity"
+                  class="w-28 rounded-2xl border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-400"
+                >
+              </td>
+              <td data-label="New Min Qty" data-adjustment-cell="min_max" class="hidden px-4 py-3">
+                <input
+                  type="number"
+                  name="items[<%= item.id %>][min_quantity]"
+                  value="<%= item.min_quantity %>"
+                  data-original-value="<%= item.min_quantity %>"
+                  min="0"
+                  step="1"
+                  disabled
+                  data-adjustment-input="min_max"
+                  class="w-28 rounded-2xl border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-400"
+                >
+              </td>
+              <td data-label="New Max Qty" data-adjustment-cell="min_max" class="hidden px-4 py-3">
+                <input
+                  type="number"
+                  name="items[<%= item.id %>][max_quantity]"
+                  value="<%= item.max_quantity %>"
+                  data-original-value="<%= item.max_quantity %>"
+                  min="0"
+                  step="1"
+                  disabled
+                  data-adjustment-input="min_max"
+                  class="w-28 rounded-2xl border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-400"
+                >
+              </td>
+              <td data-label="New Cost" data-adjustment-cell="cost" class="hidden px-4 py-3">
+                <input
+                  type="number"
+                  name="items[<%= item.id %>][cost]"
+                  value="<%= item.cost %>"
+                  data-original-value="<%= item.cost %>"
+                  min="0"
+                  step="0.01"
+                  disabled
+                  data-adjustment-input="cost"
+                  class="w-32 rounded-2xl border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-400"
+                >
+              </td>
+              <td data-label="New Price" data-adjustment-cell="price" class="hidden px-4 py-3">
+                <input
+                  type="number"
+                  name="items[<%= item.id %>][price]"
+                  value="<%= item.price %>"
+                  data-original-value="<%= item.price %>"
+                  min="0"
+                  step="0.01"
+                  disabled
+                  data-adjustment-input="price"
+                  class="w-32 rounded-2xl border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-400"
+                >
+              </td>
+              <td data-label="New Category" data-adjustment-cell="category" class="hidden px-4 py-3">
+                <select
+                  name="items[<%= item.id %>][category_id]"
+                  data-original-value="<%= item.category_id || '' %>"
+                  disabled
+                  data-adjustment-input="category"
+                  class="min-w-40 rounded-2xl border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-400"
+                >
+                  <option value="">No Category</option>
+                  <% categories.forEach((category) => { %>
+                    <option value="<%= category.id %>" <%= String(item.category_id || "") === String(category.id) ? "selected" : "" %>><%= category.category_name %></option>
+                  <% }) %>
+                </select>
+              </td>
+            </tr>
+          <% }) } else { %>
+            <tr><td colspan="11" class="px-4 py-8 text-center text-slate-500">No items found.</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+      <p id="adjustments-empty-search" class="hidden p-6 text-center text-sm text-slate-500">No items found.</p>
+    </section>
+
+    <div class="flex flex-wrap gap-3">
+      <button id="adjustments-save-button" type="submit" disabled class="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white opacity-50">Save Changes</button>
+      <a href="/inventory" class="rounded-2xl border px-5 py-3 text-sm font-semibold text-slate-700">Back to Inventory</a>
+    </div>
+  </form>
+</section>
+
+<section id="exclude-adjustment-row-modal" data-modal class="hidden fixed inset-0 z-50 bg-slate-950/60 p-4">
+  <div class="mx-auto mt-10 max-w-xl rounded-3xl bg-white shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+      <div>
+        <h2 class="text-xl font-semibold text-slate-900">Exclude Edited Item?</h2>
+        <p class="text-sm text-slate-500">This row has unsaved edits.</p>
+      </div>
+      <button
+        type="button"
+        data-close-modal
+        class="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+      >
+        Close
+      </button>
+    </div>
+
+    <div class="p-6">
+      <p class="text-sm text-slate-700">Are you sure you want to exclude this edited row or item?</p>
+
+      <div class="mt-6 flex justify-end gap-3">
+        <button
+          type="button"
+          id="exclude-adjustment-row-cancel"
+          class="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700"
+        >
+          Keep Edited Row
+        </button>
+        <button
+          type="button"
+          id="exclude-adjustment-row-confirm"
+          class="rounded-2xl bg-rose-500 px-4 py-3 text-sm font-semibold text-white"
+        >
+          Exclude Row
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<%- include("../includes/footer") %>

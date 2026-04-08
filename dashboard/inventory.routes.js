@@ -62,6 +62,35 @@ router.get("/price-lookup", requireLogin, async (req, res) => {
   }
 });
 
+// Loads the bulk adjustments page where a single field can be updated for many items.
+router.get("/inventory/adjustments", requireLogin, async (req, res) => {
+  try {
+    const [categories] = await pool.query(
+      "SELECT * FROM categories ORDER BY category_name ASC"
+    );
+    const [items] = await pool.query(
+      `SELECT items.*, categories.category_name
+       FROM items
+       LEFT JOIN categories ON items.category_id = categories.id
+       ORDER BY items.id DESC`
+    );
+
+    return res.render("dashboard/adjustments", {
+      title: "Adjustments",
+      categories,
+      items
+    });
+  } catch (error) {
+    console.error("Failed to load adjustments page:", error);
+    flash(req, { type: "error", message: "Unable to load adjustments." });
+    return res.render("dashboard/adjustments", {
+      title: "Adjustments",
+      categories: [],
+      items: []
+    });
+  }
+});
+
 // Creates a new inventory item and preserves form state on validation errors.
 router.post("/inventory/items", requireLogin, async (req, res) => {
   const barcode = String(req.body.barcode || "").trim();
@@ -127,51 +156,11 @@ router.post("/inventory/items", requireLogin, async (req, res) => {
 
 // Updates an existing inventory item after validating the submitted values.
 router.post("/inventory/items/:id", requireLogin, async (req, res) => {
-  const id = Number(req.params.id);
-  const barcode = String(req.body.barcode || "").trim();
-  const name = toUppercaseText(req.body.name);
-  const cost = String(req.body.cost || "").trim();
-  const price = String(req.body.price || "").trim();
-  const quantity = Number(req.body.quantity || 0);
-  const minQuantity = Number(req.body.min_quantity || 0);
-  const maxQuantity = Number(req.body.max_quantity || 1);
-  const categoryId = req.body.category_id ? Number(req.body.category_id) : null;
-
-  if (!id || !barcode || !name || !cost || !price) {
-    flash(req, { type: "error", message: "Missing required item fields." });
-    return res.redirect("/inventory");
-  }
-
-  if (maxQuantity < minQuantity) {
-    flash(req, { type: "error", message: "Maximum quantity must be greater than or equal to minimum quantity." });
-    return res.redirect("/inventory");
-  }
-
-  try {
-    const [existing] = await pool.query(
-      "SELECT COUNT(*) AS count FROM items WHERE barcode = ? AND id != ?",
-      [barcode, id]
-    );
-
-    if (existing[0].count > 0) {
-      flash(req, { type: "error", message: "Item number already exists." });
-      return res.redirect("/inventory");
-    }
-
-    await pool.query(
-      `UPDATE items
-       SET barcode = ?, name = ?, cost = ?, price = ?, quantity = ?, min_quantity = ?, max_quantity = ?, category_id = ?
-       WHERE id = ?`,
-      [barcode, name, cost, price, quantity, minQuantity, maxQuantity, categoryId, id]
-    );
-
-    flash(req, { type: "success", message: "Item updated successfully." });
-    return res.redirect("/inventory");
-  } catch (error) {
-    console.error("Failed to update item:", error);
-    flash(req, { type: "error", message: "Unable to update item right now." });
-    return res.redirect("/inventory");
-  }
+  flash(req, {
+    type: "error",
+    message: "Item details are read-only here. Use the Adjustments page to update inventory fields."
+  });
+  return res.redirect(`/inventory/items/${Number(req.params.id) || ""}`);
 });
 
 // Creates a new category directly from the inventory page modal.
@@ -208,9 +197,6 @@ router.get("/inventory/items/:id", requireLogin, async (req, res) => {
   }
 
   try {
-    const [categories] = await pool.query(
-      "SELECT * FROM categories ORDER BY category_name ASC"
-    );
     const [rows] = await pool.query(
       `SELECT items.*, categories.category_name
        FROM items
@@ -228,8 +214,7 @@ router.get("/inventory/items/:id", requireLogin, async (req, res) => {
 
     return res.render("dashboard/view-item", {
       title: "View Item",
-      item,
-      categories
+      item
     });
   } catch (error) {
     console.error("Failed to load item details:", error);
@@ -275,49 +260,11 @@ router.get("/inventory/items/:id/cost", requireLogin, async (req, res) => {
 
 // Saves a new item cost and records the cost change history.
 router.post("/inventory/items/:id/cost", requireLogin, async (req, res) => {
-  const id = Number(req.params.id);
-  const newCost = Number(req.body.new_cost);
-
-  if (!id || Number.isNaN(newCost) || newCost < 0) {
-    flash(req, { type: "error", message: "Please enter a valid cost." });
-    return res.redirect(`/inventory/items/${id}/cost`);
-  }
-
-  const connection = await pool.getConnection();
-
-  try {
-    await connection.beginTransaction();
-
-    const [rows] = await connection.query(
-      "SELECT * FROM items WHERE id = ? LIMIT 1",
-      [id]
-    );
-    const item = rows[0];
-
-    if (!item) {
-      throw new Error("Item not found.");
-    }
-
-    await connection.query(
-      "UPDATE items SET cost = ? WHERE id = ?",
-      [newCost, id]
-    );
-    await connection.query(
-      "INSERT INTO cost_adjustments (item_id, old_cost, new_cost) VALUES (?, ?, ?)",
-      [id, item.cost, newCost]
-    );
-
-    await connection.commit();
-    flash(req, { type: "success", message: "Cost updated successfully." });
-    return res.redirect(`/inventory/items/${id}/cost`);
-  } catch (error) {
-    await connection.rollback();
-    console.error("Failed to update cost:", error);
-    flash(req, { type: "error", message: error.message || "Unable to update cost." });
-    return res.redirect(`/inventory/items/${id}/cost`);
-  } finally {
-    connection.release();
-  }
+  flash(req, {
+    type: "error",
+    message: "Cost history is read-only. Use the Adjustments page to update item cost."
+  });
+  return res.redirect(`/inventory/items/${Number(req.params.id) || ""}/cost`);
 });
 
 // Loads the price adjustment page and historical price changes for one item.
@@ -357,12 +304,36 @@ router.get("/inventory/items/:id/price", requireLogin, async (req, res) => {
 
 // Saves a new item price and records the price change history.
 router.post("/inventory/items/:id/price", requireLogin, async (req, res) => {
-  const id = Number(req.params.id);
-  const newPrice = Number(req.body.new_price);
+  flash(req, {
+    type: "error",
+    message: "Price history is read-only. Use the Adjustments page to update item price."
+  });
+  return res.redirect(`/inventory/items/${Number(req.params.id) || ""}/price`);
+});
 
-  if (!id || Number.isNaN(newPrice) || newPrice < 0) {
-    flash(req, { type: "error", message: "Please enter a valid price." });
-    return res.redirect(`/inventory/items/${id}/price`);
+// Saves one type of adjustment for all checked items in a single transaction.
+router.post("/inventory/adjustments", requireLogin, async (req, res) => {
+  const adjustmentType = String(req.body.adjustment_type || "").trim();
+  const selectedIds = Array.isArray(req.body.selected_item_ids)
+    ? req.body.selected_item_ids
+    : req.body.selected_item_ids
+      ? [req.body.selected_item_ids]
+      : [];
+  const parsedIds = selectedIds
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0);
+  const uniqueIds = [...new Set(parsedIds)];
+  const submittedItems = req.body.items || {};
+  const validTypes = new Set(["quantity", "min_max", "cost", "price", "category"]);
+
+  if (!validTypes.has(adjustmentType)) {
+    flash(req, { type: "error", message: "Select a valid adjustment type." });
+    return res.redirect("/inventory/adjustments");
+  }
+
+  if (!uniqueIds.length) {
+    flash(req, { type: "error", message: "Select at least one item to update." });
+    return res.redirect("/inventory/adjustments");
   }
 
   const connection = await pool.getConnection();
@@ -371,32 +342,126 @@ router.post("/inventory/items/:id/price", requireLogin, async (req, res) => {
     await connection.beginTransaction();
 
     const [rows] = await connection.query(
-      "SELECT * FROM items WHERE id = ? LIMIT 1",
-      [id]
+      `SELECT id, quantity, min_quantity, max_quantity, cost, price, category_id
+       FROM items
+       WHERE id IN (?)`,
+      [uniqueIds]
     );
-    const item = rows[0];
+    const itemsById = new Map(rows.map((item) => [item.id, item]));
 
-    if (!item) {
-      throw new Error("Item not found.");
+    if (itemsById.size !== uniqueIds.length) {
+      throw new Error("One or more selected items could not be found.");
     }
 
-    await connection.query(
-      "UPDATE items SET price = ? WHERE id = ?",
-      [newPrice, id]
-    );
-    await connection.query(
-      "INSERT INTO price_adjustments (item_id, old_price, new_price) VALUES (?, ?, ?)",
-      [id, item.price, newPrice]
-    );
+    for (const itemId of uniqueIds) {
+      const currentItem = itemsById.get(itemId);
+      const formItem = submittedItems[String(itemId)] || {};
+
+      if (adjustmentType === "quantity") {
+        const quantity = Number(formItem.quantity);
+
+        if (!Number.isInteger(quantity) || quantity < 0) {
+          throw new Error("All selected OH qty values must be whole numbers 0 or higher.");
+        }
+
+        await connection.query(
+          "UPDATE items SET quantity = ? WHERE id = ?",
+          [quantity, itemId]
+        );
+      }
+
+      if (adjustmentType === "min_max") {
+        const minQuantity = Number(formItem.min_quantity);
+        const maxQuantity = Number(formItem.max_quantity);
+
+        if (!Number.isInteger(minQuantity) || minQuantity < 0 || !Number.isInteger(maxQuantity) || maxQuantity < 0) {
+          throw new Error("All selected min and max qty values must be whole numbers 0 or higher.");
+        }
+
+        if (maxQuantity < minQuantity) {
+          throw new Error("Maximum quantity must be greater than or equal to minimum quantity.");
+        }
+
+        await connection.query(
+          "UPDATE items SET min_quantity = ?, max_quantity = ? WHERE id = ?",
+          [minQuantity, maxQuantity, itemId]
+        );
+      }
+
+      if (adjustmentType === "cost") {
+        const newCost = Number(formItem.cost);
+
+        if (Number.isNaN(newCost) || newCost < 0) {
+          throw new Error("All selected cost values must be valid numbers 0 or higher.");
+        }
+
+        await connection.query(
+          "UPDATE items SET cost = ? WHERE id = ?",
+          [newCost, itemId]
+        );
+
+        if (Number(currentItem.cost) !== newCost) {
+          await connection.query(
+            "INSERT INTO cost_adjustments (item_id, old_cost, new_cost) VALUES (?, ?, ?)",
+            [itemId, currentItem.cost, newCost]
+          );
+        }
+      }
+
+      if (adjustmentType === "price") {
+        const newPrice = Number(formItem.price);
+
+        if (Number.isNaN(newPrice) || newPrice < 0) {
+          throw new Error("All selected price values must be valid numbers 0 or higher.");
+        }
+
+        await connection.query(
+          "UPDATE items SET price = ? WHERE id = ?",
+          [newPrice, itemId]
+        );
+
+        if (Number(currentItem.price) !== newPrice) {
+          await connection.query(
+            "INSERT INTO price_adjustments (item_id, old_price, new_price) VALUES (?, ?, ?)",
+            [itemId, currentItem.price, newPrice]
+          );
+        }
+      }
+
+      if (adjustmentType === "category") {
+        const rawCategoryId = String(formItem.category_id || "").trim();
+        const categoryId = rawCategoryId ? Number(rawCategoryId) : null;
+
+        if (rawCategoryId && (!Number.isInteger(categoryId) || categoryId <= 0)) {
+          throw new Error("All selected category values must be valid.");
+        }
+
+        if (categoryId !== null) {
+          const [categoryRows] = await connection.query(
+            "SELECT id FROM categories WHERE id = ? LIMIT 1",
+            [categoryId]
+          );
+
+          if (!categoryRows.length) {
+            throw new Error("One or more selected categories could not be found.");
+          }
+        }
+
+        await connection.query(
+          "UPDATE items SET category_id = ? WHERE id = ?",
+          [categoryId, itemId]
+        );
+      }
+    }
 
     await connection.commit();
-    flash(req, { type: "success", message: "Price updated successfully." });
-    return res.redirect(`/inventory/items/${id}/price`);
+    flash(req, { type: "success", message: "Selected items updated successfully." });
+    return res.redirect("/inventory/adjustments");
   } catch (error) {
     await connection.rollback();
-    console.error("Failed to update price:", error);
-    flash(req, { type: "error", message: error.message || "Unable to update price." });
-    return res.redirect(`/inventory/items/${id}/price`);
+    console.error("Failed to save adjustments:", error);
+    flash(req, { type: "error", message: error.message || "Unable to save adjustments right now." });
+    return res.redirect("/inventory/adjustments");
   } finally {
     connection.release();
   }
