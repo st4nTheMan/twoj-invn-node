@@ -288,8 +288,9 @@
 
       row.addEventListener("click", (event) => {
         const interactiveElement = event.target.closest("input, select, option, button, a, label, [data-adjustment-input]");
+        const toggleCell = event.target.closest("[data-adjustment-row-toggle]");
 
-        if (interactiveElement) {
+        if (interactiveElement || !toggleCell) {
           return;
         }
 

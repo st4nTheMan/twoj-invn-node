@@ -48,17 +48,17 @@
         <tbody class="divide-y divide-slate-200">
           <% if (items.length) { items.forEach((item) => { %>
             <tr data-row data-adjustment-row class="hover:bg-slate-50">
-              <td data-label="Select" class="px-4 py-3">
+              <td data-label="Select" data-adjustment-row-toggle class="px-4 py-3">
                 <input
                   type="checkbox"
                   name="selected_item_ids[]"
                   value="<%= item.id %>"
                   data-adjustment-checkbox
-                  class="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                  class="h-6 w-6 rounded-md border-slate-300 text-amber-500 focus:ring-amber-500"
                 >
               </td>
-              <td data-label="Item Number" class="px-4 py-3 font-medium"><%= item.barcode %></td>
-              <td data-label="Name" class="px-4 py-3"><%= item.name %></td>
+              <td data-label="Item Number" data-adjustment-row-toggle class="px-4 py-3 font-medium"><%= item.barcode %></td>
+              <td data-label="Name" data-adjustment-row-toggle class="px-4 py-3"><%= item.name %></td>
               <td data-label="Category" class="px-4 py-3"><%= item.category_name || "No Category" %></td>
               <td data-label="Current" class="px-4 py-3 text-xs text-slate-500">
                 OH: <%= item.quantity %><br>
@@ -203,43 +203,6 @@
   </form>
 </section>
 
-<section id="exclude-adjustment-row-modal" data-modal class="hidden fixed inset-0 z-50 bg-slate-950/60 p-4">
-  <div class="mx-auto mt-10 max-w-xl rounded-3xl bg-white shadow-2xl">
-    <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-      <div>
-        <h2 class="text-xl font-semibold text-slate-900">Exclude Edited Item?</h2>
-        <p class="text-sm text-slate-500">This row has unsaved edits.</p>
-      </div>
-      <button
-        type="button"
-        data-close-modal
-        class="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
-      >
-        Close
-      </button>
-    </div>
-
-    <div class="p-6">
-      <p id="exclude-adjustment-row-message" class="text-sm text-slate-700">Are you sure you want to exclude this edited row or item?</p>
-
-      <div class="mt-6 flex justify-end gap-3">
-        <button
-          type="button"
-          id="exclude-adjustment-row-cancel"
-          class="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700"
-        >
-          Keep Edited Row
-        </button>
-        <button
-          type="button"
-          id="exclude-adjustment-row-confirm"
-          class="rounded-2xl bg-rose-500 px-4 py-3 text-sm font-semibold text-white"
-        >
-          Confirm
-        </button>
-      </div>
-    </div>
-  </div>
-</section>
+<%- include("../components/modals/exclude-adjustment-row") %>
 
 <%- include("../includes/footer") %>

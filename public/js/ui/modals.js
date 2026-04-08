@@ -5,24 +5,33 @@
 
   InventoryUi.onReady(() => {
     const body = document.body;
-    const pageState = document.getElementById("page-state");
-
     function openModal(modalId) {
       const modal = document.getElementById(modalId);
       if (!modal) return;
 
       window.clearTimeout(modal.closeTimer);
+      window.clearTimeout(modal.autoCloseTimer);
       delete modal.closeTimer;
+      delete modal.autoCloseTimer;
       modal.dataset.modalState = "opening";
       modal.classList.remove("hidden");
       body.classList.add("modal-open");
       modal.dispatchEvent(new CustomEvent("modal:open"));
+
+      const autoCloseMs = Number(modal.dataset.autoCloseMs || 0);
+      if (autoCloseMs > 0) {
+        modal.autoCloseTimer = window.setTimeout(() => {
+          closeModal(modal);
+        }, autoCloseMs);
+      }
     }
 
     function closeModal(modal) {
       if (!modal) return;
       if (modal.classList.contains("hidden") || modal.dataset.modalState === "closing") return;
 
+      window.clearTimeout(modal.autoCloseTimer);
+      delete modal.autoCloseTimer;
       modal.dataset.modalState = "closing";
       modal.dispatchEvent(new CustomEvent("modal:close"));
       modal.closeTimer = window.setTimeout(() => {
@@ -64,6 +73,13 @@
       });
     });
 
+    document.querySelectorAll("[data-open-modal-on-load]").forEach((node) => {
+      if (node.dataset.openModalOnLoad) {
+        openModal(node.dataset.openModalOnLoad);
+      }
+    });
+
+    const pageState = document.getElementById("page-state");
     if (pageState?.dataset.openModal) {
       openModal(pageState.dataset.openModal);
     }

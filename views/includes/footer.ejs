@@ -1,6 +1,11 @@
 <% /* Shared page footer scripts and global stock notification modal mount. */ %>
   </main>
 
+  <% if (flash) { %>
+    <div data-open-modal-on-load="flash-feedback-modal" hidden></div>
+    <%- include("../components/modals/flash-feedback") %>
+  <% } %>
+
   <% if (user) { %>
     <%- include("../components/modals/stock-notifications") %>
   <% } %>

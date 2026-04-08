@@ -276,8 +276,18 @@ router.post("/inventory/categories", requireLogin, async (req, res) => {
   }
 
   try {
+    const [existing] = await pool.query(
+      "SELECT id FROM categories WHERE category_name = ? LIMIT 1",
+      [categoryName]
+    );
+
+    if (existing.length) {
+      flash(req, { type: "error", message: "Category already exists." });
+      return res.redirect("/inventory");
+    }
+
     await pool.query(
-      "INSERT IGNORE INTO categories (category_name) VALUES (?)",
+      "INSERT INTO categories (category_name) VALUES (?)",
       [categoryName]
     );
 

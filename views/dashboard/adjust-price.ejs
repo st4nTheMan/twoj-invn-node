@@ -7,7 +7,6 @@
     <h1 class="mt-2 text-3xl font-semibold"><%= item.name %></h1>
     <p class="mt-2 text-sm text-slate-500">Item number: <span class="font-medium text-slate-700"><%= item.barcode %></span></p>
     <p class="mt-1 text-sm text-slate-500">Current price: <span class="font-medium text-slate-700">PHP <%= formatCurrency(item.price) %></span></p>
-    <p class="mt-4 text-sm text-slate-500">This page is read-only. Use the Adjustments page for price updates.</p>
     <div class="mt-5 flex flex-wrap gap-3">
       <a href="/inventory/adjustments" class="rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950">Open Adjustments</a>
       <a href="/inventory/items/<%= item.id %>/history" onclick="if (window.history.length > 1) { event.preventDefault(); window.history.back(); }" class="rounded-2xl border px-4 py-3 text-sm font-semibold text-slate-700">Back</a>

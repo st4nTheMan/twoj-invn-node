@@ -1,0 +1,39 @@
+<% /* Modal for confirming exclusion of an edited adjustments row. */ %>
+<section id="exclude-adjustment-row-modal" data-modal class="hidden fixed inset-0 z-50 bg-slate-950/60 p-4">
+  <div class="mx-auto mt-10 max-w-xl rounded-3xl bg-white shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+      <div>
+        <h2 class="text-xl font-semibold text-slate-900">Exclude Edited Item?</h2>
+        <p class="text-sm text-slate-500">This row has unsaved edits.</p>
+      </div>
+      <button
+        type="button"
+        data-close-modal
+        class="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+      >
+        Close
+      </button>
+    </div>
+
+    <div class="p-6">
+      <p id="exclude-adjustment-row-message" class="text-sm text-slate-700">Are you sure you want to exclude this edited row or item?</p>
+
+      <div class="mt-6 flex justify-end gap-3">
+        <button
+          type="button"
+          id="exclude-adjustment-row-cancel"
+          class="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700"
+        >
+          Keep Edited Row
+        </button>
+        <button
+          type="button"
+          id="exclude-adjustment-row-confirm"
+          class="rounded-2xl bg-rose-500 px-4 py-3 text-sm font-semibold text-white"
+        >
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
