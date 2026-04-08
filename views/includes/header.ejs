@@ -44,6 +44,7 @@
           <nav class="hidden items-center gap-2 text-sm font-medium lg:flex">
             <a href="/inventory" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= (currentPath === '/inventory' || currentPath.startsWith('/inventory/items')) ? 'bg-sky-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Inventory</a>
             <a href="/inventory/adjustments" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= currentPath === '/inventory/adjustments' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Adjustments</a>
+            <a href="/history" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= (currentPath === '/history' || currentPath.endsWith('/history')) ? 'bg-slate-200 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">History</a>
             <a href="/price-lookup" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= currentPath === '/price-lookup' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Price Lookup</a>
             <a href="/transaction" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= currentPath === '/transaction' ? 'bg-emerald-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Transaction</a>
             <a href="/reports" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= currentPath === '/reports' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Reports</a>
@@ -83,6 +84,7 @@
           <nav class="flex flex-col gap-2 text-sm font-medium">
             <a href="/inventory" class="rounded-2xl px-4 py-3 text-left transition <%= (currentPath === '/inventory' || currentPath.startsWith('/inventory/items')) ? 'bg-sky-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Inventory</a>
             <a href="/inventory/adjustments" class="rounded-2xl px-4 py-3 text-left transition <%= currentPath === '/inventory/adjustments' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Adjustments</a>
+            <a href="/history" class="rounded-2xl px-4 py-3 text-left transition <%= (currentPath === '/history' || currentPath.endsWith('/history')) ? 'bg-slate-200 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">History</a>
             <a href="/price-lookup" class="rounded-2xl px-4 py-3 text-left transition <%= currentPath === '/price-lookup' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Price Lookup</a>
             <a href="/transaction" class="rounded-2xl px-4 py-3 text-left transition <%= currentPath === '/transaction' ? 'bg-emerald-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Transaction</a>
             <a href="/reports" class="rounded-2xl px-4 py-3 text-left transition <%= currentPath === '/reports' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Reports</a>

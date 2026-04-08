@@ -27,6 +27,15 @@
       return row.querySelectorAll(`[data-adjustment-input="${mode}"]`);
     }
 
+    function syncCategoryHiddenValue(row) {
+      const select = row.querySelector('[data-adjustment-input="category"]');
+      const hiddenInput = row.querySelector('[data-adjustment-hidden="category"]');
+
+      if (!select || !hiddenInput) return;
+
+      hiddenInput.value = select.value;
+    }
+
     function getOriginalValue(input) {
       return String(input.dataset.originalValue || "");
     }
@@ -41,6 +50,10 @@
 
     function resetRowValues(row) {
       row.querySelectorAll("[data-adjustment-input]").forEach((input) => {
+        input.value = getOriginalValue(input);
+      });
+
+      row.querySelectorAll("[data-adjustment-hidden]").forEach((input) => {
         input.value = getOriginalValue(input);
       });
     }
@@ -154,7 +167,7 @@
       if (!checkbox) return;
 
       row.addEventListener("click", (event) => {
-        const interactiveElement = event.target.closest("input, select, button, a, label");
+        const interactiveElement = event.target.closest("input, select, option, button, a, label, [data-adjustment-input]");
 
         if (interactiveElement) {
           return;
@@ -183,6 +196,15 @@
 
         syncAllRows();
       });
+
+      const categorySelect = row.querySelector('[data-adjustment-input="category"]');
+      if (categorySelect) {
+        categorySelect.addEventListener("change", () => {
+          syncCategoryHiddenValue(row);
+        });
+      }
+
+      syncCategoryHiddenValue(row);
 
     });
 

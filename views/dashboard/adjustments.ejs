@@ -130,8 +130,15 @@
                 >
               </td>
               <td data-label="New Category" data-adjustment-cell="category" class="hidden px-4 py-3">
-                <select
+                <input
+                  type="hidden"
                   name="items[<%= item.id %>][category_id]"
+                  value="<%= item.category_id || '' %>"
+                  data-adjustment-hidden="category"
+                  data-original-value="<%= item.category_id || '' %>"
+                >
+                <select
+                  name=""
                   data-original-value="<%= item.category_id || '' %>"
                   disabled
                   data-adjustment-input="category"
