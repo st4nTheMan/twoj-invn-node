@@ -1,6 +1,32 @@
 # two-js-invn
 
-This project is a Node.js inventory system built with Express, EJS, MySQL, and Tailwind CSS. It has been refactored into the same modular structure used in the `tindahan` project.
+Node.js inventory system for Two J's Store built with Express, EJS, MySQL, and Tailwind CSS via CDN.
+
+## Overview
+
+This app handles:
+
+- Inventory listing and item creation
+- Category creation
+- Bulk inventory adjustments
+- Read-only item and history pages
+- Price lookup
+- Transaction checkout
+- Sales reports
+- Global stock notifications
+- Reusable modals for forms, alerts, and feedback
+
+The app runs over local HTTPS so barcode scanning and phone testing work more reliably on the same network.
+
+## Stack
+
+- Node.js
+- Express
+- EJS
+- MySQL with `mysql2`
+- `express-session`
+- Tailwind CSS via CDN
+- Browser-side JavaScript modules in `public/js/ui`
 
 ## Project Structure
 
@@ -49,9 +75,12 @@ two-js-invn/
 |   |       |-- add-category.ejs
 |   |       |-- add-item.ejs
 |   |       |-- barcode-scanner.ejs
+|   |       |-- exclude-adjustment-row.ejs
+|   |       |-- flash-feedback.ejs
 |   |       |-- out-of-stock.ejs
 |   |       |-- report-details.ejs
-|   |       `-- stock-notifications.ejs
+|   |       |-- stock-notifications.ejs
+|   |       `-- transaction-payment.ejs
 |   |-- dashboard/
 |   |   |-- 404.ejs
 |   |   |-- adjust-cost.ejs
@@ -62,90 +91,109 @@ two-js-invn/
 |   |   |-- history.ejs
 |   |   |-- inventory.ejs
 |   |   |-- item-history.ejs
+|   |   |-- price-lookup.ejs
 |   |   |-- reports.ejs
 |   |   |-- transaction.ejs
 |   |   `-- view-item.ejs
 |   `-- includes/
 |       |-- footer.ejs
 |       `-- header.ejs
+|-- .env
 |-- package.json
 `-- package-lock.json
 ```
 
+## Main Features
+
+- Login-protected dashboard pages
+- Inventory table with searchable items
+- Add item modal with barcode scan and image upload support
+- Add category modal with duplicate-category protection
+- Bulk adjustments for:
+  - OH quantity
+  - Min/max quantity
+  - Cost
+  - Price
+  - Category
+- Adjustment history pages for:
+  - OH quantity
+  - Min/max quantity
+  - Cost
+  - Price
+- Item history hub page per item
+- Read-only item detail pages
+- Global history page
+- Live price lookup page
+- Transaction page with payment modal and stock deduction
+- Reports page with transaction detail modal
+- Global stock notifications modal
+- Session-based feedback modal for success and error messages
+
 ## Folder Guide
 
-- `api`: JSON endpoints used by the dashboard UI.
-- `auth`: Login, logout, and session-related routes.
-- `certs`: Local HTTPS certificate files used by the development server.
-- `dashboard`: Inventory, transaction, and report page routes.
-- `database`: Shared MySQL pool setup and SQL schema.
-- `includes`: Shared helper functions.
-- `middleware`: Authentication and shared view-local middleware.
-- `public`: Frontend CSS and split browser-side JavaScript modules.
-- `views/auth`: Authentication templates.
+- `api`: JSON endpoints used by frontend features.
+- `auth`: Login and logout routes.
+- `dashboard`: Main page routes for inventory, transaction, history, price lookup, and reports.
+- `database`: MySQL pool setup and starter SQL schema.
+- `includes`: Shared helpers such as flash messages and formatters.
+- `middleware`: Authentication checks and shared view locals.
+- `public/css`: App-wide styles.
+- `public/js/ui`: Split frontend scripts for focused UI behavior.
 - `views/components/modals`: Reusable modal partials.
-- `views/dashboard`: Main dashboard page templates.
-- `views/includes`: Shared header and footer partials.
-
-## Stack
-
-- Node.js
-- Express
-- EJS
-- MySQL
-- `express-session`
-- Tailwind CSS via CDN
-- HTTPS local server
-
-## Included Features
-
-- Login and logout
-- Inventory list
-- Add item
-- Add category
-- Read-only item details page
-- Bulk adjustments page for OH qty, min/max qty, cost, price, and category
-- Item history hub
-- OH qty adjustment history
-- Min/max qty adjustment history
-- Stock notifications
-- Barcode scanning and barcode image upload
-- Transaction checkout with stock deduction
-- Sales reports with detail modal
-- Price adjustment history
-- Cost adjustment history
+- `views/dashboard`: Main EJS page templates.
+- `views/includes`: Shared page shell partials.
 
 ## Setup
 
 1. Install Node.js.
-2. Create a `.env` file if you do not have one yet.
-3. Update the database values in `.env`.
-4. Set `DB_USER` and `DB_PASSWORD` to a MySQL account that can access `DB_NAME`.
-5. If your local MySQL `root` user has a password, put that value in `DB_PASSWORD`. Leaving it blank makes the app connect with no password.
-6. Import [database.sql](/c:/Users/JESAMINE/Desktop/twojs/database/database.sql) into MySQL if needed.
-7. Run `npm install`
-8. Run `npm start`
-9. Open `https://localhost:4000`
+2. Run `npm install`.
+3. Create a `.env` file.
+4. Set your database values in `.env`.
+5. Import [database.sql](/c:/Users/JESAMINE/Desktop/twojs/database/database.sql) into MySQL.
+6. Run `npm start`.
+7. Open `https://localhost:4000`.
 
-## Access From Android Phone
+## Example `.env`
 
-1. Make sure your PC and Android phone are connected to the same Wi-Fi network.
-2. Start the app with `npm start`.
-3. Check the terminal for a message like `https://192.168.x.x:4000`.
-4. Open that URL in your Android phone's browser.
+```env
+PORT=4000
+HOST=0.0.0.0
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=twojs
+DB_USER=root
+DB_PASSWORD=
+SESSION_SECRET=change-this-secret
+SSL_KEY_PATH=certs/localhost-key.pem
+SSL_CERT_PATH=certs/localhost.pem
+```
+
+## Available Scripts
+
+- `npm start`: Start the HTTPS server.
+- `npm run dev`: Start the app with Node watch mode.
+
+## Mobile Testing
+
+### Android or iPhone on the same Wi-Fi
+
+1. Start the app with `npm start`.
+2. Check the terminal output for your LAN URL such as `https://192.168.x.x:4000`.
+3. Open that URL on your phone.
 
 If the phone cannot connect:
 
-- Make sure Windows Firewall allows inbound access on port `4000`.
-- Keep the app running on your PC while using the phone.
-- If you changed the port in `.env`, use that port instead of `4000`.
+- Make sure the phone and PC are on the same network.
+- Make sure Windows Firewall allows port `4000`.
+- Keep the app running while testing.
+- If you changed `PORT`, use that port instead.
 
 ## Notes
 
-- Tailwind is loaded from the CDN, so there is no separate build step.
-- The backend is split into `auth`, `dashboard`, `api`, `database`, `middleware`, and `includes`.
-- The dashboard routes are split into focused route files instead of one large server file.
-- The browser UI logic is split into focused scripts inside `public/js/ui`.
-- The views are organized into `views/auth`, `views/dashboard`, `views/components/modals`, and `views/includes`.
-- Inventory field editing now happens through the `Adjustments` page, while item and history pages are read-only.
-- Cost, price, OH qty, and min/max qty changes are recorded in history tables and can be reviewed from the `History` section.
+- The server checks the database connection before it starts accepting requests.
+- Static files are served from `/public`.
+- Sessions use secure cookies because the app runs on HTTPS.
+- Flash messages are displayed through a shared modal instead of an inline banner.
+- Item detail and item history pages are read-only. Inventory field changes are handled through the `Adjustments` page.
+- The adjustments page only toggles row selection from the `Select`, `Item Number`, and `Name` columns.
+- iPhone input zoom has been reduced by enforcing a 16px font size on editable mobile fields.
