@@ -48,7 +48,7 @@
         <tbody class="divide-y divide-slate-200">
           <% if (items.length) { items.forEach((item) => { %>
             <tr data-row data-adjustment-row class="hover:bg-slate-50">
-              <td data-label="Select" class="px-4 py-3">
+              <td data-label="Select" data-adjustment-row-toggle class="px-4 py-3">
                 <input
                   type="checkbox"
                   name="selected_item_ids[]"
@@ -57,8 +57,8 @@
                   class="h-6 w-6 rounded-md border-slate-300 text-amber-500 focus:ring-amber-500"
                 >
               </td>
-              <td data-label="Item Number" class="px-4 py-3 font-medium"><%= item.barcode %></td>
-              <td data-label="Name" class="px-4 py-3"><%= item.name %></td>
+              <td data-label="Item Number" data-adjustment-row-toggle class="px-4 py-3 font-medium"><%= item.barcode %></td>
+              <td data-label="Name" data-adjustment-row-toggle class="px-4 py-3"><%= item.name %></td>
               <td data-label="Category" class="px-4 py-3"><%= item.category_name || "No Category" %></td>
               <td data-label="Current" class="px-4 py-3 text-xs text-slate-500">
                 OH: <%= item.quantity %><br>
