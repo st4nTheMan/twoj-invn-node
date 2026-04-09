@@ -3,13 +3,13 @@ const pool = require("../database/pool");
 const { requireLogin } = require("../middleware/auth");
 const {
   flash,
-  setAddItemState,
   toUppercaseText
 } = require("../includes/helpers");
 
 // Defines inventory pages and form actions for items and categories.
 const router = express.Router();
 
+// Parses a non-negative whole number and returns null for invalid values.
 function parseWholeNumber(value) {
   const normalized = String(value ?? "").trim();
 
@@ -26,6 +26,7 @@ function parseWholeNumber(value) {
   return parsedValue;
 }
 
+// Extracts submitted item field groups from nested or flattened form payloads.
 function extractSubmittedItems(body) {
   const extractedItems = {};
 
@@ -54,6 +55,7 @@ function extractSubmittedItems(body) {
   return extractedItems;
 }
 
+// Resolves a submitted field value from JSON payloads, grouped items, or raw form keys.
 function getSubmittedField({ body, submittedItems, payloadItem, itemId, fieldName }) {
   if (payloadItem && payloadItem[fieldName] !== undefined) {
     return payloadItem[fieldName];
@@ -72,14 +74,21 @@ function getSubmittedField({ body, submittedItems, payloadItem, itemId, fieldNam
   return undefined;
 }
 
+// Detects whether the incoming request body was sent as JSON.
 function isJsonRequest(req) {
   return String(req.get("content-type") || "").includes("application/json");
 }
 
+// Detects whether the caller expects a JSON response instead of a redirect.
+function wantsJsonResponse(req) {
+  return req.xhr || String(req.get("accept") || "").includes("application/json");
+}
+
+// Sends a shared success or error result for bulk adjustment submissions.
 function respondAdjustmentResult(req, res, type, message) {
   flash(req, { type, message });
 
-  if (isJsonRequest(req)) {
+  if (isJsonRequest(req) || wantsJsonResponse(req)) {
     return res.status(type === "success" ? 200 : 400).json({
       ok: type === "success",
       redirectUrl: "/inventory/adjustments"
@@ -204,29 +213,29 @@ router.post("/inventory/items", requireLogin, async (req, res) => {
   const minQuantity = Number(req.body.min_quantity || 0);
   const maxQuantity = Number(req.body.max_quantity || 1);
   const categoryId = req.body.category_id ? Number(req.body.category_id) : null;
-
-  setAddItemState(req, {
-    openModal: "add-item-modal",
-    error: "",
-    old: {
-      barcode,
-      name,
-      cost,
-      price,
-      quantity,
-      min_quantity: minQuantity,
-      max_quantity: maxQuantity,
-      category_id: categoryId || ""
-    }
-  });
+  const jsonResponse = wantsJsonResponse(req);
 
   if (!barcode || !name || !cost || !price) {
-    req.session.addItemState.error = "Item number, name, cost, and price are required.";
+    if (jsonResponse) {
+      return res.status(400).json({
+        ok: false,
+        message: "Item number, name, cost, and price are required."
+      });
+    }
+
+    flash(req, { type: "error", message: "Item number, name, cost, and price are required." });
     return res.redirect("/inventory");
   }
 
   if (maxQuantity < minQuantity) {
-    req.session.addItemState.error = "Maximum quantity must be greater than or equal to minimum quantity.";
+    if (jsonResponse) {
+      return res.status(400).json({
+        ok: false,
+        message: "Maximum quantity must be greater than or equal to minimum quantity."
+      });
+    }
+
+    flash(req, { type: "error", message: "Maximum quantity must be greater than or equal to minimum quantity." });
     return res.redirect("/inventory");
   }
 
@@ -237,22 +246,53 @@ router.post("/inventory/items", requireLogin, async (req, res) => {
     );
 
     if (existing[0].count > 0) {
-      req.session.addItemState.error = "Item number already exists.";
+      if (jsonResponse) {
+        return res.status(400).json({
+          ok: false,
+          message: "Item number already exists."
+        });
+      }
+
+      flash(req, { type: "error", message: "Item number already exists." });
       return res.redirect("/inventory");
     }
 
-    await pool.query(
+    const [insertResult] = await pool.query(
       `INSERT INTO items (barcode, name, cost, price, quantity, min_quantity, max_quantity, category_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [barcode, name, cost, price, quantity, minQuantity, maxQuantity, categoryId]
     );
 
-    delete req.session.addItemState;
+    if (jsonResponse) {
+      const [rows] = await pool.query(
+        `SELECT items.*, categories.category_name
+         FROM items
+         LEFT JOIN categories ON items.category_id = categories.id
+         WHERE items.id = ?
+         LIMIT 1`,
+        [insertResult.insertId]
+      );
+
+      return res.status(201).json({
+        ok: true,
+        message: "Item added successfully.",
+        item: rows[0] || null
+      });
+    }
+
     flash(req, { type: "success", message: "Item added successfully." });
     return res.redirect("/inventory");
   } catch (error) {
     console.error("Failed to save item:", error);
-    req.session.addItemState.error = "Unable to save item right now.";
+
+    if (jsonResponse) {
+      return res.status(500).json({
+        ok: false,
+        message: "Unable to save item right now."
+      });
+    }
+
+    flash(req, { type: "error", message: "Unable to save item right now." });
     return res.redirect("/inventory");
   }
 });
@@ -269,8 +309,16 @@ router.post("/inventory/items/:id", requireLogin, async (req, res) => {
 // Creates a new category directly from the inventory page modal.
 router.post("/inventory/categories", requireLogin, async (req, res) => {
   const categoryName = toUppercaseText(req.body.category_name);
+  const jsonResponse = wantsJsonResponse(req);
 
   if (!categoryName) {
+    if (jsonResponse) {
+      return res.status(400).json({
+        ok: false,
+        message: "Category name is required."
+      });
+    }
+
     flash(req, { type: "error", message: "Category name is required." });
     return res.redirect("/inventory");
   }
@@ -282,19 +330,45 @@ router.post("/inventory/categories", requireLogin, async (req, res) => {
     );
 
     if (existing.length) {
+      if (jsonResponse) {
+        return res.status(400).json({
+          ok: false,
+          message: "Category already exists."
+        });
+      }
+
       flash(req, { type: "error", message: "Category already exists." });
       return res.redirect("/inventory");
     }
 
-    await pool.query(
+    const [insertResult] = await pool.query(
       "INSERT INTO categories (category_name) VALUES (?)",
       [categoryName]
     );
+
+    if (jsonResponse) {
+      return res.status(201).json({
+        ok: true,
+        message: "Category saved successfully.",
+        category: {
+          id: insertResult.insertId,
+          category_name: categoryName
+        }
+      });
+    }
 
     flash(req, { type: "success", message: "Category saved successfully." });
     return res.redirect("/inventory");
   } catch (error) {
     console.error("Failed to save category:", error);
+
+    if (jsonResponse) {
+      return res.status(500).json({
+        ok: false,
+        message: "Unable to save category right now."
+      });
+    }
+
     flash(req, { type: "error", message: "Unable to save category right now." });
     return res.redirect("/inventory");
   }
@@ -533,6 +607,7 @@ router.post("/inventory/items/:id/price", requireLogin, async (req, res) => {
 // Saves one type of adjustment for all checked items in a single transaction.
 router.post("/inventory/adjustments", requireLogin, async (req, res) => {
   const jsonRequest = isJsonRequest(req);
+  const jsonResponse = jsonRequest || wantsJsonResponse(req);
   let adjustmentType = "";
   let payloadRows = [];
 
@@ -563,7 +638,7 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
     .map((row) => Number(row?.item_id))
     .filter((value) => Number.isInteger(value) && value > 0);
   const uniqueIds = [...new Set(payloadIds.length ? payloadIds : parsedIds)];
-  const submittedItems = jsonRequest ? {} : extractSubmittedItems(req.body);
+  const submittedItems = jsonResponse ? {} : extractSubmittedItems(req.body);
   const validTypes = new Set(["quantity", "min_max", "cost", "price", "category"]);
 
   if (!validTypes.has(adjustmentType)) {
@@ -747,6 +822,25 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
     }
 
     await connection.commit();
+
+    if (jsonResponse) {
+      const [updatedRows] = await pool.query(
+        `SELECT items.id, items.quantity, items.min_quantity, items.max_quantity, items.cost, items.price, items.category_id, categories.category_name
+         FROM items
+         LEFT JOIN categories ON items.category_id = categories.id
+         WHERE items.id IN (?)
+         ORDER BY items.id ASC`,
+        [uniqueIds]
+      );
+
+      return res.status(200).json({
+        ok: true,
+        message: "Selected items updated successfully.",
+        adjustmentType,
+        items: updatedRows
+      });
+    }
+
     return respondAdjustmentResult(req, res, "success", "Selected items updated successfully.");
   } catch (error) {
     await connection.rollback();

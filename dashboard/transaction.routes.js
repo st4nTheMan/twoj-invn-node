@@ -6,6 +6,11 @@ const { flash, formatInvoice } = require("../includes/helpers");
 // Defines transaction pages and checkout actions.
 const router = express.Router();
 
+// Detects whether the caller expects a JSON response instead of a redirect.
+function wantsJsonResponse(req) {
+  return req.xhr || String(req.get("accept") || "").includes("application/json");
+}
+
 // Loads the checkout page with currently available inventory items.
 router.get("/transaction", requireLogin, async (req, res) => {
   try {
@@ -13,7 +18,7 @@ router.get("/transaction", requireLogin, async (req, res) => {
       `SELECT items.*, categories.category_name
        FROM items
        LEFT JOIN categories ON items.category_id = categories.id
-       ORDER BY items.id DESC`
+       ORDER BY items.name ASC`
     );
 
     return res.render("dashboard/transaction", {
@@ -32,6 +37,7 @@ router.get("/transaction", requireLogin, async (req, res) => {
 
 // Processes a checkout transaction and updates stock inside a database transaction.
 router.post("/transaction", requireLogin, async (req, res) => {
+  const jsonResponse = wantsJsonResponse(req);
   const itemIds = Array.isArray(req.body.item_id)
     ? req.body.item_id
     : req.body.item_id
@@ -49,6 +55,13 @@ router.post("/transaction", requireLogin, async (req, res) => {
       : [];
 
   if (!itemIds.length) {
+    if (jsonResponse) {
+      return res.status(400).json({
+        ok: false,
+        message: "Select at least one item before checkout."
+      });
+    }
+
     flash(req, { type: "error", message: "Select at least one item before checkout." });
     return res.redirect("/transaction");
   }
@@ -112,11 +125,36 @@ router.post("/transaction", requireLogin, async (req, res) => {
     }
 
     await connection.commit();
+
+    if (jsonResponse) {
+      const uniqueItemIds = [...new Set(itemIds.map((value) => Number(value)).filter(Boolean))];
+      const [updatedItems] = await pool.query(
+        "SELECT id, quantity FROM items WHERE id IN (?) ORDER BY id ASC",
+        [uniqueItemIds]
+      );
+
+      return res.status(200).json({
+        ok: true,
+        message: `Transaction ${formatInvoice(transactionId)} completed.`,
+        transactionId,
+        invoice: formatInvoice(transactionId),
+        items: updatedItems
+      });
+    }
+
     flash(req, { type: "success", message: `Transaction ${formatInvoice(transactionId)} completed.` });
     return res.redirect("/transaction");
   } catch (error) {
     await connection.rollback();
     console.error("Transaction failed:", error);
+
+    if (jsonResponse) {
+      return res.status(400).json({
+        ok: false,
+        message: error.message || "Transaction failed."
+      });
+    }
+
     flash(req, { type: "error", message: error.message || "Transaction failed." });
     return res.redirect("/transaction");
   } finally {

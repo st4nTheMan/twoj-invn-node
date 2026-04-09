@@ -1,8 +1,9 @@
 <% /* Global modal for one-time success or error feedback after redirects. */ %>
-<section id="flash-feedback-modal" data-modal data-auto-close-ms="3000" class="hidden fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 sm:p-6">
-  <div class="my-8 w-full max-w-md rounded-3xl border px-6 py-5 shadow-2xl <%= flash.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-rose-200 bg-rose-50 text-rose-900' %>">
+<% const feedback = flash || { type: "success", message: "" }; %>
+<section id="flash-feedback-modal" data-modal data-auto-close-ms="1500" class="hidden fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 sm:p-6">
+  <div id="flash-feedback-card" class="my-8 w-full max-w-md rounded-3xl border px-6 py-5 shadow-2xl <%= feedback.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-rose-200 bg-rose-50 text-rose-900' %>">
     <div class="text-center">
-      <p class="text-sm font-medium"><%= flash.message %></p>
+      <p id="flash-feedback-message" class="text-sm font-medium"><%= feedback.message %></p>
     </div>
   </div>
 </section>

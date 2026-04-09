@@ -5,9 +5,7 @@
   InventoryUi.onReady(() => {
     const addItemModal = document.getElementById("add-item-modal");
     const addBarcodeInput = document.getElementById("barcode");
-    const viewBarcodeInput = document.getElementById("view_item_barcode");
     const openBarcodeScannerButton = document.getElementById("open-barcode-scanner");
-    const openViewBarcodeScannerButton = document.getElementById("open-view-barcode-scanner");
     const barcodeScannerModal = document.getElementById("barcode-scanner-modal");
     const barcodeScannerViewport = document.getElementById("barcode-scanner-viewport");
     const barcodeScannerStatus = document.getElementById("barcode-scanner-status");
@@ -34,14 +32,16 @@
       "codabar_reader"
     ];
 
-    if (!barcodeScannerModal || (!addBarcodeInput && !viewBarcodeInput)) {
+    if (!barcodeScannerModal || !addBarcodeInput) {
       return;
     }
 
+    // Checks whether the current hostname is a local development address.
     function isLocalHostname(hostname) {
       return ["localhost", "127.0.0.1", "::1"].includes(hostname);
     }
 
+    // Normalizes camera access support across modern and legacy browser APIs.
     function ensureCameraApi() {
       if (navigator.mediaDevices?.getUserMedia) {
         return true;
@@ -69,6 +69,7 @@
       return true;
     }
 
+    // Returns a user-facing message when camera scanning is not available.
     function getCameraSupportError() {
       const hostname = window.location.hostname;
       const isSecureOrigin = window.isSecureContext || isLocalHostname(hostname);
@@ -84,6 +85,7 @@
       return null;
     }
 
+    // Updates the scanner status panel with normal or error styling.
     function setBarcodeScannerStatus(message, isError = false) {
       if (!barcodeScannerStatus) return;
 
@@ -93,6 +95,7 @@
         : "rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600";
     }
 
+    // Forces scanner video and canvas layers to fill the preview viewport.
     function syncBarcodeScannerViewport() {
       if (!barcodeScannerViewport) return;
 
@@ -109,6 +112,7 @@
       });
     }
 
+    // Releases any preview object URL created for uploaded barcode images.
     function clearBarcodePreview() {
       if (barcodePreviewUrl) {
         URL.revokeObjectURL(barcodePreviewUrl);
@@ -116,12 +120,14 @@
       }
     }
 
+    // Clears the uploaded barcode image input so the same file can be reselected.
     function resetBarcodeImageInput() {
       if (barcodeImageInput) {
         barcodeImageInput.value = "";
       }
     }
 
+    // Resets the scanner preview UI back to its empty state.
     function resetBarcodeScannerUi() {
       clearBarcodePreview();
       resetBarcodeImageInput();
@@ -131,6 +137,7 @@
       }
     }
 
+    // Stops live scanning, unregisters listeners, and clears transient scanner state.
     function stopBarcodeScanner() {
       if (window.Quagga && barcodeDetectedHandler) {
         window.Quagga.offDetected(barcodeDetectedHandler);
@@ -156,6 +163,7 @@
       resetBarcodeScannerUi();
     }
 
+    // Calculates the average decode error for a detected barcode result.
     function getBarcodeAverageError(result) {
       const errors = (result?.codeResult?.decodedCodes || [])
         .map((entry) => entry?.error)
@@ -168,11 +176,13 @@
       return errors.reduce((total, value) => total + value, 0) / errors.length;
     }
 
+    // Decides whether an uploaded-image decode result is reliable enough to use.
     function isUploadBarcodeResultReliable(result) {
       const averageError = getBarcodeAverageError(result);
       return averageError <= UPLOAD_BARCODE_MAX_AVERAGE_ERROR;
     }
 
+    // Tracks repeated live detections so only stable barcode reads are accepted.
     function registerBarcodeDetection(code, result) {
       const averageError = getBarcodeAverageError(result);
 
@@ -199,6 +209,7 @@
       return { accepted: true, message: `Scanned barcode: ${code}` };
     }
 
+    // Writes the scanned barcode into the target input and returns to the source modal.
     function finishBarcodeScan(code, message) {
       if (!activeBarcodeInput) return;
 
@@ -222,6 +233,7 @@
       targetInput.focus();
     }
 
+    // Renders a preview of an uploaded barcode image inside the scanner modal.
     function renderBarcodePreview(file) {
       if (!barcodeScannerViewport || !file) return;
 
@@ -236,6 +248,7 @@
       barcodeScannerViewport.appendChild(image);
     }
 
+    // Loads an uploaded file into an Image object for barcode decoding.
     function loadImageFromFile(file) {
       return new Promise((resolve, reject) => {
         const imageUrl = URL.createObjectURL(file);
@@ -255,6 +268,7 @@
       });
     }
 
+    // Builds a canvas variant of an image with optional crop and image adjustments.
     function createCanvasFromImage(image, options = {}) {
       const {
         rotation = 0,
@@ -341,6 +355,7 @@
       return canvas;
     }
 
+    // Generates several image variants to improve upload barcode detection.
     function createUploadDecodeVariants(image) {
       const width = image.naturalWidth || image.width;
       const height = image.naturalHeight || image.height;
@@ -376,6 +391,7 @@
       ];
     }
 
+    // Runs Quagga against one barcode source and resolves with the decode result.
     function decodeBarcodeSource(source) {
       return new Promise((resolve) => {
         window.Quagga.decodeSingle(
@@ -396,10 +412,11 @@
       });
     }
 
+    // Attempts to decode a barcode from an uploaded image file.
     async function decodeBarcodeFromImage(file) {
       if (!file || !barcodeScannerModal || !barcodeScannerViewport) return;
 
-      activeBarcodeInput = activeBarcodeInput || addBarcodeInput || viewBarcodeInput;
+      activeBarcodeInput = activeBarcodeInput || addBarcodeInput;
       stopBarcodeScanner();
       renderBarcodePreview(file);
       InventoryUi.openModal?.("barcode-scanner-modal");
@@ -439,6 +456,7 @@
       }
     }
 
+    // Starts live camera barcode scanning for the provided input field.
     function startBarcodeScanner(targetInput, modalIdToReturn = null) {
       if (!barcodeScannerModal || !barcodeScannerViewport || !targetInput) return;
 
@@ -541,12 +559,6 @@
         }
 
         startBarcodeScanner(addBarcodeInput, "add-item-modal");
-      });
-    }
-
-    if (openViewBarcodeScannerButton && viewBarcodeInput) {
-      openViewBarcodeScannerButton.addEventListener("click", () => {
-        startBarcodeScanner(viewBarcodeInput, null);
       });
     }
 

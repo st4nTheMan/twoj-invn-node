@@ -1,3 +1,4 @@
+// Initializes the bulk adjustments page interactions once the script loads.
 // Controls the bulk adjustments page so only checked rows expose the active field.
 (function initAdjustmentsUi() {
   const InventoryUi = window.InventoryUi || {};
@@ -7,9 +8,8 @@
     if (!root) return;
 
     const modalId = "exclude-adjustment-row-modal";
-    const form = root.querySelector("form");
+    const form = document.getElementById("adjustments-form");
     const typeInput = document.getElementById("adjustment-type");
-    const payloadInput = document.getElementById("adjustment-payload");
     const adjustmentsJsonInput = document.getElementById("adjustments-json");
     const saveButton = document.getElementById("adjustments-save-button");
     const modeButtons = root.querySelectorAll("[data-adjustment-mode]");
@@ -28,20 +28,21 @@
     let pendingMode = null;
     let suppressCheckboxChange = false;
 
+    // Enables or disables the save button while preserving the disabled styling.
+    function setSaveButtonDisabled(disabled) {
+      if (!saveButton) return;
+
+      saveButton.disabled = disabled;
+      saveButton.classList.toggle("opacity-50", disabled);
+      saveButton.classList.toggle("cursor-not-allowed", disabled);
+    }
+
+    // Returns the editable inputs in a row for the currently active adjustment mode.
     function getInputsForMode(row, mode) {
       return row.querySelectorAll(`[data-adjustment-input="${mode}"]`);
     }
 
-    function syncAdjustmentPayload() {
-      if (!payloadInput) return;
-
-      const payload = rows
-        .map((row) => buildRowPayload(row))
-        .filter(Boolean);
-
-      payloadInput.value = JSON.stringify(payload);
-    }
-
+    // Builds the payload for one checked row based on the active adjustment mode.
     function buildRowPayload(row) {
       const checkbox = row.querySelector("[data-adjustment-checkbox]");
       if (!checkbox || !checkbox.checked) return null;
@@ -91,6 +92,7 @@
       return null;
     }
 
+    // Mirrors the visible category selection into its hidden form field.
     function syncCategoryHiddenValue(row) {
       const select = row.querySelector('[data-adjustment-input="category"]');
       const hiddenInput = row.querySelector('[data-adjustment-hidden="category"]');
@@ -100,6 +102,7 @@
       hiddenInput.value = select.value;
     }
 
+    // Mirrors a visible input value into the matching hidden form field.
     function syncHiddenValue(row, inputType, hiddenType = inputType, inputIndex = 0) {
       const inputs = row.querySelectorAll(`[data-adjustment-input="${inputType}"]`);
       const input = inputs[inputIndex];
@@ -110,22 +113,27 @@
       hiddenInput.value = input.value;
     }
 
+    // Reads the original server-provided value stored for an input.
     function getOriginalValue(input) {
       return String(input.dataset.originalValue || "");
     }
 
+    // Checks whether a single input has changed from its original value.
     function isInputEdited(input) {
       return String(input.value || "") !== getOriginalValue(input);
     }
 
+    // Checks whether any editable field in the row has been changed.
     function isRowEdited(row) {
       return Array.from(row.querySelectorAll("[data-adjustment-input]")).some(isInputEdited);
     }
 
+    // Checks whether the active mode fields in a row have been changed.
     function isRowEditedForMode(row, mode) {
       return Array.from(getInputsForMode(row, mode)).some(isInputEdited);
     }
 
+    // Detects whether any checked rows contain unsaved edits for the given mode.
     function hasEditedCheckedRowsForMode(mode) {
       return Array.from(rows).some((row) => {
         const checkbox = row.querySelector("[data-adjustment-checkbox]");
@@ -133,6 +141,7 @@
       });
     }
 
+    // Restores all visible and hidden row values back to their original state.
     function resetRowValues(row) {
       row.querySelectorAll("[data-adjustment-input]").forEach((input) => {
         input.value = getOriginalValue(input);
@@ -143,6 +152,7 @@
       });
     }
 
+    // Updates a row checkbox without triggering the manual change handler logic.
     function setRowChecked(row, checked) {
       const checkbox = row.querySelector("[data-adjustment-checkbox]");
       if (!checkbox) return;
@@ -152,12 +162,14 @@
       suppressCheckboxChange = false;
     }
 
+    // Closes the discard confirmation modal if the shared modal helper exists.
     function closeExcludeModal() {
       if (InventoryUi.closeModal) {
         InventoryUi.closeModal(document.getElementById(modalId));
       }
     }
 
+    // Opens the discard confirmation modal with the provided message.
     function openDiscardModal(message) {
       if (excludeMessage) {
         excludeMessage.textContent = message;
@@ -168,6 +180,7 @@
       }
     }
 
+    // Handles row deselection and prompts when that row has unsaved edits.
     function handleUncheck(row) {
       if (isRowEdited(row)) {
         pendingRow = row;
@@ -181,6 +194,7 @@
       syncAllRows();
     }
 
+    // Clears checked rows and discards edits for the current adjustment mode.
     function discardCheckedRowsForMode(mode) {
       rows.forEach((row) => {
         const checkbox = row.querySelector("[data-adjustment-checkbox]");
@@ -197,6 +211,7 @@
       });
     }
 
+    // Refreshes one row's checked state, highlight, and input enabled state.
     function syncRow(row) {
       const checkbox = row.querySelector("[data-adjustment-checkbox]");
       const isChecked = Boolean(checkbox && checkbox.checked);
@@ -220,6 +235,7 @@
       });
     }
 
+    // Re-applies the current UI state across all rows and updates save affordance.
     function syncAllRows() {
       let checkedCount = 0;
 
@@ -237,6 +253,7 @@
       }
     }
 
+    // Switches the active adjustment mode and shows only that mode's columns.
     function setMode(mode) {
       typeInput.value = mode;
 
@@ -378,12 +395,149 @@
           syncHiddenValue(row, "price");
           syncCategoryHiddenValue(row);
         });
-        syncAdjustmentPayload();
       });
     }
 
+    // Rebuilds the row's current-value summary after a successful save.
+    function updateCurrentSummary(row, item) {
+      const currentCell = row.querySelector("[data-adjustment-current]");
+      if (!currentCell || !item) return;
+
+      currentCell.innerHTML = [
+        `OH: ${Number(item.quantity || 0)}`,
+        `Min/Max: ${Number(item.min_quantity || 0)}/${Number(item.max_quantity || 0)}`,
+        `Cost: PHP ${Number(item.cost || 0).toFixed(2)}`,
+        `Price: PHP ${Number(item.price || 0).toFixed(2)}`
+      ].join("<br>");
+    }
+
+    // Applies the saved item values back into the row and resets edit tracking.
+    function applyUpdatedItem(row, item) {
+      if (!row || !item) return;
+
+      const quantityHidden = row.querySelector('[data-adjustment-hidden="quantity"]');
+      const minHidden = row.querySelector('[data-adjustment-hidden="min_quantity"]');
+      const maxHidden = row.querySelector('[data-adjustment-hidden="max_quantity"]');
+      const costHidden = row.querySelector('[data-adjustment-hidden="cost"]');
+      const priceHidden = row.querySelector('[data-adjustment-hidden="price"]');
+      const categoryHidden = row.querySelector('[data-adjustment-hidden="category"]');
+      const quantityInput = row.querySelector('[data-adjustment-input="quantity"]');
+      const minMaxInputs = row.querySelectorAll('[data-adjustment-input="min_max"]');
+      const costInput = row.querySelector('[data-adjustment-input="cost"]');
+      const priceInput = row.querySelector('[data-adjustment-input="price"]');
+      const categoryInput = row.querySelector('[data-adjustment-input="category"]');
+      const categoryCell = row.querySelector('[data-label="Category"]');
+
+      if (quantityHidden) {
+        quantityHidden.value = String(item.quantity ?? 0);
+        quantityHidden.dataset.originalValue = String(item.quantity ?? 0);
+      }
+      if (quantityInput) {
+        quantityInput.value = String(item.quantity ?? 0);
+        quantityInput.dataset.originalValue = String(item.quantity ?? 0);
+      }
+
+      if (minHidden) {
+        minHidden.value = String(item.min_quantity ?? 0);
+        minHidden.dataset.originalValue = String(item.min_quantity ?? 0);
+      }
+      if (minMaxInputs[0]) {
+        minMaxInputs[0].value = String(item.min_quantity ?? 0);
+        minMaxInputs[0].dataset.originalValue = String(item.min_quantity ?? 0);
+      }
+
+      if (maxHidden) {
+        maxHidden.value = String(item.max_quantity ?? 0);
+        maxHidden.dataset.originalValue = String(item.max_quantity ?? 0);
+      }
+      if (minMaxInputs[1]) {
+        minMaxInputs[1].value = String(item.max_quantity ?? 0);
+        minMaxInputs[1].dataset.originalValue = String(item.max_quantity ?? 0);
+      }
+
+      if (costHidden) {
+        costHidden.value = String(item.cost ?? 0);
+        costHidden.dataset.originalValue = String(item.cost ?? 0);
+      }
+      if (costInput) {
+        costInput.value = String(item.cost ?? 0);
+        costInput.dataset.originalValue = String(item.cost ?? 0);
+      }
+
+      if (priceHidden) {
+        priceHidden.value = String(item.price ?? 0);
+        priceHidden.dataset.originalValue = String(item.price ?? 0);
+      }
+      if (priceInput) {
+        priceInput.value = String(item.price ?? 0);
+        priceInput.dataset.originalValue = String(item.price ?? 0);
+      }
+
+      if (categoryHidden) {
+        categoryHidden.value = String(item.category_id ?? "");
+        categoryHidden.dataset.originalValue = String(item.category_id ?? "");
+      }
+      if (categoryInput) {
+        categoryInput.value = String(item.category_id ?? "");
+        categoryInput.dataset.originalValue = String(item.category_id ?? "");
+      }
+      if (categoryCell) {
+        categoryCell.textContent = item.category_name || "No Category";
+      }
+
+      updateCurrentSummary(row, item);
+      setRowChecked(row, false);
+    }
+
+    // Submits the selected adjustments asynchronously and applies the response.
+    async function submitAdjustments() {
+      if (!form || !adjustmentsJsonInput) {
+        return;
+      }
+
+      const formData = new FormData(form);
+      const body = new URLSearchParams();
+      for (const [key, value] of formData.entries()) {
+        body.append(key, String(value));
+      }
+
+      setSaveButtonDisabled(true);
+
+      try {
+        const response = await fetch(form.action, {
+          method: form.method,
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            "X-Requested-With": "XMLHttpRequest"
+          },
+          body: body.toString()
+        });
+        const payload = await response.json();
+
+        if (!response.ok || !payload.ok) {
+          InventoryUi.showFlashFeedback?.("error", payload.message || "Unable to save adjustments right now.");
+          return;
+        }
+
+        const updatedItems = new Map((payload.items || []).map((item) => [String(item.id), item]));
+        rows.forEach((row) => {
+          const rowItemId = row.dataset.itemId || row.querySelector("[data-adjustment-checkbox]")?.value;
+          if (!rowItemId || !updatedItems.has(String(rowItemId))) return;
+          applyUpdatedItem(row, updatedItems.get(String(rowItemId)));
+        });
+
+        syncAllRows();
+        InventoryUi.showFlashFeedback?.("success", payload.message || "Selected items updated successfully.");
+      } catch (error) {
+        InventoryUi.showFlashFeedback?.("error", "Unable to save adjustments right now.");
+      } finally {
+        setSaveButtonDisabled(false);
+      }
+    }
+
     if (saveButton) {
-      saveButton.addEventListener("click", () => {
+      saveButton.addEventListener("click", async () => {
         const checkedRows = Array.from(rows).filter((row) => {
           const checkbox = row.querySelector("[data-adjustment-checkbox]");
           return Boolean(checkbox?.checked);
@@ -406,10 +560,6 @@
           .map((row) => buildRowPayload(row))
           .filter(Boolean);
 
-        if (payloadInput) {
-          payloadInput.value = JSON.stringify(adjustments);
-        }
-
         if (adjustmentsJsonInput) {
           adjustmentsJsonInput.value = JSON.stringify({
             adjustmentType: typeInput.value,
@@ -417,7 +567,7 @@
           });
         }
 
-        form.submit();
+        await submitAdjustments();
       });
     }
 
