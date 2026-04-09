@@ -36,20 +36,18 @@ async function getStockNotifications() {
   };
 }
 
-// Populates shared EJS locals and temporary session-backed UI state.
+// Populates shared EJS locals for every rendered view.
 async function setViewLocals(req, res, next) {
   res.locals.title = "Inventory System";
   res.locals.currentPath = req.path;
   res.locals.user = req.session.user || null;
   res.locals.flash = req.session.flash || null;
-  res.locals.inventoryModalState = req.session.inventoryModalState || null;
   res.locals.formatCurrency = formatCurrency;
   res.locals.formatDateTime = formatDateTime;
   res.locals.formatInvoice = formatInvoice;
   res.locals.notifications = { lowStockItems: [], overStockItems: [], count: 0 };
 
   delete req.session.flash;
-  delete req.session.inventoryModalState;
 
   if (!req.session.user) {
     return next();

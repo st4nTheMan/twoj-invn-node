@@ -104,11 +104,6 @@
         openModal(node.dataset.openModalOnLoad);
       }
     });
-
-    const pageState = document.getElementById("page-state");
-    if (pageState?.dataset.openModal) {
-      openModal(pageState.dataset.openModal);
-    }
   });
 
   window.InventoryUi = InventoryUi;

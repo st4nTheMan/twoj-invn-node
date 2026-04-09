@@ -98,7 +98,7 @@
       select.appendChild(option);
     }
 
-    async function submitInventoryForm(form, modalId) {
+    async function submitInventoryForm(form) {
       const formData = new FormData(form);
       const body = new URLSearchParams();
 
@@ -141,7 +141,7 @@
       }
 
       event.preventDefault();
-      const payload = await submitInventoryForm(addItemForm, "add-item-modal");
+      const payload = await submitInventoryForm(addItemForm);
 
       if (!payload?.ok) {
         return;
@@ -157,7 +157,7 @@
       }
 
       event.preventDefault();
-      const payload = await submitInventoryForm(addCategoryForm, "add-category-modal");
+      const payload = await submitInventoryForm(addCategoryForm);
 
       if (!payload?.ok || !payload.category) {
         return;

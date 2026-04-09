@@ -1,12 +1,5 @@
 <% /* Main inventory dashboard page with item table and inventory modals. */ %>
 <%- include("../includes/header", { title }) %>
-<%
-  const activeModalState = inventoryModalState || {};
-  const addItemState = activeModalState.openModal === "add-item-modal" ? activeModalState : {};
-  const addItemOld = addItemState.old || {};
-  const addCategoryState = activeModalState.openModal === "add-category-modal" ? activeModalState : {};
-  const addCategoryOld = addCategoryState.old || {};
-%>
 
 <section class="mb-6 rounded-3xl bg-white p-5 shadow-soft sm:p-6">
   <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-600">Inventory</p>
@@ -73,16 +66,12 @@
   <p id="inventory-empty-search" class="hidden p-6 text-center text-sm text-slate-500">No items found.</p>
 </section>
 
-<% if (activeModalState.openModal) { %>
-  <div id="page-state" data-open-modal="<%= activeModalState.openModal %>" hidden></div>
-<% } %>
-
-<%- include("../components/modals/add-item", { state: addItemState, old: addItemOld, categories }) %>
+<%- include("../components/modals/add-item", { categories }) %>
 <%- include("../components/modals/barcode-scanner", {
   scannerMessage: "Point the camera at the barcode to fill the item number automatically.",
   enableBarcodeUpload: true,
   scannerHint: "You can scan with the camera or upload a clear barcode photo from your device."
 }) %>
-<%- include("../components/modals/add-category", { state: addCategoryState, old: addCategoryOld, categories }) %>
+<%- include("../components/modals/add-category", { categories }) %>
 
 <%- include("../includes/footer") %>

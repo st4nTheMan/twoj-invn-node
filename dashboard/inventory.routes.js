@@ -3,7 +3,6 @@ const pool = require("../database/pool");
 const { requireLogin } = require("../middleware/auth");
 const {
   flash,
-  setInventoryModalState,
   toUppercaseText
 } = require("../includes/helpers");
 
@@ -210,23 +209,6 @@ router.post("/inventory/items", requireLogin, async (req, res) => {
   const categoryId = req.body.category_id ? Number(req.body.category_id) : null;
   const jsonResponse = wantsJsonResponse(req);
 
-  if (!jsonResponse) {
-    setInventoryModalState(req, {
-      openModal: "add-item-modal",
-      error: "",
-      old: {
-        barcode,
-        name,
-        cost,
-        price,
-        quantity,
-        min_quantity: minQuantity,
-        max_quantity: maxQuantity,
-        category_id: categoryId || ""
-      }
-    });
-  }
-
   if (!barcode || !name || !cost || !price) {
     if (jsonResponse) {
       return res.status(400).json({
@@ -292,11 +274,6 @@ router.post("/inventory/items", requireLogin, async (req, res) => {
       });
     }
 
-    setInventoryModalState(req, {
-      openModal: "add-item-modal",
-      error: "",
-      old: {}
-    });
     flash(req, { type: "success", message: "Item added successfully." });
     return res.redirect("/inventory");
   } catch (error) {
@@ -327,16 +304,6 @@ router.post("/inventory/items/:id", requireLogin, async (req, res) => {
 router.post("/inventory/categories", requireLogin, async (req, res) => {
   const categoryName = toUppercaseText(req.body.category_name);
   const jsonResponse = wantsJsonResponse(req);
-
-  if (!jsonResponse) {
-    setInventoryModalState(req, {
-      openModal: "add-category-modal",
-      error: "",
-      old: {
-        category_name: categoryName
-      }
-    });
-  }
 
   if (!categoryName) {
     if (jsonResponse) {
@@ -384,13 +351,6 @@ router.post("/inventory/categories", requireLogin, async (req, res) => {
       });
     }
 
-    setInventoryModalState(req, {
-      openModal: "add-category-modal",
-      error: "",
-      old: {
-        category_name: ""
-      }
-    });
     flash(req, { type: "success", message: "Category saved successfully." });
     return res.redirect("/inventory");
   } catch (error) {

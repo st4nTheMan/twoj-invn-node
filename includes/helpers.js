@@ -37,11 +37,6 @@ function flash(req, payload) {
   req.session.flash = payload;
 }
 
-// Stores inventory modal state so the correct form can reopen after redirects.
-function setInventoryModalState(req, payload) {
-  req.session.inventoryModalState = payload;
-}
-
 // Maps common database startup errors to user-friendly troubleshooting text.
 function getDatabaseErrorMessage(error) {
   if (error?.code === "ER_ACCESS_DENIED_ERROR") {
@@ -61,6 +56,5 @@ module.exports = {
   formatDateTime,
   formatInvoice,
   getDatabaseErrorMessage,
-  setInventoryModalState,
   toUppercaseText
 };
