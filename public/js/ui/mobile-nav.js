@@ -13,6 +13,7 @@
     const openIcon = toggle.querySelector(".mobile-nav-icon-open");
     const closeIcon = toggle.querySelector(".mobile-nav-icon-close");
 
+    // Opens or closes the mobile menu and syncs the toggle button state.
     function setMenuOpen(isOpen) {
       menu.classList.toggle("hidden", !isOpen);
       toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");

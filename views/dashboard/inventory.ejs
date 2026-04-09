@@ -1,6 +1,5 @@
 <% /* Main inventory dashboard page with item table and inventory modals. */ %>
 <%- include("../includes/header", { title }) %>
-<% const state = addItemState || {}; const old = state.old || {}; %>
 
 <section class="mb-6 rounded-3xl bg-white p-5 shadow-soft sm:p-6">
   <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-600">Inventory</p>
@@ -67,11 +66,7 @@
   <p id="inventory-empty-search" class="hidden p-6 text-center text-sm text-slate-500">No items found.</p>
 </section>
 
-<% if (state.error) { %>
-  <div id="page-state" data-open-modal="add-item-modal" hidden></div>
-<% } %>
-
-<%- include("../components/modals/add-item", { state, old, categories }) %>
+<%- include("../components/modals/add-item", { categories }) %>
 <%- include("../components/modals/barcode-scanner", {
   scannerMessage: "Point the camera at the barcode to fill the item number automatically.",
   enableBarcodeUpload: true,

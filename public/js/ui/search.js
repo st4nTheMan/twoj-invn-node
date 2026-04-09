@@ -3,17 +3,19 @@
   const InventoryUi = window.InventoryUi || {};
 
   InventoryUi.onReady(() => {
+    // Wires one search input to a table body and optional empty-state message.
     function bindSearch(inputId, tableId, emptyId) {
       const searchInput = document.getElementById(inputId);
       const table = document.getElementById(tableId);
       const emptyState = document.getElementById(emptyId);
       if (!searchInput || !table) return;
 
-      const rows = table.querySelectorAll("tbody tr[data-row]");
       const hideUntilSearch = searchInput.dataset.hideUntilSearch === "true";
       const initialVisibleCount = Number(searchInput.dataset.initialVisibleCount || 0);
 
+      // Filters table rows and updates the empty-state message for the current query.
       function updateSearchResults() {
+        const rows = table.querySelectorAll("tbody tr[data-row]");
         const searchValue = searchInput.value.toLowerCase().trim();
         let visibleCount = 0;
 

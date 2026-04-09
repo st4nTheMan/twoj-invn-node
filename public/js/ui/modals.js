@@ -5,6 +5,11 @@
 
   InventoryUi.onReady(() => {
     const body = document.body;
+    const flashFeedbackModal = document.getElementById("flash-feedback-modal");
+    const flashFeedbackCard = document.getElementById("flash-feedback-card");
+    const flashFeedbackMessage = document.getElementById("flash-feedback-message");
+
+    // Opens a modal, clears prior timers, and starts any auto-close countdown.
     function openModal(modalId) {
       const modal = document.getElementById(modalId);
       if (!modal) return;
@@ -26,6 +31,7 @@
       }
     }
 
+    // Closes a modal with the shared exit animation timing.
     function closeModal(modal) {
       if (!modal) return;
       if (modal.classList.contains("hidden") || modal.dataset.modalState === "closing") return;
@@ -46,8 +52,32 @@
       }, MODAL_EXIT_DURATION_MS);
     }
 
+    // Shows the reusable flash feedback modal with success or error styling.
+    function showFlashFeedback(type, message) {
+      if (!flashFeedbackModal || !flashFeedbackCard || !flashFeedbackMessage) {
+        return;
+      }
+
+      flashFeedbackCard.className = [
+        "my-8",
+        "w-full",
+        "max-w-md",
+        "rounded-3xl",
+        "border",
+        "px-6",
+        "py-5",
+        "shadow-2xl",
+        type === "success"
+          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+          : "border-rose-200 bg-rose-50 text-rose-900"
+      ].join(" ");
+      flashFeedbackMessage.textContent = message;
+      openModal("flash-feedback-modal");
+    }
+
     InventoryUi.openModal = openModal;
     InventoryUi.closeModal = closeModal;
+    InventoryUi.showFlashFeedback = showFlashFeedback;
 
     document.querySelectorAll("[data-open-modal]").forEach((button) => {
       button.addEventListener("click", () => openModal(button.dataset.openModal));
@@ -78,11 +108,6 @@
         openModal(node.dataset.openModalOnLoad);
       }
     });
-
-    const pageState = document.getElementById("page-state");
-    if (pageState?.dataset.openModal) {
-      openModal(pageState.dataset.openModal);
-    }
   });
 
   window.InventoryUi = InventoryUi;

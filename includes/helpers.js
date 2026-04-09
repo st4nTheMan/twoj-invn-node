@@ -37,11 +37,6 @@ function flash(req, payload) {
   req.session.flash = payload;
 }
 
-// Stores the add-item modal state so the form can reopen after redirects.
-function setAddItemState(req, payload) {
-  req.session.addItemState = payload;
-}
-
 // Maps common database startup errors to user-friendly troubleshooting text.
 function getDatabaseErrorMessage(error) {
   if (error?.code === "ER_ACCESS_DENIED_ERROR") {
@@ -61,6 +56,5 @@ module.exports = {
   formatDateTime,
   formatInvoice,
   getDatabaseErrorMessage,
-  setAddItemState,
   toUppercaseText
 };
