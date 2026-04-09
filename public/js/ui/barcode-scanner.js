@@ -5,9 +5,7 @@
   InventoryUi.onReady(() => {
     const addItemModal = document.getElementById("add-item-modal");
     const addBarcodeInput = document.getElementById("barcode");
-    const viewBarcodeInput = document.getElementById("view_item_barcode");
     const openBarcodeScannerButton = document.getElementById("open-barcode-scanner");
-    const openViewBarcodeScannerButton = document.getElementById("open-view-barcode-scanner");
     const barcodeScannerModal = document.getElementById("barcode-scanner-modal");
     const barcodeScannerViewport = document.getElementById("barcode-scanner-viewport");
     const barcodeScannerStatus = document.getElementById("barcode-scanner-status");
@@ -34,7 +32,7 @@
       "codabar_reader"
     ];
 
-    if (!barcodeScannerModal || (!addBarcodeInput && !viewBarcodeInput)) {
+    if (!barcodeScannerModal || !addBarcodeInput) {
       return;
     }
 
@@ -399,7 +397,7 @@
     async function decodeBarcodeFromImage(file) {
       if (!file || !barcodeScannerModal || !barcodeScannerViewport) return;
 
-      activeBarcodeInput = activeBarcodeInput || addBarcodeInput || viewBarcodeInput;
+      activeBarcodeInput = activeBarcodeInput || addBarcodeInput;
       stopBarcodeScanner();
       renderBarcodePreview(file);
       InventoryUi.openModal?.("barcode-scanner-modal");
@@ -541,12 +539,6 @@
         }
 
         startBarcodeScanner(addBarcodeInput, "add-item-modal");
-      });
-    }
-
-    if (openViewBarcodeScannerButton && viewBarcodeInput) {
-      openViewBarcodeScannerButton.addEventListener("click", () => {
-        startBarcodeScanner(viewBarcodeInput, null);
       });
     }
 

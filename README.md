@@ -28,11 +28,12 @@ two-js-invn/
 |   |-- css/
 |   |   `-- app.css
 |   `-- js/
-|       |-- ui.js
 |       `-- ui/
+|           |-- adjustments.js
 |           |-- barcode-scanner.js
 |           |-- core.js
 |           |-- forms.js
+|           |-- mobile-nav.js
 |           |-- modals.js
 |           |-- reports.js
 |           |-- search.js
@@ -104,7 +105,7 @@ two-js-invn/
 3. Update the database values in `.env`.
 4. Set `DB_USER` and `DB_PASSWORD` to a MySQL account that can access `DB_NAME`.
 5. If your local MySQL `root` user has a password, put that value in `DB_PASSWORD`. Leaving it blank makes the app connect with no password.
-6. Import [`db/database.sql`](/c:/Users/OJT-ITDT.174/Desktop/tindahan/db/database.sql) into MySQL if needed.
+6. Import [`database/database.sql`](/c:/Users/OJT-ITDT.174/Desktop/tindahan/database/database.sql) into MySQL if needed.
 7. Run `npm install`
 8. Run `npm start`
 9. Open `http://localhost:4000`

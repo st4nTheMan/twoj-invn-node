@@ -3,7 +3,7 @@ const pool = require("../database/pool");
 const { requireLogin } = require("../middleware/auth");
 const {
   flash,
-  setAddItemState,
+  setInventoryModalState,
   toUppercaseText
 } = require("../includes/helpers");
 
@@ -205,7 +205,7 @@ router.post("/inventory/items", requireLogin, async (req, res) => {
   const maxQuantity = Number(req.body.max_quantity || 1);
   const categoryId = req.body.category_id ? Number(req.body.category_id) : null;
 
-  setAddItemState(req, {
+  setInventoryModalState(req, {
     openModal: "add-item-modal",
     error: "",
     old: {
@@ -221,12 +221,12 @@ router.post("/inventory/items", requireLogin, async (req, res) => {
   });
 
   if (!barcode || !name || !cost || !price) {
-    req.session.addItemState.error = "Item number, name, cost, and price are required.";
+    flash(req, { type: "error", message: "Item number, name, cost, and price are required." });
     return res.redirect("/inventory");
   }
 
   if (maxQuantity < minQuantity) {
-    req.session.addItemState.error = "Maximum quantity must be greater than or equal to minimum quantity.";
+    flash(req, { type: "error", message: "Maximum quantity must be greater than or equal to minimum quantity." });
     return res.redirect("/inventory");
   }
 
@@ -237,7 +237,7 @@ router.post("/inventory/items", requireLogin, async (req, res) => {
     );
 
     if (existing[0].count > 0) {
-      req.session.addItemState.error = "Item number already exists.";
+      flash(req, { type: "error", message: "Item number already exists." });
       return res.redirect("/inventory");
     }
 
@@ -247,12 +247,16 @@ router.post("/inventory/items", requireLogin, async (req, res) => {
       [barcode, name, cost, price, quantity, minQuantity, maxQuantity, categoryId]
     );
 
-    delete req.session.addItemState;
+    setInventoryModalState(req, {
+      openModal: "add-item-modal",
+      error: "",
+      old: {}
+    });
     flash(req, { type: "success", message: "Item added successfully." });
     return res.redirect("/inventory");
   } catch (error) {
     console.error("Failed to save item:", error);
-    req.session.addItemState.error = "Unable to save item right now.";
+    flash(req, { type: "error", message: "Unable to save item right now." });
     return res.redirect("/inventory");
   }
 });
@@ -269,6 +273,14 @@ router.post("/inventory/items/:id", requireLogin, async (req, res) => {
 // Creates a new category directly from the inventory page modal.
 router.post("/inventory/categories", requireLogin, async (req, res) => {
   const categoryName = toUppercaseText(req.body.category_name);
+
+  setInventoryModalState(req, {
+    openModal: "add-category-modal",
+    error: "",
+    old: {
+      category_name: categoryName
+    }
+  });
 
   if (!categoryName) {
     flash(req, { type: "error", message: "Category name is required." });
@@ -291,6 +303,13 @@ router.post("/inventory/categories", requireLogin, async (req, res) => {
       [categoryName]
     );
 
+    setInventoryModalState(req, {
+      openModal: "add-category-modal",
+      error: "",
+      old: {
+        category_name: ""
+      }
+    });
     flash(req, { type: "success", message: "Category saved successfully." });
     return res.redirect("/inventory");
   } catch (error) {

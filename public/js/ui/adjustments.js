@@ -9,7 +9,6 @@
     const modalId = "exclude-adjustment-row-modal";
     const form = root.querySelector("form");
     const typeInput = document.getElementById("adjustment-type");
-    const payloadInput = document.getElementById("adjustment-payload");
     const adjustmentsJsonInput = document.getElementById("adjustments-json");
     const saveButton = document.getElementById("adjustments-save-button");
     const modeButtons = root.querySelectorAll("[data-adjustment-mode]");
@@ -30,16 +29,6 @@
 
     function getInputsForMode(row, mode) {
       return row.querySelectorAll(`[data-adjustment-input="${mode}"]`);
-    }
-
-    function syncAdjustmentPayload() {
-      if (!payloadInput) return;
-
-      const payload = rows
-        .map((row) => buildRowPayload(row))
-        .filter(Boolean);
-
-      payloadInput.value = JSON.stringify(payload);
     }
 
     function buildRowPayload(row) {
@@ -378,7 +367,6 @@
           syncHiddenValue(row, "price");
           syncCategoryHiddenValue(row);
         });
-        syncAdjustmentPayload();
       });
     }
 
@@ -405,10 +393,6 @@
         const adjustments = checkedRows
           .map((row) => buildRowPayload(row))
           .filter(Boolean);
-
-        if (payloadInput) {
-          payloadInput.value = JSON.stringify(adjustments);
-        }
 
         if (adjustmentsJsonInput) {
           adjustmentsJsonInput.value = JSON.stringify({

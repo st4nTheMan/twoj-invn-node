@@ -37,9 +37,9 @@ function flash(req, payload) {
   req.session.flash = payload;
 }
 
-// Stores the add-item modal state so the form can reopen after redirects.
-function setAddItemState(req, payload) {
-  req.session.addItemState = payload;
+// Stores inventory modal state so the correct form can reopen after redirects.
+function setInventoryModalState(req, payload) {
+  req.session.inventoryModalState = payload;
 }
 
 // Maps common database startup errors to user-friendly troubleshooting text.
@@ -61,6 +61,6 @@ module.exports = {
   formatDateTime,
   formatInvoice,
   getDatabaseErrorMessage,
-  setAddItemState,
+  setInventoryModalState,
   toUppercaseText
 };
