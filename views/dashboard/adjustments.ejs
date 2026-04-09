@@ -58,7 +58,7 @@
               </td>
               <td data-label="Item Number" data-adjustment-row-toggle class="px-4 py-3 font-medium"><%= item.barcode %></td>
               <td data-label="Name" data-adjustment-row-toggle class="px-4 py-3"><%= item.name %></td>
-              <td data-label="Category" class="px-4 py-3"><%= item.category_name || "No Category" %></td>
+              <td data-label="Category" data-adjustment-row-toggle class="px-4 py-3"><%= item.category_name || "No Category" %></td>
               <td data-label="Current" data-adjustment-current class="px-4 py-3 text-xs text-slate-500">
                 OH: <%= item.quantity %><br>
                 Min/Max: <%= item.min_quantity %>/<%= item.max_quantity %><br>
