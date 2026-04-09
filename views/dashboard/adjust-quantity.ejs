@@ -1,0 +1,42 @@
+<% /* OH quantity history page for reviewing an item's quantity changes. */ %>
+<%- include("../includes/header", { title }) %>
+
+<section class="mx-auto max-w-4xl space-y-6">
+  <div class="rounded-3xl bg-white p-6 shadow-soft">
+    <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-600">OH Qty History</p>
+    <h1 class="mt-2 text-3xl font-semibold"><%= item.name %></h1>
+    <p class="mt-2 text-sm text-slate-500">Item number: <span class="font-medium text-slate-700"><%= item.barcode %></span></p>
+    <p class="mt-1 text-sm text-slate-500">Current OH qty: <span class="font-medium text-slate-700"><%= item.quantity %></span></p>
+    <div class="mt-5 flex flex-wrap gap-3">
+      <a href="/inventory/adjustments" class="rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950">Open Adjustments</a>
+      <a href="/inventory/items/<%= item.id %>/history" onclick="if (window.history.length > 1) { event.preventDefault(); window.history.back(); }" class="rounded-2xl border px-4 py-3 text-sm font-semibold text-slate-700">Back</a>
+    </div>
+  </div>
+
+  <div class="overflow-x-auto rounded-3xl bg-white shadow-soft">
+    <table class="min-w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-600">
+        <tr>
+          <th class="px-4 py-3">Old OH Qty</th>
+          <th class="px-4 py-3">New OH Qty</th>
+          <th class="px-4 py-3">Date</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-200">
+        <% if (historyList.length) { historyList.forEach((history) => { %>
+          <tr>
+            <td class="px-4 py-3"><%= history.old_quantity %></td>
+            <td class="px-4 py-3"><%= history.new_quantity %></td>
+            <td class="px-4 py-3 text-slate-500"><%= formatDateTime(history.adjusted_at) %></td>
+          </tr>
+        <% }) } else { %>
+          <tr>
+            <td colspan="3" class="px-4 py-8 text-center text-slate-500">No OH qty adjustments yet.</td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include("../includes/footer") %>

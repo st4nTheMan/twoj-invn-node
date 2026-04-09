@@ -11,6 +11,8 @@ SET NAMES utf8mb4;
 
 -- Drop dependent tables first so the schema can be recreated cleanly.
 DROP TABLE IF EXISTS price_adjustments;
+DROP TABLE IF EXISTS min_max_adjustments;
+DROP TABLE IF EXISTS quantity_adjustments;
 -- Drop the cost history table before recreating it.
 DROP TABLE IF EXISTS cost_adjustments;
 -- Drop the transaction item details table before recreating it.
@@ -105,6 +107,38 @@ CREATE TABLE cost_adjustments (
   PRIMARY KEY (id),
   KEY idx_cost_adjustments_item_id (item_id),
   CONSTRAINT fk_cost_adjustments_item
+    FOREIGN KEY (item_id) REFERENCES items (id)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Store the history of item on-hand quantity changes.
+CREATE TABLE quantity_adjustments (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  item_id INT UNSIGNED NOT NULL,
+  old_quantity INT NOT NULL DEFAULT 0,
+  new_quantity INT NOT NULL DEFAULT 0,
+  adjusted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_quantity_adjustments_item_id (item_id),
+  CONSTRAINT fk_quantity_adjustments_item
+    FOREIGN KEY (item_id) REFERENCES items (id)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Store the history of item minimum and maximum quantity changes.
+CREATE TABLE min_max_adjustments (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  item_id INT UNSIGNED NOT NULL,
+  old_min_quantity INT NOT NULL DEFAULT 0,
+  new_min_quantity INT NOT NULL DEFAULT 0,
+  old_max_quantity INT NOT NULL DEFAULT 0,
+  new_max_quantity INT NOT NULL DEFAULT 0,
+  adjusted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_min_max_adjustments_item_id (item_id),
+  CONSTRAINT fk_min_max_adjustments_item
     FOREIGN KEY (item_id) REFERENCES items (id)
     ON UPDATE CASCADE
     ON DELETE CASCADE

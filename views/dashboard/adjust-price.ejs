@@ -1,4 +1,4 @@
-<% /* Price history page for reviewing and updating an item's price. */ %>
+<% /* Price history page for reviewing an item's price changes. */ %>
 <%- include("../includes/header", { title }) %>
 
 <section class="mx-auto max-w-4xl space-y-6">
@@ -7,11 +7,10 @@
     <h1 class="mt-2 text-3xl font-semibold"><%= item.name %></h1>
     <p class="mt-2 text-sm text-slate-500">Item number: <span class="font-medium text-slate-700"><%= item.barcode %></span></p>
     <p class="mt-1 text-sm text-slate-500">Current price: <span class="font-medium text-slate-700">PHP <%= formatCurrency(item.price) %></span></p>
-    <form action="/inventory/items/<%= item.id %>/price" method="POST" class="mt-5 flex flex-wrap gap-3">
-      <input type="number" name="new_price" step="0.01" min="0" required placeholder="New Price" class="rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
-      <button type="submit" class="rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950">Update Price</button>
-      <a href="/inventory" class="rounded-2xl border px-4 py-3 text-sm font-semibold text-slate-700">Back</a>
-    </form>
+    <div class="mt-5 flex flex-wrap gap-3">
+      <a href="/inventory/adjustments" class="rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950">Open Adjustments</a>
+      <a href="/inventory/items/<%= item.id %>/history" onclick="if (window.history.length > 1) { event.preventDefault(); window.history.back(); }" class="rounded-2xl border px-4 py-3 text-sm font-semibold text-slate-700">Back</a>
+    </div>
   </div>
 
   <div class="overflow-x-auto rounded-3xl bg-white shadow-soft">
