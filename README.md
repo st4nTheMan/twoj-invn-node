@@ -1,6 +1,36 @@
 # two-js-invn
 
-This project has been migrated from PHP to a Node.js app using Express, EJS, MySQL sessions, and Tailwind CSS.
+Inventory system built with Node.js, Express, EJS, MySQL, and Tailwind CSS.
+
+## Overview
+
+This app covers:
+
+- Login/logout with session-based auth
+- Inventory listing and price lookup
+- Add item and add category modals
+- Bulk inventory adjustments
+- Item history pages
+- Transaction checkout
+- Sales reports with detail modal
+- Stock notification modal
+
+Most save/update actions now submit without refreshing the page. The UI stays in place and shows the shared feedback popup after success or failure.
+
+## Stack
+
+- Node.js
+- Express
+- EJS
+- MySQL
+- `express-session`
+- Tailwind CSS via CDN
+- QuaggaJS CDN for barcode scanning
+
+## Scripts
+
+- `npm start`: start the app
+- `npm run dev`: start the app in watch mode
 
 ## Project Structure
 
@@ -17,8 +47,8 @@ two-js-invn/
 |   |-- routes.js
 |   `-- transaction.routes.js
 |-- database/
+|   |-- database.sql
 |   `-- pool.js
-|   `-- database.sql
 |-- includes/
 |   `-- helpers.js
 |-- middleware/
@@ -33,6 +63,7 @@ two-js-invn/
 |           |-- barcode-scanner.js
 |           |-- core.js
 |           |-- forms.js
+|           |-- inventory.js
 |           |-- mobile-nav.js
 |           |-- modals.js
 |           |-- reports.js
@@ -46,14 +77,23 @@ two-js-invn/
 |   |       |-- add-category.ejs
 |   |       |-- add-item.ejs
 |   |       |-- barcode-scanner.ejs
+|   |       |-- exclude-adjustment-row.ejs
+|   |       |-- flash-feedback.ejs
 |   |       |-- out-of-stock.ejs
 |   |       |-- report-details.ejs
-|   |       `-- stock-notifications.ejs
+|   |       |-- stock-notifications.ejs
+|   |       `-- transaction-payment.ejs
 |   |-- dashboard/
 |   |   |-- 404.ejs
 |   |   |-- adjust-cost.ejs
+|   |   |-- adjust-min-max.ejs
 |   |   |-- adjust-price.ejs
+|   |   |-- adjust-quantity.ejs
+|   |   |-- adjustments.ejs
+|   |   |-- history.ejs
 |   |   |-- inventory.ejs
+|   |   |-- item-history.ejs
+|   |   |-- price-lookup.ejs
 |   |   |-- reports.ejs
 |   |   |-- transaction.ejs
 |   |   `-- view-item.ejs
@@ -66,67 +106,51 @@ two-js-invn/
 
 ## Folder Guide
 
-- `api`: JSON endpoints used by the dashboard UI.
-- `auth`: Login, logout, and session-related routes.
-- `dashboard`: Feature-specific page routes for inventory, transactions, and reports plus a shared router entry.
-- `database`: Shared MySQL connection pool setup.
-- `includes`: Shared helper functions used across routes and middleware.
-- `middleware`: Reusable request middleware for auth and shared EJS locals.
-- `public`: Frontend CSS and JavaScript assets, including split dashboard UI scripts.
-- `views/auth`: Authentication page templates.
-- `views/components/modals`: Reusable modal partials.
-- `views/dashboard`: Main dashboard page templates.
-- `views/includes`: Shared EJS header and footer partials.
+- `api`: JSON endpoints used by report details and async UI flows.
+- `auth`: login/logout routes.
+- `dashboard`: page routes for inventory, adjustments, history, transactions, and reports.
+- `database`: SQL schema and MySQL pool setup.
+- `includes`: shared server helpers.
+- `middleware`: auth guard and shared EJS locals.
+- `public`: CSS and browser-side UI logic.
+- `views/components/modals`: reusable modal partials.
+- `views/dashboard`: main page templates.
+- `views/includes`: shared page shell.
 
-## Stack
+## Key UI Behavior
 
-- Node.js
-- Express
-- EJS
-- MySQL
-- express-session
-- Tailwind CSS via CDN
-
-## Included Features
-
-- Login and logout
-- Inventory list
-- Add item
-- Add category
-- Stock notifications
-- Transaction checkout with stock deduction
-- Sales reports with detail modal
-- Price adjustment history
+- Inventory add/update actions use modal-driven async saves.
+- Adjustments save in place and update the edited rows without a page reload.
+- Transactions complete from the payment modal and update stock in place.
+- Reports load transaction details on demand inside a modal.
+- Shared feedback messages use the global flash-feedback modal.
 
 ## Setup
 
 1. Install Node.js.
 2. Create a `.env` file if you do not have one yet.
-3. Update the database values in `.env`.
-4. Set `DB_USER` and `DB_PASSWORD` to a MySQL account that can access `DB_NAME`.
-5. If your local MySQL `root` user has a password, put that value in `DB_PASSWORD`. Leaving it blank makes the app connect with no password.
-6. Import [`database/database.sql`](/c:/Users/OJT-ITDT.174/Desktop/tindahan/database/database.sql) into MySQL if needed.
-7. Run `npm install`
-8. Run `npm start`
-9. Open `http://localhost:4000`
+3. Set your database values in `.env`.
+4. Make sure `DB_USER`, `DB_PASSWORD`, and `DB_NAME` point to a valid MySQL database.
+5. Import [database/database.sql](/c:/Users/OJT-ITDT.174/Desktop/tindahan/database/database.sql).
+6. Run `npm install`.
+7. Run `npm start`.
+8. Open `http://localhost:4000`.
 
-## Access From Android Phone
+## Access From Phone
 
-1. Make sure your PC and Android phone are connected to the same Wi-Fi network.
+1. Connect your PC and phone to the same network.
 2. Start the app with `npm start`.
-3. Check the terminal for a message like `http://192.168.x.x:4000`.
-4. Open that URL in your Android phone's browser.
+3. Check the terminal output for the LAN URL.
+4. Open that URL on your phone.
 
-If the phone cannot connect:
+If it does not connect:
 
-- Make sure Windows Firewall allows inbound access on port `4000`.
-- Keep the app running on your PC while using the phone.
+- Allow inbound access through Windows Firewall for the app or port.
+- Keep the Node server running while testing.
 - If you changed the port in `.env`, use that port instead of `4000`.
 
 ## Notes
 
-- Tailwind is loaded from the CDN so there is no separate build step.
-- The backend is now organized into `auth`, `dashboard`, `api`, `database`, `middleware`, and `includes`.
-- The `dashboard` routes are split into `inventory.routes.js`, `transaction.routes.js`, and `reports.routes.js`.
-- The browser UI logic is split into focused scripts inside `public/js/ui`.
-- The views are now organized into `views/auth`, `views/dashboard`, `views/components/modals`, and `views/includes`.
+- Tailwind is loaded from CDN, so there is no separate frontend build step.
+- Page-specific UI scripts are only loaded where they are needed.
+- The app still supports normal server redirects as a fallback, but the main inventory, adjustment, and transaction saves are now async.
