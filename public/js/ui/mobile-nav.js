@@ -11,9 +11,6 @@
       return;
     }
 
-    const openIcon = toggle.querySelector(".mobile-nav-icon-open");
-    const closeIcon = toggle.querySelector(".mobile-nav-icon-close");
-
     const closeButton = document.getElementById("mobile-nav-close");
     closeButton?.addEventListener("click", () => setMenuOpen(false));
 
@@ -36,8 +33,6 @@
       }
 
       toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
-      openIcon?.classList.toggle("hidden", isOpen);
-      closeIcon?.classList.toggle("hidden", !isOpen);
     }
 
     toggle.addEventListener("click", () => {
@@ -51,10 +46,10 @@
       }
     });
 
-    document.addEventListener("click", (event) => {
-      if (menu.classList.contains("hidden")) return;
-      if (menu.contains(event.target) || toggle.contains(event.target)) return;
-      setMenuOpen(false);
+    menu.addEventListener("click", (event) => {
+      if (event.target === menu) {
+        setMenuOpen(false);
+      }
     });
 
     window.addEventListener("resize", () => {
@@ -67,12 +62,6 @@
       item.addEventListener("click", () => {
         setMenuOpen(false);
       });
-    });
-
-    menu.addEventListener("click", (event) => {
-      if (event.target === menu) {
-        setMenuOpen(false);
-      }
     });
   });
 }());
