@@ -8,6 +8,8 @@
     const flashFeedbackModal = document.getElementById("flash-feedback-modal");
     const flashFeedbackCard = document.getElementById("flash-feedback-card");
     const flashFeedbackMessage = document.getElementById("flash-feedback-message");
+
+    // Opens a modal, clears prior timers, and starts any auto-close countdown.
     function openModal(modalId) {
       const modal = document.getElementById(modalId);
       if (!modal) return;
@@ -29,6 +31,7 @@
       }
     }
 
+    // Closes a modal with the shared exit animation timing.
     function closeModal(modal) {
       if (!modal) return;
       if (modal.classList.contains("hidden") || modal.dataset.modalState === "closing") return;
@@ -49,6 +52,7 @@
       }, MODAL_EXIT_DURATION_MS);
     }
 
+    // Shows the reusable flash feedback modal with success or error styling.
     function showFlashFeedback(type, message) {
       if (!flashFeedbackModal || !flashFeedbackCard || !flashFeedbackMessage) {
         return;

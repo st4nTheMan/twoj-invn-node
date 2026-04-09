@@ -6,6 +6,7 @@ const { flash, formatInvoice } = require("../includes/helpers");
 // Defines transaction pages and checkout actions.
 const router = express.Router();
 
+// Detects whether the caller expects a JSON response instead of a redirect.
 function wantsJsonResponse(req) {
   return req.xhr || String(req.get("accept") || "").includes("application/json");
 }

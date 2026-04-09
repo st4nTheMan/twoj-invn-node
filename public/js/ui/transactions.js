@@ -20,10 +20,12 @@
 
     let isSubmittingTransaction = false;
 
+    // Reads the numeric total displayed in the transaction summary.
     function getTransactionTotalValue() {
       return Number(transactionTotal.textContent || 0);
     }
 
+    // Updates payment modal totals, change due, and submit eligibility.
     function updatePaymentSummary() {
       if (!paymentModalTotal || !paymentCashInput || !paymentChange || !paymentMessage || !confirmTransactionButton) {
         return true;
@@ -52,6 +54,7 @@
       return hasItems && cash > 0 && hasEnoughCash;
     }
 
+    // Recalculates line subtotals and the overall transaction total.
     function updateTransactionTotal() {
       let total = 0;
 
@@ -72,6 +75,7 @@
       updatePaymentSummary();
     }
 
+    // Updates an inventory button after stock changes from a completed transaction.
     function updateStockState(itemId, quantity) {
       const button = document.querySelector(`.add-transaction-item-button[data-id="${itemId}"]`);
       if (!button) return;
@@ -86,12 +90,14 @@
       button.classList.toggle("text-white", quantity > 0);
     }
 
+    // Clears all selected checkout rows and refreshes the summary state.
     function resetTransactionBuilder() {
       selectedItemsBody.querySelectorAll(".selected-item-row").forEach((row) => row.remove());
       toggleSelectedItemsEmptyState();
       updateTransactionTotal();
     }
 
+    // Submits the transaction asynchronously and applies the server response.
     async function submitTransaction() {
       if (!transactionForm) return;
 
@@ -136,6 +142,7 @@
       }
     }
 
+    // Shows or hides the empty-state row for the selected items table.
     function toggleSelectedItemsEmptyState() {
       if (!noSelectedItemsRow) return;
 
@@ -145,6 +152,7 @@
       );
     }
 
+    // Attaches quantity and remove handlers to a selected transaction row.
     function bindSelectedItemEvents(row) {
       const qtyInput = row.querySelector(".selected-item-qty");
       const removeButton = row.querySelector(".remove-selected-item-button");

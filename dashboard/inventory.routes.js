@@ -9,6 +9,7 @@ const {
 // Defines inventory pages and form actions for items and categories.
 const router = express.Router();
 
+// Parses a non-negative whole number and returns null for invalid values.
 function parseWholeNumber(value) {
   const normalized = String(value ?? "").trim();
 
@@ -25,6 +26,7 @@ function parseWholeNumber(value) {
   return parsedValue;
 }
 
+// Extracts submitted item field groups from nested or flattened form payloads.
 function extractSubmittedItems(body) {
   const extractedItems = {};
 
@@ -53,6 +55,7 @@ function extractSubmittedItems(body) {
   return extractedItems;
 }
 
+// Resolves a submitted field value from JSON payloads, grouped items, or raw form keys.
 function getSubmittedField({ body, submittedItems, payloadItem, itemId, fieldName }) {
   if (payloadItem && payloadItem[fieldName] !== undefined) {
     return payloadItem[fieldName];
@@ -71,14 +74,17 @@ function getSubmittedField({ body, submittedItems, payloadItem, itemId, fieldNam
   return undefined;
 }
 
+// Detects whether the incoming request body was sent as JSON.
 function isJsonRequest(req) {
   return String(req.get("content-type") || "").includes("application/json");
 }
 
+// Detects whether the caller expects a JSON response instead of a redirect.
 function wantsJsonResponse(req) {
   return req.xhr || String(req.get("accept") || "").includes("application/json");
 }
 
+// Sends a shared success or error result for bulk adjustment submissions.
 function respondAdjustmentResult(req, res, type, message) {
   flash(req, { type, message });
 

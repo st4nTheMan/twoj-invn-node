@@ -3,10 +3,12 @@
   const InventoryUi = window.InventoryUi || {};
 
   InventoryUi.onReady(() => {
+    // Checks whether a required field is currently blank.
     function isFieldEmpty(field) {
       return !field.value.trim();
     }
 
+    // Chooses the DOM node that should host the validation error message.
     function getFieldErrorHost(field) {
       const parent = field.parentElement;
       if (!parent) return field;
@@ -14,6 +16,7 @@
       return window.getComputedStyle(parent).display === "flex" ? parent : field;
     }
 
+    // Applies invalid styling and ensures an inline error message is shown.
     function setFieldError(field, message = "This field is required.") {
       field.classList.add("field-invalid");
       field.setAttribute("aria-invalid", "true");
@@ -33,6 +36,7 @@
       errorMessage.textContent = message;
     }
 
+    // Removes invalid styling and any inline error message for a field.
     function clearFieldError(field) {
       field.classList.remove("field-invalid");
       field.removeAttribute("aria-invalid");

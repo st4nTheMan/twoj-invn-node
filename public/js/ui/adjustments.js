@@ -1,3 +1,4 @@
+// Initializes the bulk adjustments page interactions once the script loads.
 // Controls the bulk adjustments page so only checked rows expose the active field.
 (function initAdjustmentsUi() {
   const InventoryUi = window.InventoryUi || {};
@@ -27,6 +28,7 @@
     let pendingMode = null;
     let suppressCheckboxChange = false;
 
+    // Enables or disables the save button while preserving the disabled styling.
     function setSaveButtonDisabled(disabled) {
       if (!saveButton) return;
 
@@ -35,10 +37,12 @@
       saveButton.classList.toggle("cursor-not-allowed", disabled);
     }
 
+    // Returns the editable inputs in a row for the currently active adjustment mode.
     function getInputsForMode(row, mode) {
       return row.querySelectorAll(`[data-adjustment-input="${mode}"]`);
     }
 
+    // Builds the payload for one checked row based on the active adjustment mode.
     function buildRowPayload(row) {
       const checkbox = row.querySelector("[data-adjustment-checkbox]");
       if (!checkbox || !checkbox.checked) return null;
@@ -88,6 +92,7 @@
       return null;
     }
 
+    // Mirrors the visible category selection into its hidden form field.
     function syncCategoryHiddenValue(row) {
       const select = row.querySelector('[data-adjustment-input="category"]');
       const hiddenInput = row.querySelector('[data-adjustment-hidden="category"]');
@@ -97,6 +102,7 @@
       hiddenInput.value = select.value;
     }
 
+    // Mirrors a visible input value into the matching hidden form field.
     function syncHiddenValue(row, inputType, hiddenType = inputType, inputIndex = 0) {
       const inputs = row.querySelectorAll(`[data-adjustment-input="${inputType}"]`);
       const input = inputs[inputIndex];
@@ -107,22 +113,27 @@
       hiddenInput.value = input.value;
     }
 
+    // Reads the original server-provided value stored for an input.
     function getOriginalValue(input) {
       return String(input.dataset.originalValue || "");
     }
 
+    // Checks whether a single input has changed from its original value.
     function isInputEdited(input) {
       return String(input.value || "") !== getOriginalValue(input);
     }
 
+    // Checks whether any editable field in the row has been changed.
     function isRowEdited(row) {
       return Array.from(row.querySelectorAll("[data-adjustment-input]")).some(isInputEdited);
     }
 
+    // Checks whether the active mode fields in a row have been changed.
     function isRowEditedForMode(row, mode) {
       return Array.from(getInputsForMode(row, mode)).some(isInputEdited);
     }
 
+    // Detects whether any checked rows contain unsaved edits for the given mode.
     function hasEditedCheckedRowsForMode(mode) {
       return Array.from(rows).some((row) => {
         const checkbox = row.querySelector("[data-adjustment-checkbox]");
@@ -130,6 +141,7 @@
       });
     }
 
+    // Restores all visible and hidden row values back to their original state.
     function resetRowValues(row) {
       row.querySelectorAll("[data-adjustment-input]").forEach((input) => {
         input.value = getOriginalValue(input);
@@ -140,6 +152,7 @@
       });
     }
 
+    // Updates a row checkbox without triggering the manual change handler logic.
     function setRowChecked(row, checked) {
       const checkbox = row.querySelector("[data-adjustment-checkbox]");
       if (!checkbox) return;
@@ -149,12 +162,14 @@
       suppressCheckboxChange = false;
     }
 
+    // Closes the discard confirmation modal if the shared modal helper exists.
     function closeExcludeModal() {
       if (InventoryUi.closeModal) {
         InventoryUi.closeModal(document.getElementById(modalId));
       }
     }
 
+    // Opens the discard confirmation modal with the provided message.
     function openDiscardModal(message) {
       if (excludeMessage) {
         excludeMessage.textContent = message;
@@ -165,6 +180,7 @@
       }
     }
 
+    // Handles row deselection and prompts when that row has unsaved edits.
     function handleUncheck(row) {
       if (isRowEdited(row)) {
         pendingRow = row;
@@ -178,6 +194,7 @@
       syncAllRows();
     }
 
+    // Clears checked rows and discards edits for the current adjustment mode.
     function discardCheckedRowsForMode(mode) {
       rows.forEach((row) => {
         const checkbox = row.querySelector("[data-adjustment-checkbox]");
@@ -194,6 +211,7 @@
       });
     }
 
+    // Refreshes one row's checked state, highlight, and input enabled state.
     function syncRow(row) {
       const checkbox = row.querySelector("[data-adjustment-checkbox]");
       const isChecked = Boolean(checkbox && checkbox.checked);
@@ -217,6 +235,7 @@
       });
     }
 
+    // Re-applies the current UI state across all rows and updates save affordance.
     function syncAllRows() {
       let checkedCount = 0;
 
@@ -234,6 +253,7 @@
       }
     }
 
+    // Switches the active adjustment mode and shows only that mode's columns.
     function setMode(mode) {
       typeInput.value = mode;
 
@@ -378,6 +398,7 @@
       });
     }
 
+    // Rebuilds the row's current-value summary after a successful save.
     function updateCurrentSummary(row, item) {
       const currentCell = row.querySelector("[data-adjustment-current]");
       if (!currentCell || !item) return;
@@ -390,6 +411,7 @@
       ].join("<br>");
     }
 
+    // Applies the saved item values back into the row and resets edit tracking.
     function applyUpdatedItem(row, item) {
       if (!row || !item) return;
 
@@ -467,6 +489,7 @@
       setRowChecked(row, false);
     }
 
+    // Submits the selected adjustments asynchronously and applies the response.
     async function submitAdjustments() {
       if (!form || !adjustmentsJsonInput) {
         return;

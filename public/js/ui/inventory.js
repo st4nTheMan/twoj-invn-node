@@ -30,15 +30,18 @@
       hour12: true
     });
 
+    // Formats prices for newly inserted inventory rows.
     function formatCurrency(value) {
       return currencyFormatter.format(Number(value || 0));
     }
 
+    // Formats item timestamps for the inventory table.
     function formatDateTime(value) {
       if (!value) return "";
       return dateTimeFormatter.format(new Date(value));
     }
 
+    // Disables a modal form submit button while an async save is in progress.
     function setSubmitDisabled(form, disabled) {
       const submitButton = form.querySelector('button[type="submit"]');
       if (!submitButton) return;
@@ -48,10 +51,12 @@
       submitButton.classList.toggle("cursor-not-allowed", disabled);
     }
 
+    // Removes the placeholder row shown when the inventory list is empty.
     function removeEmptyInventoryRow() {
       inventoryTableBody?.querySelector("td[colspan='7']")?.closest("tr")?.remove();
     }
 
+    // Inserts a newly created item at the top of the inventory table.
     function prependInventoryRow(item) {
       if (!inventoryTableBody || !item) return;
 
@@ -79,6 +84,7 @@
       inventoryEmptySearch?.classList.add("hidden");
     }
 
+    // Adds a category option to a select element if it is not already present.
     function appendCategoryOption(select, category, includeValue) {
       if (!select || !category) return;
 
@@ -98,6 +104,7 @@
       select.appendChild(option);
     }
 
+    // Submits an inventory modal form over fetch and returns the parsed payload.
     async function submitInventoryForm(form) {
       const formData = new FormData(form);
       const body = new URLSearchParams();
