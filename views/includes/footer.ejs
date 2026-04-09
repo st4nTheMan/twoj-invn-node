@@ -3,8 +3,8 @@
 
   <% if (flash) { %>
     <div data-open-modal-on-load="flash-feedback-modal" hidden></div>
-    <%- include("../components/modals/flash-feedback") %>
   <% } %>
+  <%- include("../components/modals/flash-feedback") %>
 
   <% if (user) { %>
     <%- include("../components/modals/stock-notifications") %>
@@ -21,6 +21,7 @@
   <% if (currentPath === "/inventory") { %>
     <script src="https://cdn.jsdelivr.net/npm/quagga/dist/quagga.min.js"></script>
     <script src="/public/js/ui/barcode-scanner.js"></script>
+    <script src="/public/js/ui/inventory.js"></script>
   <% } %>
   <% if (currentPath === "/transaction") { %>
     <script src="/public/js/ui/transactions.js"></script>

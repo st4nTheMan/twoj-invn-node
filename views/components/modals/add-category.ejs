@@ -15,13 +15,7 @@
       </button>
     </div>
 
-    <form action="/inventory/categories" method="POST" class="p-6">
-      <% if (state.error) { %>
-        <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-          <%= state.error %>
-        </div>
-      <% } %>
-
+    <form id="add-category-form" action="/inventory/categories" method="POST" class="p-6">
       <input
         type="text"
         name="category_name"

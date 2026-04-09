@@ -7,7 +7,7 @@
     if (!root) return;
 
     const modalId = "exclude-adjustment-row-modal";
-    const form = root.querySelector("form");
+    const form = document.getElementById("adjustments-form");
     const typeInput = document.getElementById("adjustment-type");
     const adjustmentsJsonInput = document.getElementById("adjustments-json");
     const saveButton = document.getElementById("adjustments-save-button");
@@ -26,6 +26,14 @@
     let pendingRow = null;
     let pendingMode = null;
     let suppressCheckboxChange = false;
+
+    function setSaveButtonDisabled(disabled) {
+      if (!saveButton) return;
+
+      saveButton.disabled = disabled;
+      saveButton.classList.toggle("opacity-50", disabled);
+      saveButton.classList.toggle("cursor-not-allowed", disabled);
+    }
 
     function getInputsForMode(row, mode) {
       return row.querySelectorAll(`[data-adjustment-input="${mode}"]`);
@@ -370,8 +378,143 @@
       });
     }
 
+    function updateCurrentSummary(row, item) {
+      const currentCell = row.querySelector("[data-adjustment-current]");
+      if (!currentCell || !item) return;
+
+      currentCell.innerHTML = [
+        `OH: ${Number(item.quantity || 0)}`,
+        `Min/Max: ${Number(item.min_quantity || 0)}/${Number(item.max_quantity || 0)}`,
+        `Cost: PHP ${Number(item.cost || 0).toFixed(2)}`,
+        `Price: PHP ${Number(item.price || 0).toFixed(2)}`
+      ].join("<br>");
+    }
+
+    function applyUpdatedItem(row, item) {
+      if (!row || !item) return;
+
+      const quantityHidden = row.querySelector('[data-adjustment-hidden="quantity"]');
+      const minHidden = row.querySelector('[data-adjustment-hidden="min_quantity"]');
+      const maxHidden = row.querySelector('[data-adjustment-hidden="max_quantity"]');
+      const costHidden = row.querySelector('[data-adjustment-hidden="cost"]');
+      const priceHidden = row.querySelector('[data-adjustment-hidden="price"]');
+      const categoryHidden = row.querySelector('[data-adjustment-hidden="category"]');
+      const quantityInput = row.querySelector('[data-adjustment-input="quantity"]');
+      const minMaxInputs = row.querySelectorAll('[data-adjustment-input="min_max"]');
+      const costInput = row.querySelector('[data-adjustment-input="cost"]');
+      const priceInput = row.querySelector('[data-adjustment-input="price"]');
+      const categoryInput = row.querySelector('[data-adjustment-input="category"]');
+      const categoryCell = row.querySelector('[data-label="Category"]');
+
+      if (quantityHidden) {
+        quantityHidden.value = String(item.quantity ?? 0);
+        quantityHidden.dataset.originalValue = String(item.quantity ?? 0);
+      }
+      if (quantityInput) {
+        quantityInput.value = String(item.quantity ?? 0);
+        quantityInput.dataset.originalValue = String(item.quantity ?? 0);
+      }
+
+      if (minHidden) {
+        minHidden.value = String(item.min_quantity ?? 0);
+        minHidden.dataset.originalValue = String(item.min_quantity ?? 0);
+      }
+      if (minMaxInputs[0]) {
+        minMaxInputs[0].value = String(item.min_quantity ?? 0);
+        minMaxInputs[0].dataset.originalValue = String(item.min_quantity ?? 0);
+      }
+
+      if (maxHidden) {
+        maxHidden.value = String(item.max_quantity ?? 0);
+        maxHidden.dataset.originalValue = String(item.max_quantity ?? 0);
+      }
+      if (minMaxInputs[1]) {
+        minMaxInputs[1].value = String(item.max_quantity ?? 0);
+        minMaxInputs[1].dataset.originalValue = String(item.max_quantity ?? 0);
+      }
+
+      if (costHidden) {
+        costHidden.value = String(item.cost ?? 0);
+        costHidden.dataset.originalValue = String(item.cost ?? 0);
+      }
+      if (costInput) {
+        costInput.value = String(item.cost ?? 0);
+        costInput.dataset.originalValue = String(item.cost ?? 0);
+      }
+
+      if (priceHidden) {
+        priceHidden.value = String(item.price ?? 0);
+        priceHidden.dataset.originalValue = String(item.price ?? 0);
+      }
+      if (priceInput) {
+        priceInput.value = String(item.price ?? 0);
+        priceInput.dataset.originalValue = String(item.price ?? 0);
+      }
+
+      if (categoryHidden) {
+        categoryHidden.value = String(item.category_id ?? "");
+        categoryHidden.dataset.originalValue = String(item.category_id ?? "");
+      }
+      if (categoryInput) {
+        categoryInput.value = String(item.category_id ?? "");
+        categoryInput.dataset.originalValue = String(item.category_id ?? "");
+      }
+      if (categoryCell) {
+        categoryCell.textContent = item.category_name || "No Category";
+      }
+
+      updateCurrentSummary(row, item);
+      setRowChecked(row, false);
+    }
+
+    async function submitAdjustments() {
+      if (!form || !adjustmentsJsonInput) {
+        return;
+      }
+
+      const formData = new FormData(form);
+      const body = new URLSearchParams();
+      for (const [key, value] of formData.entries()) {
+        body.append(key, String(value));
+      }
+
+      setSaveButtonDisabled(true);
+
+      try {
+        const response = await fetch(form.action, {
+          method: form.method,
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            "X-Requested-With": "XMLHttpRequest"
+          },
+          body: body.toString()
+        });
+        const payload = await response.json();
+
+        if (!response.ok || !payload.ok) {
+          InventoryUi.showFlashFeedback?.("error", payload.message || "Unable to save adjustments right now.");
+          return;
+        }
+
+        const updatedItems = new Map((payload.items || []).map((item) => [String(item.id), item]));
+        rows.forEach((row) => {
+          const rowItemId = row.dataset.itemId || row.querySelector("[data-adjustment-checkbox]")?.value;
+          if (!rowItemId || !updatedItems.has(String(rowItemId))) return;
+          applyUpdatedItem(row, updatedItems.get(String(rowItemId)));
+        });
+
+        syncAllRows();
+        InventoryUi.showFlashFeedback?.("success", payload.message || "Selected items updated successfully.");
+      } catch (error) {
+        InventoryUi.showFlashFeedback?.("error", "Unable to save adjustments right now.");
+      } finally {
+        setSaveButtonDisabled(false);
+      }
+    }
+
     if (saveButton) {
-      saveButton.addEventListener("click", () => {
+      saveButton.addEventListener("click", async () => {
         const checkedRows = Array.from(rows).filter((row) => {
           const checkbox = row.querySelector("[data-adjustment-checkbox]");
           return Boolean(checkbox?.checked);
@@ -401,7 +544,7 @@
           });
         }
 
-        form.submit();
+        await submitAdjustments();
       });
     }
 

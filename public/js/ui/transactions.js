@@ -72,6 +72,70 @@
       updatePaymentSummary();
     }
 
+    function updateStockState(itemId, quantity) {
+      const button = document.querySelector(`.add-transaction-item-button[data-id="${itemId}"]`);
+      if (!button) return;
+
+      button.dataset.stock = String(quantity);
+      button.disabled = quantity <= 0;
+      button.textContent = quantity <= 0 ? "Out of Stock" : "Select";
+      button.classList.toggle("bg-slate-300", quantity <= 0);
+      button.classList.toggle("text-slate-600", quantity <= 0);
+      button.classList.toggle("cursor-not-allowed", quantity <= 0);
+      button.classList.toggle("bg-sky-600", quantity > 0);
+      button.classList.toggle("text-white", quantity > 0);
+    }
+
+    function resetTransactionBuilder() {
+      selectedItemsBody.querySelectorAll(".selected-item-row").forEach((row) => row.remove());
+      toggleSelectedItemsEmptyState();
+      updateTransactionTotal();
+    }
+
+    async function submitTransaction() {
+      if (!transactionForm) return;
+
+      const formData = new FormData(transactionForm);
+      const body = new URLSearchParams();
+      for (const [key, value] of formData.entries()) {
+        body.append(key, String(value));
+      }
+
+      confirmTransactionButton.disabled = true;
+
+      try {
+        const response = await fetch(transactionForm.action, {
+          method: transactionForm.method,
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            "X-Requested-With": "XMLHttpRequest"
+          },
+          body: body.toString()
+        });
+        const payload = await response.json();
+
+        if (!response.ok || !payload.ok) {
+          InventoryUi.showFlashFeedback?.("error", payload.message || "Transaction failed.");
+          return;
+        }
+
+        (payload.items || []).forEach((item) => {
+          updateStockState(item.id, Number(item.quantity || 0));
+        });
+
+        InventoryUi.closeModal?.(paymentModal);
+        resetTransactionBuilder();
+        InventoryUi.showFlashFeedback?.("success", payload.message || "Transaction completed.");
+      } catch (error) {
+        InventoryUi.showFlashFeedback?.("error", "Transaction failed.");
+      } finally {
+        paymentCashInput.value = "";
+        isSubmittingTransaction = false;
+        updatePaymentSummary();
+      }
+    }
+
     function toggleSelectedItemsEmptyState() {
       if (!noSelectedItemsRow) return;
 
@@ -173,13 +237,13 @@
       if (!transactionForm || !updatePaymentSummary()) return;
 
       isSubmittingTransaction = true;
-      InventoryUi.closeModal?.(paymentModal);
       transactionForm.requestSubmit();
     });
 
-    transactionForm?.addEventListener("submit", (event) => {
+    transactionForm?.addEventListener("submit", async (event) => {
       if (isSubmittingTransaction) {
-        isSubmittingTransaction = false;
+        event.preventDefault();
+        await submitTransaction();
         return;
       }
 

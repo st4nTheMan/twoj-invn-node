@@ -23,7 +23,7 @@
     <input id="adjustments-search" type="text" placeholder="Search by item number, name, or category..." class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
   </section>
 
-  <form action="/inventory/adjustments" method="POST" class="space-y-6">
+  <form id="adjustments-form" action="/inventory/adjustments" method="POST" class="space-y-6">
     <input id="adjustment-type" type="hidden" name="adjustment_type" value="quantity">
     <input id="adjustments-json" type="hidden" name="adjustments_json" value="">
 
@@ -46,7 +46,7 @@
         </thead>
         <tbody class="divide-y divide-slate-200">
           <% if (items.length) { items.forEach((item) => { %>
-            <tr data-row data-adjustment-row class="hover:bg-slate-50">
+            <tr data-row data-adjustment-row data-item-id="<%= item.id %>" class="hover:bg-slate-50">
               <td data-label="Select" data-adjustment-row-toggle class="px-4 py-3">
                 <input
                   type="checkbox"
@@ -59,7 +59,7 @@
               <td data-label="Item Number" data-adjustment-row-toggle class="px-4 py-3 font-medium"><%= item.barcode %></td>
               <td data-label="Name" data-adjustment-row-toggle class="px-4 py-3"><%= item.name %></td>
               <td data-label="Category" class="px-4 py-3"><%= item.category_name || "No Category" %></td>
-              <td data-label="Current" class="px-4 py-3 text-xs text-slate-500">
+              <td data-label="Current" data-adjustment-current class="px-4 py-3 text-xs text-slate-500">
                 OH: <%= item.quantity %><br>
                 Min/Max: <%= item.min_quantity %>/<%= item.max_quantity %><br>
                 Cost: PHP <%= formatCurrency(item.cost) %><br>

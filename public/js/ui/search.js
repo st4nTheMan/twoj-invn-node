@@ -9,11 +9,11 @@
       const emptyState = document.getElementById(emptyId);
       if (!searchInput || !table) return;
 
-      const rows = table.querySelectorAll("tbody tr[data-row]");
       const hideUntilSearch = searchInput.dataset.hideUntilSearch === "true";
       const initialVisibleCount = Number(searchInput.dataset.initialVisibleCount || 0);
 
       function updateSearchResults() {
+        const rows = table.querySelectorAll("tbody tr[data-row]");
         const searchValue = searchInput.value.toLowerCase().trim();
         let visibleCount = 0;
 
