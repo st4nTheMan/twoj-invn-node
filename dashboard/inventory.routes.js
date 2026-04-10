@@ -127,6 +127,47 @@ router.get("/inventory", requireLogin, async (req, res) => {
   }
 });
 
+// Checks whether an item number is already present before the add-item form is submitted.
+router.get("/inventory/items/verify", requireLogin, async (req, res) => {
+  const barcode = String(req.query.barcode || "").trim();
+
+  if (!barcode) {
+    return res.status(400).json({
+      ok: false,
+      exists: false,
+      message: "Enter an item number first."
+    });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT items.id, items.barcode, items.name, categories.category_name
+       FROM items
+       LEFT JOIN categories ON items.category_id = categories.id
+       WHERE items.barcode = ?
+       LIMIT 1`,
+      [barcode]
+    );
+    const item = rows[0] || null;
+
+    return res.json({
+      ok: true,
+      exists: Boolean(item),
+      message: item
+        ? `Item number already exists for ${item.name}.`
+        : "Item number is available.",
+      item
+    });
+  } catch (error) {
+    console.error("Failed to verify item number:", error);
+    return res.status(500).json({
+      ok: false,
+      exists: false,
+      message: "Unable to verify item number right now."
+    });
+  }
+});
+
 // Loads a lightweight price lookup page with searchable item prices.
 router.get("/price-lookup", requireLogin, async (req, res) => {
   try {

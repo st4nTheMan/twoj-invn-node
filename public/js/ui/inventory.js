@@ -9,7 +9,12 @@
     const inventorySearch = document.getElementById("inventory-search");
     const inventoryEmptySearch = document.getElementById("inventory-empty-search");
     const addItemCategorySelect = addItemForm?.querySelector('select[name="category_id"]');
+    const barcodeInput = addItemForm?.querySelector('input[name="barcode"]');
+    const verifyBarcodeButton = document.getElementById("verify-barcode-button");
+    const barcodeVerificationStatus = document.getElementById("barcode-verification-status");
     const addCategoryExistingSelect = addCategoryForm?.querySelector("select");
+    let lastVerifiedBarcode = "";
+    let lastVerificationExists = null;
 
     if (!addItemForm || !addCategoryForm || !InventoryUi.showFlashFeedback) {
       return;
@@ -49,6 +54,15 @@
       submitButton.disabled = disabled;
       submitButton.classList.toggle("opacity-70", disabled);
       submitButton.classList.toggle("cursor-not-allowed", disabled);
+    }
+
+    // Disables or enables a button while preserving its visual affordance.
+    function setButtonDisabled(button, disabled) {
+      if (!button) return;
+
+      button.disabled = disabled;
+      button.classList.toggle("opacity-70", disabled);
+      button.classList.toggle("cursor-not-allowed", disabled);
     }
 
     // Removes the placeholder row shown when the inventory list is empty.
@@ -104,6 +118,95 @@
       select.appendChild(option);
     }
 
+    // Updates the inline item-number verification message state.
+    function setBarcodeVerificationStatus(type, message) {
+      if (!barcodeVerificationStatus) return;
+
+      if (!message) {
+        barcodeVerificationStatus.textContent = "";
+        barcodeVerificationStatus.classList.add("hidden");
+        barcodeVerificationStatus.className = "mt-2 hidden rounded-2xl border px-4 py-3 text-sm";
+        return;
+      }
+
+      barcodeVerificationStatus.textContent = message;
+      barcodeVerificationStatus.className = [
+        "mt-2",
+        "rounded-2xl",
+        "border",
+        "px-4",
+        "py-3",
+        "text-sm",
+        type === "success"
+          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+          : type === "warning"
+            ? "border-amber-200 bg-amber-50 text-amber-800"
+            : "border-rose-200 bg-rose-50 text-rose-800"
+      ].join(" ");
+    }
+
+    // Clears any verification result once the item number changes.
+    function resetBarcodeVerification() {
+      lastVerifiedBarcode = "";
+      lastVerificationExists = null;
+      setBarcodeVerificationStatus("", "");
+    }
+
+    // Verifies whether the current item number already exists in inventory.
+    async function verifyBarcode() {
+      const barcode = String(barcodeInput?.value || "").trim();
+
+      if (!barcode) {
+        setBarcodeVerificationStatus("error", "Enter an item number first.");
+        barcodeInput?.focus();
+        return { ok: false, exists: null };
+      }
+
+      setButtonDisabled(verifyBarcodeButton, true);
+      setBarcodeVerificationStatus("warning", "Checking item number...");
+
+      try {
+        const response = await fetch(`/inventory/items/verify?barcode=${encodeURIComponent(barcode)}`, {
+          headers: {
+            Accept: "application/json",
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        });
+        const payload = await response.json();
+
+        if (!response.ok || !payload.ok) {
+          lastVerifiedBarcode = "";
+          lastVerificationExists = null;
+          setBarcodeVerificationStatus("error", payload.message || "Unable to verify item number right now.");
+          return { ok: false, exists: null, payload };
+        }
+
+        lastVerifiedBarcode = barcode;
+        lastVerificationExists = Boolean(payload.exists);
+        if (payload.exists) {
+          setBarcodeVerificationStatus(
+            "error",
+            payload.message || "Item number already exists."
+          );
+        } else {
+          setBarcodeVerificationStatus("", "");
+          InventoryUi.showFlashFeedback(
+            "success",
+            payload.message || "Item number is available."
+          );
+        }
+
+        return { ok: true, exists: Boolean(payload.exists), payload };
+      } catch (error) {
+        lastVerifiedBarcode = "";
+        lastVerificationExists = null;
+        setBarcodeVerificationStatus("error", "Unable to verify item number right now.");
+        return { ok: false, exists: null };
+      } finally {
+        setButtonDisabled(verifyBarcodeButton, false);
+      }
+    }
+
     // Submits an inventory modal form over fetch and returns the parsed payload.
     async function submitInventoryForm(form) {
       const formData = new FormData(form);
@@ -148,6 +251,19 @@
       }
 
       event.preventDefault();
+      const currentBarcode = String(barcodeInput?.value || "").trim();
+
+      if (currentBarcode && currentBarcode !== lastVerifiedBarcode) {
+        const verification = await verifyBarcode();
+        if (!verification.ok || verification.exists) {
+          return;
+        }
+      } else if (lastVerificationExists) {
+        setBarcodeVerificationStatus("error", "Item number already exists.");
+        barcodeInput?.focus();
+        return;
+      }
+
       const payload = await submitInventoryForm(addItemForm);
 
       if (!payload?.ok) {
@@ -156,6 +272,7 @@
 
       prependInventoryRow(payload.item);
       addItemForm.reset();
+      resetBarcodeVerification();
     });
 
     addCategoryForm.addEventListener("submit", async (event) => {
@@ -173,6 +290,16 @@
       appendCategoryOption(addItemCategorySelect, payload.category, true);
       appendCategoryOption(addCategoryExistingSelect, payload.category, false);
       addCategoryForm.reset();
+    });
+
+    barcodeInput?.addEventListener("input", () => {
+      if (String(barcodeInput.value || "").trim() !== lastVerifiedBarcode) {
+        resetBarcodeVerification();
+      }
+    });
+
+    verifyBarcodeButton?.addEventListener("click", async () => {
+      await verifyBarcode();
     });
   });
 }());
