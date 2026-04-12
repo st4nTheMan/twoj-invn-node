@@ -54,6 +54,15 @@
       updateSearchResults();
     }
 
+    document.querySelectorAll("[id$='search-clear']").forEach((clearBtn) => {
+      clearBtn.addEventListener("click", () => {
+        const input = clearBtn.closest("div")?.querySelector("input");
+        if (!input) return;
+        input.value = "";
+        input.dispatchEvent(new Event("input"));
+      });
+    });
+
     bindSearch("inventory-search", "inventory-table", "inventory-empty-search");
     bindSearch("adjustments-search", "adjustments-table", "adjustments-empty-search");
     bindSearch("history-search", "history-table", "history-empty-search");

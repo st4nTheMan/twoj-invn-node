@@ -19,8 +19,15 @@
     <p data-adjustment-title class="mt-4 text-sm font-medium text-slate-700">Active adjustment: OH QTY</p>
   </section>
 
-  <section class="rounded-3xl bg-white p-5 shadow-soft">
-    <input id="adjustments-search" type="text" placeholder="Search by item number, name, or category..." class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+  <section class="mb-6 rounded-3xl bg-white p-5 shadow-soft">
+    <div class="relative">
+      <input id="adjustments-search" type="text" placeholder="Search by name, number, or category..." data-initial-visible-count="5" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 pr-10 text-sm">
+      <button type="button" id="search-clear" class="absolute inset-y-0 right-5 flex items-center text-slate-400 hover:text-slate-600">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
+    </div>
   </section>
 
   <form id="adjustments-form" action="/inventory/adjustments" method="POST" class="space-y-6">

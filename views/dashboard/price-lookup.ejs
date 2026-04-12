@@ -8,7 +8,14 @@
 </section>
 
 <section class="mb-6 rounded-3xl bg-white p-5 shadow-soft">
-  <input id="price-lookup-search" type="text" placeholder="Search by item number or name..." data-initial-visible-count="5" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+  <div class="relative">
+    <input id="price-lookup-search" type="text" placeholder="Search by item number or name..." data-initial-visible-count="5" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 pr-10 text-sm">
+    <button type="button" id="search-clear" class="absolute inset-y-0 right-5 flex items-center text-slate-400 hover:text-slate-600">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18" />
+      </svg>
+    </button>
+  </div>
 </section>
 
 <section class="table-scroll mb-6 overflow-x-auto rounded-3xl bg-white shadow-soft">
