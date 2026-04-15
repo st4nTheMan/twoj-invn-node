@@ -3,6 +3,9 @@ const pool = require("../database/pool");
 const { requireLogin } = require("../middleware/auth");
 const {
   flash,
+  normalizeBarcode,
+  normalizeDecimalInput,
+  normalizeText,
   toUppercaseText
 } = require("../includes/helpers");
 
@@ -11,7 +14,7 @@ const router = express.Router();
 
 // Parses a non-negative whole number and returns null for invalid values.
 function parseWholeNumber(value) {
-  const normalized = String(value ?? "").trim();
+  const normalized = normalizeDecimalInput(value);
 
   if (normalized === "") {
     return null;
@@ -100,6 +103,23 @@ function getAdjustmentLabel(adjustmentType) {
   };
 
   return labels[adjustmentType] || "selected field";
+}
+
+// Parses a non-negative decimal number and returns null for invalid values.
+function parseNonNegativeDecimal(value) {
+  const normalized = normalizeDecimalInput(value);
+
+  if (normalized === "") {
+    return null;
+  }
+
+  const parsedValue = Number(normalized);
+
+  if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+    return null;
+  }
+
+  return parsedValue;
 }
 
 // Escapes CSV cell content and quotes values that need it.
@@ -283,7 +303,7 @@ router.get("/inventory/export", requireLogin, async (req, res) => {
 
 // Checks whether an item number is already present before the add-item form is submitted.
 router.get("/inventory/items/verify", requireLogin, async (req, res) => {
-  const barcode = String(req.query.barcode || "").trim();
+  const barcode = normalizeBarcode(req.query.barcode);
 
   if (!barcode) {
     return res.status(400).json({
@@ -400,13 +420,13 @@ router.get("/history", requireLogin, async (req, res) => {
 
 // Creates a new inventory item and preserves form state on validation errors.
 router.post("/inventory/items", requireLogin, async (req, res) => {
-  const barcode = String(req.body.barcode || "").trim();
+  const barcode = normalizeBarcode(req.body.barcode);
   const name = toUppercaseText(req.body.name);
-  const cost = String(req.body.cost || "").trim();
-  const price = String(req.body.price || "").trim();
-  const quantity = Number(req.body.quantity || 0);
-  const minQuantity = Number(req.body.min_quantity || 0);
-  const maxQuantity = Number(req.body.max_quantity || 1);
+  const cost = normalizeDecimalInput(req.body.cost);
+  const price = normalizeDecimalInput(req.body.price);
+  const quantity = parseWholeNumber(req.body.quantity);
+  const minQuantity = parseWholeNumber(req.body.min_quantity);
+  const maxQuantity = parseWholeNumber(req.body.max_quantity);
   const categoryId = req.body.category_id ? Number(req.body.category_id) : null;
   const jsonResponse = wantsJsonResponse(req);
 
@@ -419,6 +439,33 @@ router.post("/inventory/items", requireLogin, async (req, res) => {
     }
 
     flash(req, { type: "error", message: "Item number, name, cost, and price are required." });
+    return res.redirect("/inventory");
+  }
+
+  if (quantity === null || minQuantity === null || maxQuantity === null) {
+    if (jsonResponse) {
+      return res.status(400).json({
+        ok: false,
+        message: "Quantity, minimum quantity, and maximum quantity must be whole numbers 0 or higher."
+      });
+    }
+
+    flash(req, { type: "error", message: "Quantity, minimum quantity, and maximum quantity must be whole numbers 0 or higher." });
+    return res.redirect("/inventory");
+  }
+
+  const parsedCost = parseNonNegativeDecimal(cost);
+  const parsedPrice = parseNonNegativeDecimal(price);
+
+  if (parsedCost === null || parsedPrice === null) {
+    if (jsonResponse) {
+      return res.status(400).json({
+        ok: false,
+        message: "Cost and price must be valid numbers 0 or higher."
+      });
+    }
+
+    flash(req, { type: "error", message: "Cost and price must be valid numbers 0 or higher." });
     return res.redirect("/inventory");
   }
 
@@ -455,7 +502,7 @@ router.post("/inventory/items", requireLogin, async (req, res) => {
     const [insertResult] = await pool.query(
       `INSERT INTO items (barcode, name, cost, price, quantity, min_quantity, max_quantity, category_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [barcode, name, cost, price, quantity, minQuantity, maxQuantity, categoryId]
+      [barcode, name, parsedCost, parsedPrice, quantity, minQuantity, maxQuantity, categoryId]
     );
 
     if (jsonResponse) {
@@ -920,7 +967,7 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
       }
 
       if (adjustmentType === "cost") {
-        const newCost = Number(getSubmittedField({
+        const newCost = parseNonNegativeDecimal(getSubmittedField({
           body: req.body,
           submittedItems,
           payloadItem,
@@ -928,7 +975,7 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
           fieldName: "cost"
         }));
 
-        if (Number.isNaN(newCost) || newCost < 0) {
+        if (newCost === null) {
           throw new Error("All selected cost values must be valid numbers 0 or higher.");
         }
 
@@ -946,7 +993,7 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
       }
 
       if (adjustmentType === "price") {
-        const newPrice = Number(getSubmittedField({
+        const newPrice = parseNonNegativeDecimal(getSubmittedField({
           body: req.body,
           submittedItems,
           payloadItem,
@@ -954,7 +1001,7 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
           fieldName: "price"
         }));
 
-        if (Number.isNaN(newPrice) || newPrice < 0) {
+        if (newPrice === null) {
           throw new Error("All selected price values must be valid numbers 0 or higher.");
         }
 
@@ -972,7 +1019,7 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
       }
 
       if (adjustmentType === "category") {
-        const rawCategoryId = String(getSubmittedField({
+        const rawCategoryId = normalizeText(getSubmittedField({
           body: req.body,
           submittedItems,
           payloadItem,

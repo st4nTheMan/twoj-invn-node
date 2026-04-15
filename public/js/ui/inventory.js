@@ -46,6 +46,16 @@
       return dateTimeFormatter.format(new Date(value));
     }
 
+    // Trims outer whitespace and collapses repeated inner whitespace.
+    function normalizeText(value) {
+      return String(value ?? "").replace(/\s+/g, " ").trim();
+    }
+
+    // Normalizes decimal-style input by removing commas after whitespace cleanup.
+    function normalizeDecimalInput(value) {
+      return normalizeText(value).replace(/,/g, "");
+    }
+
     // Escapes dynamic text before it is inserted into HTML attributes or cells.
     function escapeHtml(value) {
       return String(value ?? "")
@@ -223,12 +233,16 @@
 
     // Verifies whether the current item number already exists in inventory.
     async function verifyBarcode() {
-      const barcode = String(barcodeInput?.value || "").trim();
+      const barcode = normalizeText(barcodeInput?.value);
 
       if (!barcode) {
         setBarcodeVerificationStatus("error", "Enter an item number first.");
         barcodeInput?.focus();
         return { ok: false, exists: null };
+      }
+
+      if (barcodeInput) {
+        barcodeInput.value = barcode;
       }
 
       setButtonDisabled(verifyBarcodeButton, true);
@@ -320,7 +334,16 @@
       }
 
       event.preventDefault();
-      const currentBarcode = String(barcodeInput?.value || "").trim();
+      addItemForm.querySelectorAll('input[name="barcode"], input[name="name"]').forEach((input) => {
+        if (!input) return;
+        input.value = normalizeText(input.value);
+      });
+      addItemForm.querySelectorAll('input[name="cost"], input[name="price"]').forEach((input) => {
+        if (!input) return;
+        input.value = normalizeDecimalInput(input.value);
+      });
+
+      const currentBarcode = normalizeText(barcodeInput?.value);
 
       if (currentBarcode && currentBarcode !== lastVerifiedBarcode) {
         const verification = await verifyBarcode();
@@ -350,6 +373,11 @@
       }
 
       event.preventDefault();
+      const categoryNameInput = addCategoryForm.querySelector('input[name="category_name"]');
+      if (categoryNameInput) {
+        categoryNameInput.value = normalizeText(categoryNameInput.value);
+      }
+
       const payload = await submitInventoryForm(addCategoryForm);
 
       if (!payload?.ok || !payload.category) {
@@ -362,7 +390,7 @@
     });
 
     barcodeInput?.addEventListener("input", () => {
-      if (String(barcodeInput.value || "").trim() !== lastVerifiedBarcode) {
+      if (normalizeText(barcodeInput.value) !== lastVerifiedBarcode) {
         resetBarcodeVerification();
       }
     });
