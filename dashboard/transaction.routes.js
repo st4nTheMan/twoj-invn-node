@@ -18,6 +18,7 @@ router.get("/transaction", requireLogin, async (req, res) => {
       `SELECT items.*, categories.category_name
        FROM items
        LEFT JOIN categories ON items.category_id = categories.id
+       WHERE items.archived_at IS NULL
        ORDER BY items.name ASC`
     );
 
@@ -83,7 +84,7 @@ router.post("/transaction", requireLogin, async (req, res) => {
       }
 
       const [rows] = await connection.query(
-        "SELECT quantity FROM items WHERE id = ? LIMIT 1",
+        "SELECT quantity FROM items WHERE id = ? AND archived_at IS NULL LIMIT 1",
         [itemId]
       );
       const item = rows[0];

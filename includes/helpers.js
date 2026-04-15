@@ -27,9 +27,24 @@ function formatInvoice(id) {
   return `INV-${String(id).padStart(6, "0")}`;
 }
 
+// Trims outer whitespace and collapses repeated inner whitespace to a single space.
+function normalizeText(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
 // Normalizes text input before saving it in uppercase database fields.
 function toUppercaseText(value) {
-  return String(value || "").trim().toUpperCase();
+  return normalizeText(value).toUpperCase();
+}
+
+// Normalizes item numbers and barcodes by removing extra spacing.
+function normalizeBarcode(value) {
+  return normalizeText(value);
+}
+
+// Normalizes decimal-style numeric input while preserving decimal points.
+function normalizeDecimalInput(value) {
+  return normalizeText(value).replace(/,/g, "");
 }
 
 // Stores a one-time flash message in the current session.
@@ -56,5 +71,8 @@ module.exports = {
   formatDateTime,
   formatInvoice,
   getDatabaseErrorMessage,
+  normalizeBarcode,
+  normalizeDecimalInput,
+  normalizeText,
   toUppercaseText
 };

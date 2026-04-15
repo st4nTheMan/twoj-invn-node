@@ -3,6 +3,9 @@ const pool = require("../database/pool");
 const { requireLogin } = require("../middleware/auth");
 const {
   flash,
+  normalizeBarcode,
+  normalizeDecimalInput,
+  normalizeText,
   toUppercaseText
 } = require("../includes/helpers");
 
@@ -11,7 +14,7 @@ const router = express.Router();
 
 // Parses a non-negative whole number and returns null for invalid values.
 function parseWholeNumber(value) {
-  const normalized = String(value ?? "").trim();
+  const normalized = normalizeDecimalInput(value);
 
   if (normalized === "") {
     return null;
@@ -84,6 +87,143 @@ function wantsJsonResponse(req) {
   return req.xhr || String(req.get("accept") || "").includes("application/json");
 }
 
+// Formats singular or plural labels based on a numeric count.
+function pluralize(count, singular, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+// Converts adjustment mode keys into user-friendly labels.
+function getAdjustmentLabel(adjustmentType) {
+  const labels = {
+    quantity: "OH qty",
+    min_max: "min/max qty",
+    cost: "cost",
+    price: "price",
+    category: "category"
+  };
+
+  return labels[adjustmentType] || "selected field";
+}
+
+// Parses a non-negative decimal number and returns null for invalid values.
+function parseNonNegativeDecimal(value) {
+  const normalized = normalizeDecimalInput(value);
+
+  if (normalized === "") {
+    return null;
+  }
+
+  const parsedValue = Number(normalized);
+
+  if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+    return null;
+  }
+
+  return parsedValue;
+}
+
+// Escapes CSV cell content and quotes values that need it.
+function toCsvCell(value) {
+  const normalized = String(value ?? "");
+  if (!/[",\r\n]/.test(normalized)) {
+    return normalized;
+  }
+
+  return `"${normalized.replace(/"/g, "\"\"")}"`;
+}
+
+// Escapes XML entities for the Excel-compatible inventory export.
+function escapeXml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+// Builds a safe timestamp suffix for downloaded export filenames.
+function getExportTimestamp() {
+  return new Date().toISOString().replace(/[:.]/g, "-");
+}
+
+// Converts inventory rows into CSV text.
+function buildInventoryCsv(items) {
+  const headers = [
+    "Item Number",
+    "Name",
+    "Category",
+    "Cost",
+    "Price",
+    "Qty",
+    "Min Qty",
+    "Max Qty",
+    "Created At"
+  ];
+  const rows = items.map((item) => ([
+    item.barcode,
+    item.name,
+    item.category_name || "No Category",
+    Number(item.cost || 0).toFixed(2),
+    Number(item.price || 0).toFixed(2),
+    item.quantity,
+    item.min_quantity,
+    item.max_quantity,
+    item.created_at ? new Date(item.created_at).toISOString() : ""
+  ]));
+
+  return [headers, ...rows]
+    .map((row) => row.map((cell) => toCsvCell(cell)).join(","))
+    .join("\r\n");
+}
+
+// Converts inventory rows into Excel 2003 XML that opens as .xls in spreadsheet apps.
+function buildInventoryXls(items) {
+  const headers = [
+    "Item Number",
+    "Name",
+    "Category",
+    "Cost",
+    "Price",
+    "OH Qty",
+    "Min Qty",
+    "Max Qty",
+    "Created At"
+  ];
+  const rows = items.map((item) => ([
+    item.barcode,
+    item.name,
+    item.category_name || "No Category",
+    Number(item.cost || 0).toFixed(2),
+    Number(item.price || 0).toFixed(2),
+    item.quantity,
+    item.min_quantity,
+    item.max_quantity,
+    item.created_at ? new Date(item.created_at).toISOString() : ""
+  ]));
+  const xmlRows = [headers, ...rows]
+    .map((row) => {
+      const cells = row
+        .map((cell) => `<Cell><Data ss:Type="String">${escapeXml(cell)}</Data></Cell>`)
+        .join("");
+
+      return `<Row>${cells}</Row>`;
+    })
+    .join("");
+
+  return `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <Worksheet ss:Name="Inventory">
+  <Table>${xmlRows}</Table>
+ </Worksheet>
+</Workbook>`;
+}
+
 // Sends a shared success or error result for bulk adjustment submissions.
 function respondAdjustmentResult(req, res, type, message) {
   flash(req, { type, message });
@@ -108,13 +248,22 @@ router.get("/inventory", requireLogin, async (req, res) => {
       `SELECT items.*, categories.category_name
        FROM items
        LEFT JOIN categories ON items.category_id = categories.id
+       WHERE items.archived_at IS NULL
        ORDER BY items.id DESC`
+    );
+    const [archivedItems] = await pool.query(
+      `SELECT items.*, categories.category_name
+       FROM items
+       LEFT JOIN categories ON items.category_id = categories.id
+       WHERE items.archived_at IS NOT NULL
+       ORDER BY items.archived_at DESC, items.id DESC`
     );
 
     return res.render("dashboard/inventory", {
       title: "Inventory",
       categories,
-      items
+      items,
+      archivedItems
     });
   } catch (error) {
     console.error("Failed to load inventory:", error);
@@ -122,14 +271,50 @@ router.get("/inventory", requireLogin, async (req, res) => {
     return res.render("dashboard/inventory", {
       title: "Inventory",
       categories: [],
-      items: []
+      items: [],
+      archivedItems: []
     });
+  }
+});
+
+// Downloads the inventory list in CSV or Excel-compatible XLS format.
+router.get("/inventory/export", requireLogin, async (req, res) => {
+  const format = String(req.query.format || "csv").trim().toLowerCase();
+
+  if (!["csv", "xls"].includes(format)) {
+    flash(req, { type: "error", message: "Choose CSV or XLS for export." });
+    return res.redirect("/inventory");
+  }
+
+  try {
+    const [items] = await pool.query(
+      `SELECT items.id, items.barcode, items.name, items.cost, items.price, items.quantity, items.min_quantity, items.max_quantity, items.created_at, categories.category_name
+       FROM items
+       LEFT JOIN categories ON items.category_id = categories.id
+       WHERE items.archived_at IS NULL
+       ORDER BY items.id DESC`
+    );
+    const timestamp = getExportTimestamp();
+
+    if (format === "csv") {
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="inventory-${timestamp}.csv"`);
+      return res.send(`\uFEFF${buildInventoryCsv(items)}`);
+    }
+
+    res.setHeader("Content-Type", "application/vnd.ms-excel; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="inventory-${timestamp}.xls"`);
+    return res.send(buildInventoryXls(items));
+  } catch (error) {
+    console.error("Failed to export inventory:", error);
+    flash(req, { type: "error", message: "Unable to export inventory right now." });
+    return res.redirect("/inventory");
   }
 });
 
 // Checks whether an item number is already present before the add-item form is submitted.
 router.get("/inventory/items/verify", requireLogin, async (req, res) => {
-  const barcode = String(req.query.barcode || "").trim();
+  const barcode = normalizeBarcode(req.query.barcode);
 
   if (!barcode) {
     return res.status(400).json({
@@ -174,6 +359,7 @@ router.get("/price-lookup", requireLogin, async (req, res) => {
     const [items] = await pool.query(
       `SELECT id, barcode, name, price
        FROM items
+       WHERE archived_at IS NULL
        ORDER BY id DESC`
     );
 
@@ -201,6 +387,7 @@ router.get("/inventory/adjustments", requireLogin, async (req, res) => {
       `SELECT items.*, categories.category_name
        FROM items
        LEFT JOIN categories ON items.category_id = categories.id
+       WHERE items.archived_at IS NULL
        ORDER BY items.id DESC`
     );
 
@@ -227,6 +414,7 @@ router.get("/history", requireLogin, async (req, res) => {
       `SELECT items.*, categories.category_name
        FROM items
        LEFT JOIN categories ON items.category_id = categories.id
+       WHERE items.archived_at IS NULL
        ORDER BY items.id DESC`
     );
 
@@ -246,13 +434,13 @@ router.get("/history", requireLogin, async (req, res) => {
 
 // Creates a new inventory item and preserves form state on validation errors.
 router.post("/inventory/items", requireLogin, async (req, res) => {
-  const barcode = String(req.body.barcode || "").trim();
+  const barcode = normalizeBarcode(req.body.barcode);
   const name = toUppercaseText(req.body.name);
-  const cost = String(req.body.cost || "").trim();
-  const price = String(req.body.price || "").trim();
-  const quantity = Number(req.body.quantity || 0);
-  const minQuantity = Number(req.body.min_quantity || 0);
-  const maxQuantity = Number(req.body.max_quantity || 1);
+  const cost = normalizeDecimalInput(req.body.cost);
+  const price = normalizeDecimalInput(req.body.price);
+  const quantity = parseWholeNumber(req.body.quantity);
+  const minQuantity = parseWholeNumber(req.body.min_quantity);
+  const maxQuantity = parseWholeNumber(req.body.max_quantity);
   const categoryId = req.body.category_id ? Number(req.body.category_id) : null;
   const jsonResponse = wantsJsonResponse(req);
 
@@ -265,6 +453,33 @@ router.post("/inventory/items", requireLogin, async (req, res) => {
     }
 
     flash(req, { type: "error", message: "Item number, name, cost, and price are required." });
+    return res.redirect("/inventory");
+  }
+
+  if (quantity === null || minQuantity === null || maxQuantity === null) {
+    if (jsonResponse) {
+      return res.status(400).json({
+        ok: false,
+        message: "Quantity, minimum quantity, and maximum quantity must be whole numbers 0 or higher."
+      });
+    }
+
+    flash(req, { type: "error", message: "Quantity, minimum quantity, and maximum quantity must be whole numbers 0 or higher." });
+    return res.redirect("/inventory");
+  }
+
+  const parsedCost = parseNonNegativeDecimal(cost);
+  const parsedPrice = parseNonNegativeDecimal(price);
+
+  if (parsedCost === null || parsedPrice === null) {
+    if (jsonResponse) {
+      return res.status(400).json({
+        ok: false,
+        message: "Cost and price must be valid numbers 0 or higher."
+      });
+    }
+
+    flash(req, { type: "error", message: "Cost and price must be valid numbers 0 or higher." });
     return res.redirect("/inventory");
   }
 
@@ -301,7 +516,7 @@ router.post("/inventory/items", requireLogin, async (req, res) => {
     const [insertResult] = await pool.query(
       `INSERT INTO items (barcode, name, cost, price, quantity, min_quantity, max_quantity, category_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [barcode, name, cost, price, quantity, minQuantity, maxQuantity, categoryId]
+      [barcode, name, parsedCost, parsedPrice, quantity, minQuantity, maxQuantity, categoryId]
     );
 
     if (jsonResponse) {
@@ -316,12 +531,12 @@ router.post("/inventory/items", requireLogin, async (req, res) => {
 
       return res.status(201).json({
         ok: true,
-        message: "Item added successfully.",
+        message: `Item ${name} added successfully.`,
         item: rows[0] || null
       });
     }
 
-    flash(req, { type: "success", message: "Item added successfully." });
+    flash(req, { type: "success", message: `Item ${name} added successfully.` });
     return res.redirect("/inventory");
   } catch (error) {
     console.error("Failed to save item:", error);
@@ -345,6 +560,86 @@ router.post("/inventory/items/:id", requireLogin, async (req, res) => {
     message: "Item details are read-only here. Use the Adjustments page to update inventory fields."
   });
   return res.redirect(`/inventory/items/${Number(req.params.id) || ""}`);
+});
+
+// Archives an item so it is hidden from active inventory screens without deleting history.
+router.post("/inventory/items/:id/archive", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!id) {
+    flash(req, { type: "error", message: "Item not found." });
+    return res.redirect("/inventory");
+  }
+
+  try {
+    const [rows] = await pool.query(
+      "SELECT id, name, archived_at FROM items WHERE id = ? LIMIT 1",
+      [id]
+    );
+    const item = rows[0];
+
+    if (!item) {
+      flash(req, { type: "error", message: "Item not found." });
+      return res.redirect("/inventory");
+    }
+
+    if (item.archived_at) {
+      flash(req, { type: "error", message: `Item ${item.name} is already archived.` });
+      return res.redirect("/inventory");
+    }
+
+    await pool.query(
+      "UPDATE items SET archived_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [id]
+    );
+
+    flash(req, { type: "success", message: `Item ${item.name} archived successfully.` });
+    return res.redirect("/inventory");
+  } catch (error) {
+    console.error("Failed to archive item:", error);
+    flash(req, { type: "error", message: "Unable to archive item right now." });
+    return res.redirect("/inventory");
+  }
+});
+
+// Restores an archived item back into active inventory screens.
+router.post("/inventory/items/:id/restore", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!id) {
+    flash(req, { type: "error", message: "Item not found." });
+    return res.redirect("/inventory");
+  }
+
+  try {
+    const [rows] = await pool.query(
+      "SELECT id, name, archived_at FROM items WHERE id = ? LIMIT 1",
+      [id]
+    );
+    const item = rows[0];
+
+    if (!item) {
+      flash(req, { type: "error", message: "Item not found." });
+      return res.redirect("/inventory");
+    }
+
+    if (!item.archived_at) {
+      flash(req, { type: "error", message: `Item ${item.name} is already active.` });
+      return res.redirect("/inventory");
+    }
+
+    await pool.query(
+      "UPDATE items SET archived_at = NULL WHERE id = ?",
+      [id]
+    );
+
+    flash(req, { type: "success", message: `Item ${item.name} restored successfully.` });
+    return res.redirect("/inventory");
+  } catch (error) {
+    console.error("Failed to restore item:", error);
+    flash(req, { type: "error", message: "Unable to restore item right now." });
+    return res.redirect("/inventory");
+  }
 });
 
 // Creates a new category directly from the inventory page modal.
@@ -390,7 +685,7 @@ router.post("/inventory/categories", requireLogin, async (req, res) => {
     if (jsonResponse) {
       return res.status(201).json({
         ok: true,
-        message: "Category saved successfully.",
+        message: `Category ${categoryName} saved successfully.`,
         category: {
           id: insertResult.insertId,
           category_name: categoryName
@@ -398,7 +693,7 @@ router.post("/inventory/categories", requireLogin, async (req, res) => {
       });
     }
 
-    flash(req, { type: "success", message: "Category saved successfully." });
+    flash(req, { type: "success", message: `Category ${categoryName} saved successfully.` });
     return res.redirect("/inventory");
   } catch (error) {
     console.error("Failed to save category:", error);
@@ -572,6 +867,54 @@ router.get("/inventory/items/:id/min-max", requireLogin, async (req, res) => {
   }
 });
 
+// Loads the category adjustment history page for one item.
+router.get("/inventory/items/:id/category", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!id) {
+    return res.redirect("/inventory");
+  }
+
+  try {
+    const itemPromise = pool.query(
+      `SELECT items.*, categories.category_name
+       FROM items
+       LEFT JOIN categories ON items.category_id = categories.id
+       WHERE items.id = ? LIMIT 1`,
+      [id]
+    );
+    const historyPromise = pool.query(
+      `SELECT category_adjustments.*,
+              old_categories.category_name AS old_category_name,
+              new_categories.category_name AS new_category_name
+       FROM category_adjustments
+       LEFT JOIN categories AS old_categories ON category_adjustments.old_category_id = old_categories.id
+       LEFT JOIN categories AS new_categories ON category_adjustments.new_category_id = new_categories.id
+       WHERE category_adjustments.item_id = ?
+       ORDER BY category_adjustments.adjusted_at DESC`,
+      [id]
+    );
+    const [itemResult, historyResult] = await Promise.all([itemPromise, historyPromise]);
+    const item = itemResult[0][0];
+    const historyList = historyResult[0];
+
+    if (!item) {
+      flash(req, { type: "error", message: "Item not found." });
+      return res.redirect("/inventory");
+    }
+
+    return res.render("dashboard/adjust-category", {
+      title: "Category History",
+      item,
+      historyList
+    });
+  } catch (error) {
+    console.error("Failed to load category adjustment page:", error);
+    flash(req, { type: "error", message: "Unable to load category history." });
+    return res.redirect("/inventory");
+  }
+});
+
 // Saves a new item cost and records the cost change history.
 router.post("/inventory/items/:id/cost", requireLogin, async (req, res) => {
   flash(req, {
@@ -631,20 +974,24 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
   const jsonResponse = jsonRequest || wantsJsonResponse(req);
   let adjustmentType = "";
   let payloadRows = [];
+  let adjustmentNote = "";
 
   if (jsonRequest) {
     adjustmentType = String(req.body.adjustmentType || "").trim();
+    adjustmentNote = normalizeText(req.body.adjustmentNote);
     payloadRows = Array.isArray(req.body.adjustments) ? req.body.adjustments : [];
   } else if (req.body.adjustments_json) {
     try {
       const parsed = JSON.parse(req.body.adjustments_json);
       adjustmentType = String(parsed?.adjustmentType || req.body.adjustment_type || "").trim();
+      adjustmentNote = normalizeText(parsed?.adjustmentNote || req.body.adjustment_note);
       payloadRows = Array.isArray(parsed?.adjustments) ? parsed.adjustments : [];
     } catch (error) {
       return respondAdjustmentResult(req, res, "error", "Unable to read the submitted adjustment data.");
     }
   } else {
     adjustmentType = String(req.body.adjustment_type || "").trim();
+    adjustmentNote = normalizeText(req.body.adjustment_note);
   }
 
   const selectedIds = Array.isArray(req.body.selected_item_ids)
@@ -683,7 +1030,9 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
     const [rows] = await connection.query(
       `SELECT id, quantity, min_quantity, max_quantity, cost, price, category_id
        FROM items
-       WHERE id IN (?)`,
+       WHERE archived_at IS NULL
+         AND id IN (?)
+      `,
       [uniqueIds]
     );
     const itemsById = new Map(rows.map((item) => [item.id, item]));
@@ -716,8 +1065,8 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
 
         if (Number(currentItem.quantity) !== quantity) {
           await connection.query(
-            "INSERT INTO quantity_adjustments (item_id, old_quantity, new_quantity) VALUES (?, ?, ?)",
-            [itemId, currentItem.quantity, quantity]
+            "INSERT INTO quantity_adjustments (item_id, old_quantity, new_quantity, adjustment_note) VALUES (?, ?, ?, ?)",
+            [itemId, currentItem.quantity, quantity, adjustmentNote || null]
           );
         }
       }
@@ -758,15 +1107,16 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
               old_min_quantity,
               new_min_quantity,
               old_max_quantity,
-              new_max_quantity
-            ) VALUES (?, ?, ?, ?, ?)`,
-            [itemId, currentItem.min_quantity, minQuantity, currentItem.max_quantity, maxQuantity]
+              new_max_quantity,
+              adjustment_note
+            ) VALUES (?, ?, ?, ?, ?, ?)`,
+            [itemId, currentItem.min_quantity, minQuantity, currentItem.max_quantity, maxQuantity, adjustmentNote || null]
           );
         }
       }
 
       if (adjustmentType === "cost") {
-        const newCost = Number(getSubmittedField({
+        const newCost = parseNonNegativeDecimal(getSubmittedField({
           body: req.body,
           submittedItems,
           payloadItem,
@@ -774,7 +1124,7 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
           fieldName: "cost"
         }));
 
-        if (Number.isNaN(newCost) || newCost < 0) {
+        if (newCost === null) {
           throw new Error("All selected cost values must be valid numbers 0 or higher.");
         }
 
@@ -785,14 +1135,14 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
 
         if (Number(currentItem.cost) !== newCost) {
           await connection.query(
-            "INSERT INTO cost_adjustments (item_id, old_cost, new_cost) VALUES (?, ?, ?)",
-            [itemId, currentItem.cost, newCost]
+            "INSERT INTO cost_adjustments (item_id, old_cost, new_cost, adjustment_note) VALUES (?, ?, ?, ?)",
+            [itemId, currentItem.cost, newCost, adjustmentNote || null]
           );
         }
       }
 
       if (adjustmentType === "price") {
-        const newPrice = Number(getSubmittedField({
+        const newPrice = parseNonNegativeDecimal(getSubmittedField({
           body: req.body,
           submittedItems,
           payloadItem,
@@ -800,7 +1150,7 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
           fieldName: "price"
         }));
 
-        if (Number.isNaN(newPrice) || newPrice < 0) {
+        if (newPrice === null) {
           throw new Error("All selected price values must be valid numbers 0 or higher.");
         }
 
@@ -811,14 +1161,14 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
 
         if (Number(currentItem.price) !== newPrice) {
           await connection.query(
-            "INSERT INTO price_adjustments (item_id, old_price, new_price) VALUES (?, ?, ?)",
-            [itemId, currentItem.price, newPrice]
+            "INSERT INTO price_adjustments (item_id, old_price, new_price, adjustment_note) VALUES (?, ?, ?, ?)",
+            [itemId, currentItem.price, newPrice, adjustmentNote || null]
           );
         }
       }
 
       if (adjustmentType === "category") {
-        const rawCategoryId = String(getSubmittedField({
+        const rawCategoryId = normalizeText(getSubmittedField({
           body: req.body,
           submittedItems,
           payloadItem,
@@ -839,6 +1189,18 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
           "UPDATE items SET category_id = ? WHERE id = ?",
           [categoryId, itemId]
         );
+
+        if (Number(currentItem.category_id || 0) !== Number(categoryId || 0)) {
+          await connection.query(
+            `INSERT INTO category_adjustments (
+              item_id,
+              old_category_id,
+              new_category_id,
+              adjustment_note
+            ) VALUES (?, ?, ?, ?)`,
+            [itemId, currentItem.category_id, categoryId, adjustmentNote || null]
+          );
+        }
       }
     }
 
@@ -856,13 +1218,18 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
 
       return res.status(200).json({
         ok: true,
-        message: "Selected items updated successfully.",
+        message: `${pluralize(updatedRows.length, "item")} updated for ${getAdjustmentLabel(adjustmentType)}.`,
         adjustmentType,
         items: updatedRows
       });
     }
 
-    return respondAdjustmentResult(req, res, "success", "Selected items updated successfully.");
+    return respondAdjustmentResult(
+      req,
+      res,
+      "success",
+      `${pluralize(uniqueIds.length, "item")} updated for ${getAdjustmentLabel(adjustmentType)}.`
+    );
   } catch (error) {
     await connection.rollback();
     console.error("Failed to save adjustments:", error);

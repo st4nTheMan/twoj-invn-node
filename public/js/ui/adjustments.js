@@ -11,6 +11,7 @@
     const form = document.getElementById("adjustments-form");
     const typeInput = document.getElementById("adjustment-type");
     const adjustmentsJsonInput = document.getElementById("adjustments-json");
+    const adjustmentNoteInput = document.getElementById("adjustment-note");
     const saveButton = document.getElementById("adjustments-save-button");
     const modeButtons = root.querySelectorAll("[data-adjustment-mode]");
     const rows = root.querySelectorAll("[data-adjustment-row]");
@@ -563,6 +564,7 @@
         if (adjustmentsJsonInput) {
           adjustmentsJsonInput.value = JSON.stringify({
             adjustmentType: typeInput.value,
+            adjustmentNote: String(adjustmentNoteInput?.value || "").trim(),
             adjustments
           });
         }

@@ -13,6 +13,9 @@
     const verifyBarcodeButton = document.getElementById("verify-barcode-button");
     const barcodeVerificationStatus = document.getElementById("barcode-verification-status");
     const addCategoryExistingSelect = addCategoryForm?.querySelector("select");
+    const archiveItemButton = document.getElementById("view-item-archive-button");
+    const archiveItemConfirmForm = document.getElementById("archive-item-confirm-form");
+    const archiveItemConfirmMessage = document.getElementById("archive-item-confirm-message");
     let lastVerifiedBarcode = "";
     let lastVerificationExists = null;
 
@@ -44,6 +47,16 @@
     function formatDateTime(value) {
       if (!value) return "";
       return dateTimeFormatter.format(new Date(value));
+    }
+
+    // Trims outer whitespace and collapses repeated inner whitespace.
+    function normalizeText(value) {
+      return String(value ?? "").replace(/\s+/g, " ").trim();
+    }
+
+    // Normalizes decimal-style input by removing commas after whitespace cleanup.
+    function normalizeDecimalInput(value) {
+      return normalizeText(value).replace(/,/g, "");
     }
 
     // Escapes dynamic text before it is inserted into HTML attributes or cells.
@@ -83,6 +96,17 @@
       modalFields.minQuantity.textContent = String(trigger.dataset.itemMinQuantity || "0");
       modalFields.maxQuantity.textContent = String(trigger.dataset.itemMaxQuantity || "0");
       modalFields.category.textContent = trigger.dataset.itemCategory || "No Category";
+
+      if (archiveItemButton) {
+        archiveItemButton.dataset.itemId = trigger.dataset.itemId || "";
+        archiveItemButton.dataset.itemName = trigger.dataset.itemName || "this item";
+      }
+      if (archiveItemConfirmForm) {
+        archiveItemConfirmForm.action = `/inventory/items/${encodeURIComponent(trigger.dataset.itemId || "0")}/archive`;
+      }
+      if (archiveItemConfirmMessage) {
+        archiveItemConfirmMessage.textContent = `Archive ${trigger.dataset.itemName || "this item"}?`;
+      }
     }
 
     // Binds click handlers so inventory rows can open the item-details modal.
@@ -223,12 +247,16 @@
 
     // Verifies whether the current item number already exists in inventory.
     async function verifyBarcode() {
-      const barcode = String(barcodeInput?.value || "").trim();
+      const barcode = normalizeText(barcodeInput?.value);
 
       if (!barcode) {
         setBarcodeVerificationStatus("error", "Enter an item number first.");
         barcodeInput?.focus();
         return { ok: false, exists: null };
+      }
+
+      if (barcodeInput) {
+        barcodeInput.value = barcode;
       }
 
       setButtonDisabled(verifyBarcodeButton, true);
@@ -320,7 +348,16 @@
       }
 
       event.preventDefault();
-      const currentBarcode = String(barcodeInput?.value || "").trim();
+      addItemForm.querySelectorAll('input[name="barcode"], input[name="name"]').forEach((input) => {
+        if (!input) return;
+        input.value = normalizeText(input.value);
+      });
+      addItemForm.querySelectorAll('input[name="cost"], input[name="price"]').forEach((input) => {
+        if (!input) return;
+        input.value = normalizeDecimalInput(input.value);
+      });
+
+      const currentBarcode = normalizeText(barcodeInput?.value);
 
       if (currentBarcode && currentBarcode !== lastVerifiedBarcode) {
         const verification = await verifyBarcode();
@@ -350,6 +387,11 @@
       }
 
       event.preventDefault();
+      const categoryNameInput = addCategoryForm.querySelector('input[name="category_name"]');
+      if (categoryNameInput) {
+        categoryNameInput.value = normalizeText(categoryNameInput.value);
+      }
+
       const payload = await submitInventoryForm(addCategoryForm);
 
       if (!payload?.ok || !payload.category) {
@@ -362,7 +404,7 @@
     });
 
     barcodeInput?.addEventListener("input", () => {
-      if (String(barcodeInput.value || "").trim() !== lastVerifiedBarcode) {
+      if (normalizeText(barcodeInput.value) !== lastVerifiedBarcode) {
         resetBarcodeVerification();
       }
     });
