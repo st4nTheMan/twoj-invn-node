@@ -11,6 +11,7 @@ SET NAMES utf8mb4;
 
 -- Drop dependent tables first so the schema can be recreated cleanly.
 DROP TABLE IF EXISTS price_adjustments;
+DROP TABLE IF EXISTS category_adjustments;
 DROP TABLE IF EXISTS min_max_adjustments;
 DROP TABLE IF EXISTS quantity_adjustments;
 -- Drop the cost history table before recreating it.
@@ -105,6 +106,7 @@ CREATE TABLE cost_adjustments (
   item_id INT UNSIGNED NOT NULL,
   old_cost DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   new_cost DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  adjustment_note VARCHAR(255) NULL,
   adjusted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_cost_adjustments_item_id (item_id),
@@ -120,6 +122,7 @@ CREATE TABLE quantity_adjustments (
   item_id INT UNSIGNED NOT NULL,
   old_quantity INT NOT NULL DEFAULT 0,
   new_quantity INT NOT NULL DEFAULT 0,
+  adjustment_note VARCHAR(255) NULL,
   adjusted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_quantity_adjustments_item_id (item_id),
@@ -137,6 +140,7 @@ CREATE TABLE min_max_adjustments (
   new_min_quantity INT NOT NULL DEFAULT 0,
   old_max_quantity INT NOT NULL DEFAULT 0,
   new_max_quantity INT NOT NULL DEFAULT 0,
+  adjustment_note VARCHAR(255) NULL,
   adjusted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_min_max_adjustments_item_id (item_id),
@@ -152,6 +156,7 @@ CREATE TABLE price_adjustments (
   item_id INT UNSIGNED NOT NULL,
   old_price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   new_price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  adjustment_note VARCHAR(255) NULL,
   adjusted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_price_adjustments_item_id (item_id),
@@ -159,6 +164,32 @@ CREATE TABLE price_adjustments (
     FOREIGN KEY (item_id) REFERENCES items (id)
     ON UPDATE CASCADE
     ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Store the history of item category changes.
+CREATE TABLE category_adjustments (
+  id INT NOT NULL AUTO_INCREMENT,
+  item_id INT NOT NULL,
+  old_category_id INT NULL,
+  new_category_id INT NULL,
+  adjustment_note VARCHAR(255) NULL,
+  adjusted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_category_adjustments_item_id (item_id),
+  KEY idx_category_adjustments_old_category_id (old_category_id),
+  KEY idx_category_adjustments_new_category_id (new_category_id),
+  CONSTRAINT fk_category_adjustments_item
+    FOREIGN KEY (item_id) REFERENCES items (id)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE,
+  CONSTRAINT fk_category_adjustments_old_category
+    FOREIGN KEY (old_category_id) REFERENCES categories (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL,
+  CONSTRAINT fk_category_adjustments_new_category
+    FOREIGN KEY (new_category_id) REFERENCES categories (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Add the default admin account for first-time login.

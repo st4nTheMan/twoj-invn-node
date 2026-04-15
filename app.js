@@ -7,6 +7,10 @@ const session = require("express-session");
 require("dotenv").config();
 
 const pool = require("./database/pool");
+const {
+  ensureArchiveSchema,
+  ensureAdjustmentNotesSchema
+} = require("./database/schema-bootstrap");
 const authRoutes = require("./auth/routes");
 const dashboardRoutes = require("./dashboard/routes");
 const apiRoutes = require("./api/routes");

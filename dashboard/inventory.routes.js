@@ -867,6 +867,54 @@ router.get("/inventory/items/:id/min-max", requireLogin, async (req, res) => {
   }
 });
 
+// Loads the category adjustment history page for one item.
+router.get("/inventory/items/:id/category", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!id) {
+    return res.redirect("/inventory");
+  }
+
+  try {
+    const itemPromise = pool.query(
+      `SELECT items.*, categories.category_name
+       FROM items
+       LEFT JOIN categories ON items.category_id = categories.id
+       WHERE items.id = ? LIMIT 1`,
+      [id]
+    );
+    const historyPromise = pool.query(
+      `SELECT category_adjustments.*,
+              old_categories.category_name AS old_category_name,
+              new_categories.category_name AS new_category_name
+       FROM category_adjustments
+       LEFT JOIN categories AS old_categories ON category_adjustments.old_category_id = old_categories.id
+       LEFT JOIN categories AS new_categories ON category_adjustments.new_category_id = new_categories.id
+       WHERE category_adjustments.item_id = ?
+       ORDER BY category_adjustments.adjusted_at DESC`,
+      [id]
+    );
+    const [itemResult, historyResult] = await Promise.all([itemPromise, historyPromise]);
+    const item = itemResult[0][0];
+    const historyList = historyResult[0];
+
+    if (!item) {
+      flash(req, { type: "error", message: "Item not found." });
+      return res.redirect("/inventory");
+    }
+
+    return res.render("dashboard/adjust-category", {
+      title: "Category History",
+      item,
+      historyList
+    });
+  } catch (error) {
+    console.error("Failed to load category adjustment page:", error);
+    flash(req, { type: "error", message: "Unable to load category history." });
+    return res.redirect("/inventory");
+  }
+});
+
 // Saves a new item cost and records the cost change history.
 router.post("/inventory/items/:id/cost", requireLogin, async (req, res) => {
   flash(req, {
@@ -926,20 +974,24 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
   const jsonResponse = jsonRequest || wantsJsonResponse(req);
   let adjustmentType = "";
   let payloadRows = [];
+  let adjustmentNote = "";
 
   if (jsonRequest) {
     adjustmentType = String(req.body.adjustmentType || "").trim();
+    adjustmentNote = normalizeText(req.body.adjustmentNote);
     payloadRows = Array.isArray(req.body.adjustments) ? req.body.adjustments : [];
   } else if (req.body.adjustments_json) {
     try {
       const parsed = JSON.parse(req.body.adjustments_json);
       adjustmentType = String(parsed?.adjustmentType || req.body.adjustment_type || "").trim();
+      adjustmentNote = normalizeText(parsed?.adjustmentNote || req.body.adjustment_note);
       payloadRows = Array.isArray(parsed?.adjustments) ? parsed.adjustments : [];
     } catch (error) {
       return respondAdjustmentResult(req, res, "error", "Unable to read the submitted adjustment data.");
     }
   } else {
     adjustmentType = String(req.body.adjustment_type || "").trim();
+    adjustmentNote = normalizeText(req.body.adjustment_note);
   }
 
   const selectedIds = Array.isArray(req.body.selected_item_ids)
@@ -1013,8 +1065,8 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
 
         if (Number(currentItem.quantity) !== quantity) {
           await connection.query(
-            "INSERT INTO quantity_adjustments (item_id, old_quantity, new_quantity) VALUES (?, ?, ?)",
-            [itemId, currentItem.quantity, quantity]
+            "INSERT INTO quantity_adjustments (item_id, old_quantity, new_quantity, adjustment_note) VALUES (?, ?, ?, ?)",
+            [itemId, currentItem.quantity, quantity, adjustmentNote || null]
           );
         }
       }
@@ -1055,9 +1107,10 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
               old_min_quantity,
               new_min_quantity,
               old_max_quantity,
-              new_max_quantity
-            ) VALUES (?, ?, ?, ?, ?)`,
-            [itemId, currentItem.min_quantity, minQuantity, currentItem.max_quantity, maxQuantity]
+              new_max_quantity,
+              adjustment_note
+            ) VALUES (?, ?, ?, ?, ?, ?)`,
+            [itemId, currentItem.min_quantity, minQuantity, currentItem.max_quantity, maxQuantity, adjustmentNote || null]
           );
         }
       }
@@ -1082,8 +1135,8 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
 
         if (Number(currentItem.cost) !== newCost) {
           await connection.query(
-            "INSERT INTO cost_adjustments (item_id, old_cost, new_cost) VALUES (?, ?, ?)",
-            [itemId, currentItem.cost, newCost]
+            "INSERT INTO cost_adjustments (item_id, old_cost, new_cost, adjustment_note) VALUES (?, ?, ?, ?)",
+            [itemId, currentItem.cost, newCost, adjustmentNote || null]
           );
         }
       }
@@ -1108,8 +1161,8 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
 
         if (Number(currentItem.price) !== newPrice) {
           await connection.query(
-            "INSERT INTO price_adjustments (item_id, old_price, new_price) VALUES (?, ?, ?)",
-            [itemId, currentItem.price, newPrice]
+            "INSERT INTO price_adjustments (item_id, old_price, new_price, adjustment_note) VALUES (?, ?, ?, ?)",
+            [itemId, currentItem.price, newPrice, adjustmentNote || null]
           );
         }
       }
@@ -1136,6 +1189,18 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
           "UPDATE items SET category_id = ? WHERE id = ?",
           [categoryId, itemId]
         );
+
+        if (Number(currentItem.category_id || 0) !== Number(categoryId || 0)) {
+          await connection.query(
+            `INSERT INTO category_adjustments (
+              item_id,
+              old_category_id,
+              new_category_id,
+              adjustment_note
+            ) VALUES (?, ?, ?, ?)`,
+            [itemId, currentItem.category_id, categoryId, adjustmentNote || null]
+          );
+        }
       }
     }
 
