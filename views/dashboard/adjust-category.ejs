@@ -20,6 +20,7 @@
           <th class="px-4 py-3">Old Category</th>
           <th class="px-4 py-3">New Category</th>
           <th class="px-4 py-3">Reason / Notes</th>
+          <th class="px-4 py-3">Adjusted By</th>
           <th class="px-4 py-3">Date</th>
         </tr>
       </thead>
@@ -29,10 +30,11 @@
             <td class="px-4 py-3"><%= history.old_category_name || "No Category" %></td>
             <td class="px-4 py-3"><%= history.new_category_name || "No Category" %></td>
             <td class="px-4 py-3 text-slate-500"><%= history.adjustment_note || "-" %></td>
+            <td class="px-4 py-3 text-slate-500"><%= history.adjusted_by_username || "-" %></td>
             <td class="px-4 py-3 text-slate-500"><%= formatDateTime(history.adjusted_at) %></td>
           </tr>
         <% }) } else { %>
-          <tr><td colspan="4" class="px-4 py-8 text-center text-slate-500">No category adjustments yet.</td></tr>
+          <tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">No category adjustments yet.</td></tr>
         <% } %>
       </tbody>
     </table>

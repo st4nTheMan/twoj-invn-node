@@ -773,7 +773,11 @@ router.get("/inventory/items/:id/cost", requireLogin, async (req, res) => {
   try {
     const itemPromise = pool.query("SELECT * FROM items WHERE id = ? LIMIT 1", [id]);
     const historyPromise = pool.query(
-      "SELECT * FROM cost_adjustments WHERE item_id = ? ORDER BY adjusted_at DESC",
+      `SELECT cost_adjustments.*, users.username AS adjusted_by_username
+       FROM cost_adjustments
+       LEFT JOIN users ON cost_adjustments.adjusted_by_user_id = users.id
+       WHERE cost_adjustments.item_id = ?
+       ORDER BY cost_adjustments.adjusted_at DESC`,
       [id]
     );
     const [itemResult, historyResult] = await Promise.all([itemPromise, historyPromise]);
@@ -808,7 +812,11 @@ router.get("/inventory/items/:id/quantity", requireLogin, async (req, res) => {
   try {
     const itemPromise = pool.query("SELECT * FROM items WHERE id = ? LIMIT 1", [id]);
     const historyPromise = pool.query(
-      "SELECT * FROM quantity_adjustments WHERE item_id = ? ORDER BY adjusted_at DESC",
+      `SELECT quantity_adjustments.*, users.username AS adjusted_by_username
+       FROM quantity_adjustments
+       LEFT JOIN users ON quantity_adjustments.adjusted_by_user_id = users.id
+       WHERE quantity_adjustments.item_id = ?
+       ORDER BY quantity_adjustments.adjusted_at DESC`,
       [id]
     );
     const [itemResult, historyResult] = await Promise.all([itemPromise, historyPromise]);
@@ -843,7 +851,11 @@ router.get("/inventory/items/:id/min-max", requireLogin, async (req, res) => {
   try {
     const itemPromise = pool.query("SELECT * FROM items WHERE id = ? LIMIT 1", [id]);
     const historyPromise = pool.query(
-      "SELECT * FROM min_max_adjustments WHERE item_id = ? ORDER BY adjusted_at DESC",
+      `SELECT min_max_adjustments.*, users.username AS adjusted_by_username
+       FROM min_max_adjustments
+       LEFT JOIN users ON min_max_adjustments.adjusted_by_user_id = users.id
+       WHERE min_max_adjustments.item_id = ?
+       ORDER BY min_max_adjustments.adjusted_at DESC`,
       [id]
     );
     const [itemResult, historyResult] = await Promise.all([itemPromise, historyPromise]);
@@ -886,10 +898,12 @@ router.get("/inventory/items/:id/category", requireLogin, async (req, res) => {
     const historyPromise = pool.query(
       `SELECT category_adjustments.*,
               old_categories.category_name AS old_category_name,
-              new_categories.category_name AS new_category_name
+              new_categories.category_name AS new_category_name,
+              users.username AS adjusted_by_username
        FROM category_adjustments
        LEFT JOIN categories AS old_categories ON category_adjustments.old_category_id = old_categories.id
        LEFT JOIN categories AS new_categories ON category_adjustments.new_category_id = new_categories.id
+       LEFT JOIN users ON category_adjustments.adjusted_by_user_id = users.id
        WHERE category_adjustments.item_id = ?
        ORDER BY category_adjustments.adjusted_at DESC`,
       [id]
@@ -935,7 +949,11 @@ router.get("/inventory/items/:id/price", requireLogin, async (req, res) => {
   try {
     const itemPromise = pool.query("SELECT * FROM items WHERE id = ? LIMIT 1", [id]);
     const historyPromise = pool.query(
-      "SELECT * FROM price_adjustments WHERE item_id = ? ORDER BY adjusted_at DESC",
+      `SELECT price_adjustments.*, users.username AS adjusted_by_username
+       FROM price_adjustments
+       LEFT JOIN users ON price_adjustments.adjusted_by_user_id = users.id
+       WHERE price_adjustments.item_id = ?
+       ORDER BY price_adjustments.adjusted_at DESC`,
       [id]
     );
     const [itemResult, historyResult] = await Promise.all([itemPromise, historyPromise]);
@@ -972,6 +990,7 @@ router.post("/inventory/items/:id/price", requireLogin, async (req, res) => {
 router.post("/inventory/adjustments", requireLogin, async (req, res) => {
   const jsonRequest = isJsonRequest(req);
   const jsonResponse = jsonRequest || wantsJsonResponse(req);
+  const adjustedByUserId = Number(req.session.user?.id) || null;
   let adjustmentType = "";
   let payloadRows = [];
   let adjustmentNote = "";
@@ -1065,8 +1084,8 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
 
         if (Number(currentItem.quantity) !== quantity) {
           await connection.query(
-            "INSERT INTO quantity_adjustments (item_id, old_quantity, new_quantity, adjustment_note) VALUES (?, ?, ?, ?)",
-            [itemId, currentItem.quantity, quantity, adjustmentNote || null]
+            "INSERT INTO quantity_adjustments (item_id, old_quantity, new_quantity, adjustment_note, adjusted_by_user_id) VALUES (?, ?, ?, ?, ?)",
+            [itemId, currentItem.quantity, quantity, adjustmentNote || null, adjustedByUserId]
           );
         }
       }
@@ -1108,9 +1127,10 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
               new_min_quantity,
               old_max_quantity,
               new_max_quantity,
-              adjustment_note
-            ) VALUES (?, ?, ?, ?, ?, ?)`,
-            [itemId, currentItem.min_quantity, minQuantity, currentItem.max_quantity, maxQuantity, adjustmentNote || null]
+              adjustment_note,
+              adjusted_by_user_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [itemId, currentItem.min_quantity, minQuantity, currentItem.max_quantity, maxQuantity, adjustmentNote || null, adjustedByUserId]
           );
         }
       }
@@ -1135,8 +1155,8 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
 
         if (Number(currentItem.cost) !== newCost) {
           await connection.query(
-            "INSERT INTO cost_adjustments (item_id, old_cost, new_cost, adjustment_note) VALUES (?, ?, ?, ?)",
-            [itemId, currentItem.cost, newCost, adjustmentNote || null]
+            "INSERT INTO cost_adjustments (item_id, old_cost, new_cost, adjustment_note, adjusted_by_user_id) VALUES (?, ?, ?, ?, ?)",
+            [itemId, currentItem.cost, newCost, adjustmentNote || null, adjustedByUserId]
           );
         }
       }
@@ -1161,8 +1181,8 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
 
         if (Number(currentItem.price) !== newPrice) {
           await connection.query(
-            "INSERT INTO price_adjustments (item_id, old_price, new_price, adjustment_note) VALUES (?, ?, ?, ?)",
-            [itemId, currentItem.price, newPrice, adjustmentNote || null]
+            "INSERT INTO price_adjustments (item_id, old_price, new_price, adjustment_note, adjusted_by_user_id) VALUES (?, ?, ?, ?, ?)",
+            [itemId, currentItem.price, newPrice, adjustmentNote || null, adjustedByUserId]
           );
         }
       }
@@ -1196,9 +1216,10 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
               item_id,
               old_category_id,
               new_category_id,
-              adjustment_note
-            ) VALUES (?, ?, ?, ?)`,
-            [itemId, currentItem.category_id, categoryId, adjustmentNote || null]
+              adjustment_note,
+              adjusted_by_user_id
+            ) VALUES (?, ?, ?, ?, ?)`,
+            [itemId, currentItem.category_id, categoryId, adjustmentNote || null, adjustedByUserId]
           );
         }
       }

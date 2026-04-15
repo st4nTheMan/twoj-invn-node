@@ -107,13 +107,19 @@ CREATE TABLE cost_adjustments (
   old_cost DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   new_cost DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   adjustment_note VARCHAR(255) NULL,
+  adjusted_by_user_id INT UNSIGNED NULL,
   adjusted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_cost_adjustments_item_id (item_id),
+  KEY idx_cost_adjustments_adjusted_by_user_id (adjusted_by_user_id),
   CONSTRAINT fk_cost_adjustments_item
     FOREIGN KEY (item_id) REFERENCES items (id)
     ON UPDATE CASCADE
-    ON DELETE CASCADE
+    ON DELETE CASCADE,
+  CONSTRAINT fk_cost_adjustments_user
+    FOREIGN KEY (adjusted_by_user_id) REFERENCES users (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Store the history of item on-hand quantity changes.
@@ -123,13 +129,19 @@ CREATE TABLE quantity_adjustments (
   old_quantity INT NOT NULL DEFAULT 0,
   new_quantity INT NOT NULL DEFAULT 0,
   adjustment_note VARCHAR(255) NULL,
+  adjusted_by_user_id INT UNSIGNED NULL,
   adjusted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_quantity_adjustments_item_id (item_id),
+  KEY idx_quantity_adjustments_adjusted_by_user_id (adjusted_by_user_id),
   CONSTRAINT fk_quantity_adjustments_item
     FOREIGN KEY (item_id) REFERENCES items (id)
     ON UPDATE CASCADE
-    ON DELETE CASCADE
+    ON DELETE CASCADE,
+  CONSTRAINT fk_quantity_adjustments_user
+    FOREIGN KEY (adjusted_by_user_id) REFERENCES users (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Store the history of item minimum and maximum quantity changes.
@@ -141,13 +153,19 @@ CREATE TABLE min_max_adjustments (
   old_max_quantity INT NOT NULL DEFAULT 0,
   new_max_quantity INT NOT NULL DEFAULT 0,
   adjustment_note VARCHAR(255) NULL,
+  adjusted_by_user_id INT UNSIGNED NULL,
   adjusted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_min_max_adjustments_item_id (item_id),
+  KEY idx_min_max_adjustments_adjusted_by_user_id (adjusted_by_user_id),
   CONSTRAINT fk_min_max_adjustments_item
     FOREIGN KEY (item_id) REFERENCES items (id)
     ON UPDATE CASCADE
-    ON DELETE CASCADE
+    ON DELETE CASCADE,
+  CONSTRAINT fk_min_max_adjustments_user
+    FOREIGN KEY (adjusted_by_user_id) REFERENCES users (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Store the history of item price changes.
@@ -157,13 +175,19 @@ CREATE TABLE price_adjustments (
   old_price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   new_price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   adjustment_note VARCHAR(255) NULL,
+  adjusted_by_user_id INT UNSIGNED NULL,
   adjusted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_price_adjustments_item_id (item_id),
+  KEY idx_price_adjustments_adjusted_by_user_id (adjusted_by_user_id),
   CONSTRAINT fk_price_adjustments_item
     FOREIGN KEY (item_id) REFERENCES items (id)
     ON UPDATE CASCADE
-    ON DELETE CASCADE
+    ON DELETE CASCADE,
+  CONSTRAINT fk_price_adjustments_user
+    FOREIGN KEY (adjusted_by_user_id) REFERENCES users (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Store the history of item category changes.
@@ -173,11 +197,13 @@ CREATE TABLE category_adjustments (
   old_category_id INT NULL,
   new_category_id INT NULL,
   adjustment_note VARCHAR(255) NULL,
+  adjusted_by_user_id INT NULL,
   adjusted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_category_adjustments_item_id (item_id),
   KEY idx_category_adjustments_old_category_id (old_category_id),
   KEY idx_category_adjustments_new_category_id (new_category_id),
+  KEY idx_category_adjustments_adjusted_by_user_id (adjusted_by_user_id),
   CONSTRAINT fk_category_adjustments_item
     FOREIGN KEY (item_id) REFERENCES items (id)
     ON UPDATE CASCADE
@@ -188,6 +214,10 @@ CREATE TABLE category_adjustments (
     ON DELETE SET NULL,
   CONSTRAINT fk_category_adjustments_new_category
     FOREIGN KEY (new_category_id) REFERENCES categories (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL,
+  CONSTRAINT fk_category_adjustments_user
+    FOREIGN KEY (adjusted_by_user_id) REFERENCES users (id)
     ON UPDATE CASCADE
     ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

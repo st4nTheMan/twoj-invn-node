@@ -53,7 +53,53 @@ async function ensureAdjustmentNotesSchema() {
   }
 }
 
+// Adds adjusted-by user tracking columns to adjustment-history tables when needed.
+async function ensureAdjustmentAuditSchema() {
+  const [userIdTypeRows] = await pool.query(
+    `SELECT COLUMN_TYPE
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'users'
+       AND COLUMN_NAME = 'id'
+     LIMIT 1`
+  );
+  const userIdType = userIdTypeRows[0]?.COLUMN_TYPE || "int";
+  const auditTargets = [
+    { table: "cost_adjustments", afterColumn: "adjustment_note", keyName: "idx_cost_adjustments_adjusted_by_user_id", foreignKey: "fk_cost_adjustments_user" },
+    { table: "quantity_adjustments", afterColumn: "adjustment_note", keyName: "idx_quantity_adjustments_adjusted_by_user_id", foreignKey: "fk_quantity_adjustments_user" },
+    { table: "min_max_adjustments", afterColumn: "adjustment_note", keyName: "idx_min_max_adjustments_adjusted_by_user_id", foreignKey: "fk_min_max_adjustments_user" },
+    { table: "price_adjustments", afterColumn: "adjustment_note", keyName: "idx_price_adjustments_adjusted_by_user_id", foreignKey: "fk_price_adjustments_user" },
+    { table: "category_adjustments", afterColumn: "adjustment_note", keyName: "idx_category_adjustments_adjusted_by_user_id", foreignKey: "fk_category_adjustments_user" }
+  ];
+
+  for (const target of auditTargets) {
+    const [rows] = await pool.query(
+      `SELECT COUNT(*) AS count
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = ?
+         AND COLUMN_NAME = 'adjusted_by_user_id'`,
+      [target.table]
+    );
+
+    if (Number(rows[0]?.count || 0) > 0) {
+      continue;
+    }
+
+    await pool.query(
+      `ALTER TABLE ${target.table}
+       ADD COLUMN adjusted_by_user_id ${userIdType} NULL AFTER ${target.afterColumn},
+       ADD KEY ${target.keyName} (adjusted_by_user_id),
+       ADD CONSTRAINT ${target.foreignKey}
+         FOREIGN KEY (adjusted_by_user_id) REFERENCES users (id)
+         ON UPDATE CASCADE
+         ON DELETE SET NULL`
+    );
+  }
+}
+
 module.exports = {
   ensureArchiveSchema,
-  ensureAdjustmentNotesSchema
+  ensureAdjustmentNotesSchema,
+  ensureAdjustmentAuditSchema
 };
