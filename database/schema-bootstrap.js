@@ -25,7 +25,7 @@ async function ensureArchiveSchema() {
 async function ensureAdjustmentNotesSchema() {
   const noteTargets = [
     { table: "cost_adjustments", column: "adjustment_note" },
-    { table: "quantity_adjustments", column: "adjustment_note" },
+    { table: "qty_adjustments", column: "adjustment_note" },
     { table: "min_max_adjustments", column: "adjustment_note" },
     { table: "price_adjustments", column: "adjustment_note" }
   ];
@@ -47,7 +47,7 @@ async function ensureAdjustmentNotesSchema() {
     await pool.query(
       `ALTER TABLE ${target.table}
        ADD COLUMN adjustment_note VARCHAR(255) NULL AFTER ${
-         target.table === "min_max_adjustments" ? "new_max_quantity" : target.table === "quantity_adjustments" ? "new_quantity" : target.table === "cost_adjustments" ? "new_cost" : "new_price"
+         target.table === "min_max_adjustments" ? "new_max_quantity" : target.table === "qty_adjustments" ? "new_quantity" : target.table === "cost_adjustments" ? "new_cost" : "new_price"
        }`
     );
   }
@@ -65,11 +65,11 @@ async function ensureAdjustmentAuditSchema() {
   );
   const userIdType = userIdTypeRows[0]?.COLUMN_TYPE || "int";
   const auditTargets = [
-    { table: "cost_adjustments", afterColumn: "adjustment_note", keyName: "idx_cost_adjustments_adjusted_by_user_id", foreignKey: "fk_cost_adjustments_user" },
-    { table: "quantity_adjustments", afterColumn: "adjustment_note", keyName: "idx_quantity_adjustments_adjusted_by_user_id", foreignKey: "fk_quantity_adjustments_user" },
-    { table: "min_max_adjustments", afterColumn: "adjustment_note", keyName: "idx_min_max_adjustments_adjusted_by_user_id", foreignKey: "fk_min_max_adjustments_user" },
-    { table: "price_adjustments", afterColumn: "adjustment_note", keyName: "idx_price_adjustments_adjusted_by_user_id", foreignKey: "fk_price_adjustments_user" },
-    { table: "category_adjustments", afterColumn: "adjustment_note", keyName: "idx_category_adjustments_adjusted_by_user_id", foreignKey: "fk_category_adjustments_user" }
+    { table: "cost_adjustments", afterColumn: "adjustment_note", keyName: "idx_cost_adjustments_adjusted_by", foreignKey: "fk_cost_adjustments_user" },
+    { table: "qty_adjustments", afterColumn: "adjustment_note", keyName: "idx_qty_adjustments_adjusted_by", foreignKey: "fk_qty_adjustments_user" },
+    { table: "min_max_adjustments", afterColumn: "adjustment_note", keyName: "idx_min_max_adjustments_adjusted_by", foreignKey: "fk_min_max_adjustments_user" },
+    { table: "price_adjustments", afterColumn: "adjustment_note", keyName: "idx_price_adjustments_adjusted_by", foreignKey: "fk_price_adjustments_user" },
+    { table: "category_adjustments", afterColumn: "adjustment_note", keyName: "idx_category_adjustments_adjusted_by", foreignKey: "fk_category_adjustments_user" }
   ];
 
   for (const target of auditTargets) {
@@ -78,7 +78,7 @@ async function ensureAdjustmentAuditSchema() {
        FROM information_schema.COLUMNS
        WHERE TABLE_SCHEMA = DATABASE()
          AND TABLE_NAME = ?
-         AND COLUMN_NAME = 'adjusted_by_user_id'`,
+         AND COLUMN_NAME = 'adjusted_by'`,
       [target.table]
     );
 
@@ -88,10 +88,10 @@ async function ensureAdjustmentAuditSchema() {
 
     await pool.query(
       `ALTER TABLE ${target.table}
-       ADD COLUMN adjusted_by_user_id ${userIdType} NULL AFTER ${target.afterColumn},
-       ADD KEY ${target.keyName} (adjusted_by_user_id),
+       ADD COLUMN adjusted_by ${userIdType} NULL AFTER ${target.afterColumn},
+       ADD KEY ${target.keyName} (adjusted_by),
        ADD CONSTRAINT ${target.foreignKey}
-         FOREIGN KEY (adjusted_by_user_id) REFERENCES users (id)
+         FOREIGN KEY (adjusted_by) REFERENCES users (id)
          ON UPDATE CASCADE
          ON DELETE SET NULL`
     );
