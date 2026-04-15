@@ -84,6 +84,24 @@ function wantsJsonResponse(req) {
   return req.xhr || String(req.get("accept") || "").includes("application/json");
 }
 
+// Formats singular or plural labels based on a numeric count.
+function pluralize(count, singular, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+// Converts adjustment mode keys into user-friendly labels.
+function getAdjustmentLabel(adjustmentType) {
+  const labels = {
+    quantity: "OH qty",
+    min_max: "min/max qty",
+    cost: "cost",
+    price: "price",
+    category: "category"
+  };
+
+  return labels[adjustmentType] || "selected field";
+}
+
 // Escapes CSV cell content and quotes values that need it.
 function toCsvCell(value) {
   const normalized = String(value ?? "");
@@ -452,12 +470,12 @@ router.post("/inventory/items", requireLogin, async (req, res) => {
 
       return res.status(201).json({
         ok: true,
-        message: "Item added successfully.",
+        message: `Item ${name} added successfully.`,
         item: rows[0] || null
       });
     }
 
-    flash(req, { type: "success", message: "Item added successfully." });
+    flash(req, { type: "success", message: `Item ${name} added successfully.` });
     return res.redirect("/inventory");
   } catch (error) {
     console.error("Failed to save item:", error);
@@ -526,7 +544,7 @@ router.post("/inventory/categories", requireLogin, async (req, res) => {
     if (jsonResponse) {
       return res.status(201).json({
         ok: true,
-        message: "Category saved successfully.",
+        message: `Category ${categoryName} saved successfully.`,
         category: {
           id: insertResult.insertId,
           category_name: categoryName
@@ -534,7 +552,7 @@ router.post("/inventory/categories", requireLogin, async (req, res) => {
       });
     }
 
-    flash(req, { type: "success", message: "Category saved successfully." });
+    flash(req, { type: "success", message: `Category ${categoryName} saved successfully.` });
     return res.redirect("/inventory");
   } catch (error) {
     console.error("Failed to save category:", error);
@@ -992,13 +1010,18 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
 
       return res.status(200).json({
         ok: true,
-        message: "Selected items updated successfully.",
+        message: `${pluralize(updatedRows.length, "item")} updated for ${getAdjustmentLabel(adjustmentType)}.`,
         adjustmentType,
         items: updatedRows
       });
     }
 
-    return respondAdjustmentResult(req, res, "success", "Selected items updated successfully.");
+    return respondAdjustmentResult(
+      req,
+      res,
+      "success",
+      `${pluralize(uniqueIds.length, "item")} updated for ${getAdjustmentLabel(adjustmentType)}.`
+    );
   } catch (error) {
     await connection.rollback();
     console.error("Failed to save adjustments:", error);
