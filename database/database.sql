@@ -56,11 +56,13 @@ CREATE TABLE items (
   min_quantity INT NOT NULL DEFAULT 0,
   max_quantity INT NOT NULL DEFAULT 1,
   category_id INT UNSIGNED NULL,
+  archived_at TIMESTAMP NULL DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_items_barcode (barcode),
   KEY idx_items_category_id (category_id),
+  KEY idx_items_archived_at (archived_at),
   CONSTRAINT fk_items_category
     FOREIGN KEY (category_id) REFERENCES categories (id)
     ON UPDATE CASCADE

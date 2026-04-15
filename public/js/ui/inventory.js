@@ -13,6 +13,9 @@
     const verifyBarcodeButton = document.getElementById("verify-barcode-button");
     const barcodeVerificationStatus = document.getElementById("barcode-verification-status");
     const addCategoryExistingSelect = addCategoryForm?.querySelector("select");
+    const archiveItemButton = document.getElementById("view-item-archive-button");
+    const archiveItemConfirmForm = document.getElementById("archive-item-confirm-form");
+    const archiveItemConfirmMessage = document.getElementById("archive-item-confirm-message");
     let lastVerifiedBarcode = "";
     let lastVerificationExists = null;
 
@@ -93,6 +96,17 @@
       modalFields.minQuantity.textContent = String(trigger.dataset.itemMinQuantity || "0");
       modalFields.maxQuantity.textContent = String(trigger.dataset.itemMaxQuantity || "0");
       modalFields.category.textContent = trigger.dataset.itemCategory || "No Category";
+
+      if (archiveItemButton) {
+        archiveItemButton.dataset.itemId = trigger.dataset.itemId || "";
+        archiveItemButton.dataset.itemName = trigger.dataset.itemName || "this item";
+      }
+      if (archiveItemConfirmForm) {
+        archiveItemConfirmForm.action = `/inventory/items/${encodeURIComponent(trigger.dataset.itemId || "0")}/archive`;
+      }
+      if (archiveItemConfirmMessage) {
+        archiveItemConfirmMessage.textContent = `Archive ${trigger.dataset.itemName || "this item"}?`;
+      }
     }
 
     // Binds click handlers so inventory rows can open the item-details modal.

@@ -248,13 +248,22 @@ router.get("/inventory", requireLogin, async (req, res) => {
       `SELECT items.*, categories.category_name
        FROM items
        LEFT JOIN categories ON items.category_id = categories.id
+       WHERE items.archived_at IS NULL
        ORDER BY items.id DESC`
+    );
+    const [archivedItems] = await pool.query(
+      `SELECT items.*, categories.category_name
+       FROM items
+       LEFT JOIN categories ON items.category_id = categories.id
+       WHERE items.archived_at IS NOT NULL
+       ORDER BY items.archived_at DESC, items.id DESC`
     );
 
     return res.render("dashboard/inventory", {
       title: "Inventory",
       categories,
-      items
+      items,
+      archivedItems
     });
   } catch (error) {
     console.error("Failed to load inventory:", error);
@@ -262,7 +271,8 @@ router.get("/inventory", requireLogin, async (req, res) => {
     return res.render("dashboard/inventory", {
       title: "Inventory",
       categories: [],
-      items: []
+      items: [],
+      archivedItems: []
     });
   }
 });
@@ -281,6 +291,7 @@ router.get("/inventory/export", requireLogin, async (req, res) => {
       `SELECT items.id, items.barcode, items.name, items.cost, items.price, items.quantity, items.min_quantity, items.max_quantity, items.created_at, categories.category_name
        FROM items
        LEFT JOIN categories ON items.category_id = categories.id
+       WHERE items.archived_at IS NULL
        ORDER BY items.id DESC`
     );
     const timestamp = getExportTimestamp();
@@ -348,6 +359,7 @@ router.get("/price-lookup", requireLogin, async (req, res) => {
     const [items] = await pool.query(
       `SELECT id, barcode, name, price
        FROM items
+       WHERE archived_at IS NULL
        ORDER BY id DESC`
     );
 
@@ -375,6 +387,7 @@ router.get("/inventory/adjustments", requireLogin, async (req, res) => {
       `SELECT items.*, categories.category_name
        FROM items
        LEFT JOIN categories ON items.category_id = categories.id
+       WHERE items.archived_at IS NULL
        ORDER BY items.id DESC`
     );
 
@@ -401,6 +414,7 @@ router.get("/history", requireLogin, async (req, res) => {
       `SELECT items.*, categories.category_name
        FROM items
        LEFT JOIN categories ON items.category_id = categories.id
+       WHERE items.archived_at IS NULL
        ORDER BY items.id DESC`
     );
 
@@ -546,6 +560,86 @@ router.post("/inventory/items/:id", requireLogin, async (req, res) => {
     message: "Item details are read-only here. Use the Adjustments page to update inventory fields."
   });
   return res.redirect(`/inventory/items/${Number(req.params.id) || ""}`);
+});
+
+// Archives an item so it is hidden from active inventory screens without deleting history.
+router.post("/inventory/items/:id/archive", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!id) {
+    flash(req, { type: "error", message: "Item not found." });
+    return res.redirect("/inventory");
+  }
+
+  try {
+    const [rows] = await pool.query(
+      "SELECT id, name, archived_at FROM items WHERE id = ? LIMIT 1",
+      [id]
+    );
+    const item = rows[0];
+
+    if (!item) {
+      flash(req, { type: "error", message: "Item not found." });
+      return res.redirect("/inventory");
+    }
+
+    if (item.archived_at) {
+      flash(req, { type: "error", message: `Item ${item.name} is already archived.` });
+      return res.redirect("/inventory");
+    }
+
+    await pool.query(
+      "UPDATE items SET archived_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [id]
+    );
+
+    flash(req, { type: "success", message: `Item ${item.name} archived successfully.` });
+    return res.redirect("/inventory");
+  } catch (error) {
+    console.error("Failed to archive item:", error);
+    flash(req, { type: "error", message: "Unable to archive item right now." });
+    return res.redirect("/inventory");
+  }
+});
+
+// Restores an archived item back into active inventory screens.
+router.post("/inventory/items/:id/restore", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!id) {
+    flash(req, { type: "error", message: "Item not found." });
+    return res.redirect("/inventory");
+  }
+
+  try {
+    const [rows] = await pool.query(
+      "SELECT id, name, archived_at FROM items WHERE id = ? LIMIT 1",
+      [id]
+    );
+    const item = rows[0];
+
+    if (!item) {
+      flash(req, { type: "error", message: "Item not found." });
+      return res.redirect("/inventory");
+    }
+
+    if (!item.archived_at) {
+      flash(req, { type: "error", message: `Item ${item.name} is already active.` });
+      return res.redirect("/inventory");
+    }
+
+    await pool.query(
+      "UPDATE items SET archived_at = NULL WHERE id = ?",
+      [id]
+    );
+
+    flash(req, { type: "success", message: `Item ${item.name} restored successfully.` });
+    return res.redirect("/inventory");
+  } catch (error) {
+    console.error("Failed to restore item:", error);
+    flash(req, { type: "error", message: "Unable to restore item right now." });
+    return res.redirect("/inventory");
+  }
 });
 
 // Creates a new category directly from the inventory page modal.
@@ -884,7 +978,9 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
     const [rows] = await connection.query(
       `SELECT id, quantity, min_quantity, max_quantity, cost, price, category_id
        FROM items
-       WHERE id IN (?)`,
+       WHERE archived_at IS NULL
+         AND id IN (?)
+      `,
       [uniqueIds]
     );
     const itemsById = new Map(rows.map((item) => [item.id, item]));

@@ -11,6 +11,7 @@ async function getStockNotifications() {
     `SELECT items.*, categories.category_name
      FROM items
      LEFT JOIN categories ON items.category_id = categories.id
+     WHERE items.archived_at IS NULL
      ORDER BY items.name ASC`
   );
 

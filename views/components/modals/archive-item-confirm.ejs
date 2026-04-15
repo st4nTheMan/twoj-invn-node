@@ -1,0 +1,26 @@
+<% /* Modal for confirming that an inventory item should be archived. */ %>
+<section id="archive-item-confirm-modal" data-modal class="hidden fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 sm:p-6">
+  <div class="my-8 w-full max-w-md rounded-3xl bg-white shadow-2xl">
+    <div class="border-b border-slate-200 px-6 py-4">
+      <h2 class="text-xl font-semibold text-slate-900">Archive Item</h2>
+      <p class="text-sm text-slate-500">This item will be hidden from active inventory screens but kept for records and history.</p>
+    </div>
+
+    <div class="space-y-5 p-6">
+      <p id="archive-item-confirm-message" class="text-sm text-slate-700">Archive this item?</p>
+
+      <form id="archive-item-confirm-form" action="/inventory/items/0/archive" method="POST" class="flex justify-end gap-3">
+        <button
+          type="button"
+          data-close-modal
+          class="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700"
+        >
+          Cancel
+        </button>
+        <button type="submit" class="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white">
+          Archive Item
+        </button>
+      </form>
+    </div>
+  </div>
+</section>
