@@ -94,7 +94,6 @@ two-js-invn/
 |   |   |-- price-lookup.ejs
 |   |   |-- reports.ejs
 |   |   |-- transaction.ejs
-|   |   `-- view-item.ejs
 |   `-- includes/
 |       |-- footer.ejs
 |       `-- header.ejs
