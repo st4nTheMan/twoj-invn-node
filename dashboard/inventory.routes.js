@@ -245,18 +245,18 @@ router.get("/inventory", requireLogin, async (req, res) => {
       "SELECT * FROM categories ORDER BY category_name ASC"
     );
     const [items] = await pool.query(
-      `SELECT items.*, categories.category_name
-       FROM items
-       LEFT JOIN categories ON items.category_id = categories.id
-       WHERE items.archived_at IS NULL
-       ORDER BY items.id DESC`
+      `SELECT a.*, b.category_name
+       FROM items a
+       LEFT JOIN categories b ON a.category_id = b.id
+       WHERE a.archived_at IS NULL
+       ORDER BY a.id DESC`
     );
     const [archivedItems] = await pool.query(
-      `SELECT items.*, categories.category_name
-       FROM items
-       LEFT JOIN categories ON items.category_id = categories.id
-       WHERE items.archived_at IS NOT NULL
-       ORDER BY items.archived_at DESC, items.id DESC`
+      `SELECT a.*, b.category_name
+       FROM items a
+       LEFT JOIN categories b ON a.category_id = b.id
+       WHERE a.archived_at IS NOT NULL
+       ORDER BY a.archived_at DESC, a.id DESC`
     );
 
     return res.render("dashboard/inventory", {
@@ -288,11 +288,11 @@ router.get("/inventory/export", requireLogin, async (req, res) => {
 
   try {
     const [items] = await pool.query(
-      `SELECT items.id, items.barcode, items.name, items.cost, items.price, items.quantity, items.min_quantity, items.max_quantity, items.created_at, categories.category_name
-       FROM items
-       LEFT JOIN categories ON items.category_id = categories.id
-       WHERE items.archived_at IS NULL
-       ORDER BY items.id DESC`
+      `SELECT a.id, a.barcode, a.name, a.cost, a.price, a.quantity, a.min_quantity, a.max_quantity, a.created_at, b.category_name
+       FROM items a
+       LEFT JOIN categories b ON a.category_id = b.id
+       WHERE a.archived_at IS NULL
+       ORDER BY a.id DESC`
     );
     const timestamp = getExportTimestamp();
 
@@ -326,10 +326,10 @@ router.get("/inventory/items/verify", requireLogin, async (req, res) => {
 
   try {
     const [rows] = await pool.query(
-      `SELECT items.id, items.barcode, items.name, categories.category_name
-       FROM items
-       LEFT JOIN categories ON items.category_id = categories.id
-       WHERE items.barcode = ?
+      `SELECT a.id, a.barcode, a.name, b.category_name
+       FROM items a
+       LEFT JOIN categories b ON a.category_id = b.id
+       WHERE a.barcode = ?
        LIMIT 1`,
       [barcode]
     );
@@ -384,11 +384,11 @@ router.get("/inventory/adjustments", requireLogin, async (req, res) => {
       "SELECT * FROM categories ORDER BY category_name ASC"
     );
     const [items] = await pool.query(
-      `SELECT items.*, categories.category_name
-       FROM items
-       LEFT JOIN categories ON items.category_id = categories.id
-       WHERE items.archived_at IS NULL
-       ORDER BY items.id DESC`
+      `SELECT a.*, b.category_name
+       FROM items a
+       LEFT JOIN categories b ON a.category_id = b.id
+       WHERE a.archived_at IS NULL
+       ORDER BY a.id DESC`
     );
 
     return res.render("dashboard/adjustments", {
@@ -411,11 +411,11 @@ router.get("/inventory/adjustments", requireLogin, async (req, res) => {
 router.get("/history", requireLogin, async (req, res) => {
   try {
     const [items] = await pool.query(
-      `SELECT items.*, categories.category_name
-       FROM items
-       LEFT JOIN categories ON items.category_id = categories.id
-       WHERE items.archived_at IS NULL
-       ORDER BY items.id DESC`
+      `SELECT a.*, b.category_name
+       FROM items a
+       LEFT JOIN categories b ON a.category_id = b.id
+       WHERE a.archived_at IS NULL
+       ORDER BY a.id DESC`
     );
 
     return res.render("dashboard/history", {
@@ -521,10 +521,10 @@ router.post("/inventory/items", requireLogin, async (req, res) => {
 
     if (jsonResponse) {
       const [rows] = await pool.query(
-        `SELECT items.*, categories.category_name
-         FROM items
-         LEFT JOIN categories ON items.category_id = categories.id
-         WHERE items.id = ?
+        `SELECT a.*, b.category_name
+         FROM items a
+         LEFT JOIN categories b ON a.category_id = b.id
+         WHERE a.id = ?
          LIMIT 1`,
         [insertResult.insertId]
       );
@@ -737,10 +737,10 @@ router.get("/inventory/items/:id/history", requireLogin, async (req, res) => {
 
   try {
     const [rows] = await pool.query(
-      `SELECT items.*, categories.category_name
-       FROM items
-       LEFT JOIN categories ON items.category_id = categories.id
-       WHERE items.id = ?
+      `SELECT a.*, b.category_name
+       FROM items a
+       LEFT JOIN categories b ON a.category_id = b.id
+       WHERE a.id = ?
        LIMIT 1`,
       [id]
     );
@@ -773,7 +773,11 @@ router.get("/inventory/items/:id/cost", requireLogin, async (req, res) => {
   try {
     const itemPromise = pool.query("SELECT * FROM items WHERE id = ? LIMIT 1", [id]);
     const historyPromise = pool.query(
-      "SELECT * FROM cost_adjustments WHERE item_id = ? ORDER BY adjusted_at DESC",
+      `SELECT a.*, b.username AS adjusted_by_username
+       FROM cost_adjustments a
+       LEFT JOIN users b ON a.adjusted_by = b.id
+       WHERE a.item_id = ?
+       ORDER BY a.adjusted_at DESC`,
       [id]
     );
     const [itemResult, historyResult] = await Promise.all([itemPromise, historyPromise]);
@@ -808,7 +812,11 @@ router.get("/inventory/items/:id/quantity", requireLogin, async (req, res) => {
   try {
     const itemPromise = pool.query("SELECT * FROM items WHERE id = ? LIMIT 1", [id]);
     const historyPromise = pool.query(
-      "SELECT * FROM quantity_adjustments WHERE item_id = ? ORDER BY adjusted_at DESC",
+      `SELECT b.*, a.username AS adjusted_by_username
+       FROM qty_adjustments b
+       LEFT JOIN users a ON b.adjusted_by = a.id
+       WHERE b.item_id = ?
+       ORDER BY b.adjusted_at DESC`,
       [id]
     );
     const [itemResult, historyResult] = await Promise.all([itemPromise, historyPromise]);
@@ -843,7 +851,11 @@ router.get("/inventory/items/:id/min-max", requireLogin, async (req, res) => {
   try {
     const itemPromise = pool.query("SELECT * FROM items WHERE id = ? LIMIT 1", [id]);
     const historyPromise = pool.query(
-      "SELECT * FROM min_max_adjustments WHERE item_id = ? ORDER BY adjusted_at DESC",
+      `SELECT a.*, b.username AS adjusted_by_username
+       FROM min_max_adjustments a
+       LEFT JOIN users b ON a.adjusted_by = b.id
+       WHERE a.item_id = ?
+       ORDER BY a.adjusted_at DESC`,
       [id]
     );
     const [itemResult, historyResult] = await Promise.all([itemPromise, historyPromise]);
@@ -877,21 +889,23 @@ router.get("/inventory/items/:id/category", requireLogin, async (req, res) => {
 
   try {
     const itemPromise = pool.query(
-      `SELECT items.*, categories.category_name
-       FROM items
-       LEFT JOIN categories ON items.category_id = categories.id
-       WHERE items.id = ? LIMIT 1`,
+      `SELECT a.*, b.category_name
+       FROM items a
+       LEFT JOIN categories b ON a.category_id = b.id
+       WHERE a.id = ? LIMIT 1`,
       [id]
     );
     const historyPromise = pool.query(
-      `SELECT category_adjustments.*,
-              old_categories.category_name AS old_category_name,
-              new_categories.category_name AS new_category_name
-       FROM category_adjustments
-       LEFT JOIN categories AS old_categories ON category_adjustments.old_category_id = old_categories.id
-       LEFT JOIN categories AS new_categories ON category_adjustments.new_category_id = new_categories.id
-       WHERE category_adjustments.item_id = ?
-       ORDER BY category_adjustments.adjusted_at DESC`,
+      `SELECT a.*,
+              b.category_name AS old_category_name,
+              c.category_name AS new_category_name,
+              d.username AS adjusted_by_username
+       FROM category_adjustments a
+       LEFT JOIN categories AS b ON a.old_category_id = b.id
+       LEFT JOIN categories AS c ON a.new_category_id = c.id
+       LEFT JOIN users d ON a.adjusted_by = d.id
+       WHERE a.item_id = ?
+       ORDER BY a.adjusted_at DESC`,
       [id]
     );
     const [itemResult, historyResult] = await Promise.all([itemPromise, historyPromise]);
@@ -935,7 +949,11 @@ router.get("/inventory/items/:id/price", requireLogin, async (req, res) => {
   try {
     const itemPromise = pool.query("SELECT * FROM items WHERE id = ? LIMIT 1", [id]);
     const historyPromise = pool.query(
-      "SELECT * FROM price_adjustments WHERE item_id = ? ORDER BY adjusted_at DESC",
+      `SELECT a.*, b.username AS adjusted_by_username
+       FROM price_adjustments a
+       LEFT JOIN users b ON a.adjusted_by = b.id
+       WHERE a.item_id = ?
+       ORDER BY a.adjusted_at DESC`,
       [id]
     );
     const [itemResult, historyResult] = await Promise.all([itemPromise, historyPromise]);
@@ -972,6 +990,7 @@ router.post("/inventory/items/:id/price", requireLogin, async (req, res) => {
 router.post("/inventory/adjustments", requireLogin, async (req, res) => {
   const jsonRequest = isJsonRequest(req);
   const jsonResponse = jsonRequest || wantsJsonResponse(req);
+  const adjustedByUserId = Number(req.session.user?.id) || null;
   let adjustmentType = "";
   let payloadRows = [];
   let adjustmentNote = "";
@@ -1065,8 +1084,8 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
 
         if (Number(currentItem.quantity) !== quantity) {
           await connection.query(
-            "INSERT INTO quantity_adjustments (item_id, old_quantity, new_quantity, adjustment_note) VALUES (?, ?, ?, ?)",
-            [itemId, currentItem.quantity, quantity, adjustmentNote || null]
+            "INSERT INTO qty_adjustments (item_id, old_quantity, new_quantity, adjustment_note, adjusted_by) VALUES (?, ?, ?, ?, ?)",
+            [itemId, currentItem.quantity, quantity, adjustmentNote || null, adjustedByUserId]
           );
         }
       }
@@ -1108,9 +1127,10 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
               new_min_quantity,
               old_max_quantity,
               new_max_quantity,
-              adjustment_note
-            ) VALUES (?, ?, ?, ?, ?, ?)`,
-            [itemId, currentItem.min_quantity, minQuantity, currentItem.max_quantity, maxQuantity, adjustmentNote || null]
+              adjustment_note,
+              adjusted_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [itemId, currentItem.min_quantity, minQuantity, currentItem.max_quantity, maxQuantity, adjustmentNote || null, adjustedByUserId]
           );
         }
       }
@@ -1135,8 +1155,8 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
 
         if (Number(currentItem.cost) !== newCost) {
           await connection.query(
-            "INSERT INTO cost_adjustments (item_id, old_cost, new_cost, adjustment_note) VALUES (?, ?, ?, ?)",
-            [itemId, currentItem.cost, newCost, adjustmentNote || null]
+            "INSERT INTO cost_adjustments (item_id, old_cost, new_cost, adjustment_note, adjusted_by) VALUES (?, ?, ?, ?, ?)",
+            [itemId, currentItem.cost, newCost, adjustmentNote || null, adjustedByUserId]
           );
         }
       }
@@ -1161,8 +1181,8 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
 
         if (Number(currentItem.price) !== newPrice) {
           await connection.query(
-            "INSERT INTO price_adjustments (item_id, old_price, new_price, adjustment_note) VALUES (?, ?, ?, ?)",
-            [itemId, currentItem.price, newPrice, adjustmentNote || null]
+            "INSERT INTO price_adjustments (item_id, old_price, new_price, adjustment_note, adjusted_by) VALUES (?, ?, ?, ?, ?)",
+            [itemId, currentItem.price, newPrice, adjustmentNote || null, adjustedByUserId]
           );
         }
       }
@@ -1196,9 +1216,10 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
               item_id,
               old_category_id,
               new_category_id,
-              adjustment_note
-            ) VALUES (?, ?, ?, ?)`,
-            [itemId, currentItem.category_id, categoryId, adjustmentNote || null]
+              adjustment_note,
+              adjusted_by
+            ) VALUES (?, ?, ?, ?, ?)`,
+            [itemId, currentItem.category_id, categoryId, adjustmentNote || null, adjustedByUserId]
           );
         }
       }

@@ -20,6 +20,7 @@
           <th class="px-4 py-3">Old OH Qty</th>
           <th class="px-4 py-3">New OH Qty</th>
           <th class="px-4 py-3">Reason / Notes</th>
+          <th class="px-4 py-3">Adjusted By</th>
           <th class="px-4 py-3">Date</th>
         </tr>
       </thead>
@@ -29,11 +30,12 @@
             <td class="px-4 py-3"><%= history.old_quantity %></td>
             <td class="px-4 py-3"><%= history.new_quantity %></td>
             <td class="px-4 py-3 text-slate-500"><%= history.adjustment_note || "-" %></td>
+            <td class="px-4 py-3 text-slate-500"><%= history.adjusted_by_username || "-" %></td>
             <td class="px-4 py-3 text-slate-500"><%= formatDateTime(history.adjusted_at) %></td>
           </tr>
         <% }) } else { %>
           <tr>
-            <td colspan="4" class="px-4 py-8 text-center text-slate-500">No OH qty adjustments yet.</td>
+            <td colspan="5" class="px-4 py-8 text-center text-slate-500">No OH qty adjustments yet.</td>
           </tr>
         <% } %>
       </tbody>

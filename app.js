@@ -9,7 +9,8 @@ require("dotenv").config();
 const pool = require("./database/pool");
 const {
   ensureArchiveSchema,
-  ensureAdjustmentNotesSchema
+  ensureAdjustmentNotesSchema,
+  ensureAdjustmentAuditSchema
 } = require("./database/schema-bootstrap");
 const authRoutes = require("./auth/routes");
 const dashboardRoutes = require("./dashboard/routes");
@@ -75,6 +76,9 @@ async function verifyDatabaseConnection() {
 // Starts the HTTPS server and prints local and LAN access URLs.
 async function startServer() {
   await verifyDatabaseConnection();
+  await ensureArchiveSchema();
+  await ensureAdjustmentNotesSchema();
+  await ensureAdjustmentAuditSchema();
 
   const sslOptions = {
     key: fs.readFileSync(SSL_KEY_PATH),
