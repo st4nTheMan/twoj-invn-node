@@ -1,0 +1,52 @@
+<% /* Modal for exporting inventory data as CSV or Excel-compatible XLS. */ %>
+<section id="export-inventory-modal" data-modal class="hidden fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 sm:p-6">
+  <div class="my-8 w-full max-w-lg rounded-3xl bg-white shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+      <div>
+        <h2 class="text-xl font-semibold text-slate-900">Export Inventory</h2>
+        <p class="text-sm text-slate-500">Choose the file format for your inventory export.</p>
+      </div>
+      <button
+        type="button"
+        data-close-modal
+        class="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+      >
+        Close
+      </button>
+    </div>
+
+    <form action="/inventory/export" method="GET" class="space-y-5 p-6">
+      <fieldset>
+        <legend class="mb-3 text-sm font-medium text-slate-700">Format</legend>
+        <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 px-4 py-4 transition hover:border-sky-300 hover:bg-sky-50/50">
+          <input type="radio" name="format" value="csv" checked class="mt-1 h-4 w-4 border-slate-300 text-sky-600 focus:ring-sky-500">
+          <span>
+            <span class="block text-sm font-semibold text-slate-900">CSV</span>
+            <span class="block text-sm text-slate-500">Best for quick imports and spreadsheets.</span>
+          </span>
+        </label>
+
+        <label class="mt-3 flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 px-4 py-4 transition hover:border-emerald-300 hover:bg-emerald-50/50">
+          <input type="radio" name="format" value="xls" class="mt-1 h-4 w-4 border-slate-300 text-emerald-600 focus:ring-emerald-500">
+          <span>
+            <span class="block text-sm font-semibold text-slate-900">XLS</span>
+            <span class="block text-sm text-slate-500">Excel-compatible workbook for store records.</span>
+          </span>
+        </label>
+      </fieldset>
+
+      <div class="flex justify-end gap-3">
+        <button
+          type="button"
+          data-close-modal
+          class="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700"
+        >
+          Cancel
+        </button>
+        <button type="submit" class="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white">
+          Download
+        </button>
+      </div>
+    </form>
+  </div>
+</section>

@@ -23,6 +23,14 @@
     >
       Add Category
     </button>
+
+    <button
+      type="button"
+      data-open-modal="export-inventory-modal"
+      class="w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white sm:w-auto"
+    >
+      Export
+    </button>
   </div>
 </section>
 
@@ -97,5 +105,6 @@
 }) %>
 <%- include("../components/modals/add-category", { categories }) %>
 <%- include("../components/modals/view-item") %>
+<%- include("../components/modals/export-inventory") %>
 
 <%- include("../includes/footer") %>

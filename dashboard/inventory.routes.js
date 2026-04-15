@@ -84,6 +84,108 @@ function wantsJsonResponse(req) {
   return req.xhr || String(req.get("accept") || "").includes("application/json");
 }
 
+// Escapes CSV cell content and quotes values that need it.
+function toCsvCell(value) {
+  const normalized = String(value ?? "");
+  if (!/[",\r\n]/.test(normalized)) {
+    return normalized;
+  }
+
+  return `"${normalized.replace(/"/g, "\"\"")}"`;
+}
+
+// Escapes XML entities for the Excel-compatible inventory export.
+function escapeXml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+// Builds a safe timestamp suffix for downloaded export filenames.
+function getExportTimestamp() {
+  return new Date().toISOString().replace(/[:.]/g, "-");
+}
+
+// Converts inventory rows into CSV text.
+function buildInventoryCsv(items) {
+  const headers = [
+    "Item Number",
+    "Name",
+    "Category",
+    "Cost",
+    "Price",
+    "Qty",
+    "Min Qty",
+    "Max Qty",
+    "Created At"
+  ];
+  const rows = items.map((item) => ([
+    item.barcode,
+    item.name,
+    item.category_name || "No Category",
+    Number(item.cost || 0).toFixed(2),
+    Number(item.price || 0).toFixed(2),
+    item.quantity,
+    item.min_quantity,
+    item.max_quantity,
+    item.created_at ? new Date(item.created_at).toISOString() : ""
+  ]));
+
+  return [headers, ...rows]
+    .map((row) => row.map((cell) => toCsvCell(cell)).join(","))
+    .join("\r\n");
+}
+
+// Converts inventory rows into Excel 2003 XML that opens as .xls in spreadsheet apps.
+function buildInventoryXls(items) {
+  const headers = [
+    "Item Number",
+    "Name",
+    "Category",
+    "Cost",
+    "Price",
+    "OH Qty",
+    "Min Qty",
+    "Max Qty",
+    "Created At"
+  ];
+  const rows = items.map((item) => ([
+    item.barcode,
+    item.name,
+    item.category_name || "No Category",
+    Number(item.cost || 0).toFixed(2),
+    Number(item.price || 0).toFixed(2),
+    item.quantity,
+    item.min_quantity,
+    item.max_quantity,
+    item.created_at ? new Date(item.created_at).toISOString() : ""
+  ]));
+  const xmlRows = [headers, ...rows]
+    .map((row) => {
+      const cells = row
+        .map((cell) => `<Cell><Data ss:Type="String">${escapeXml(cell)}</Data></Cell>`)
+        .join("");
+
+      return `<Row>${cells}</Row>`;
+    })
+    .join("");
+
+  return `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <Worksheet ss:Name="Inventory">
+  <Table>${xmlRows}</Table>
+ </Worksheet>
+</Workbook>`;
+}
+
 // Sends a shared success or error result for bulk adjustment submissions.
 function respondAdjustmentResult(req, res, type, message) {
   flash(req, { type, message });
@@ -124,6 +226,40 @@ router.get("/inventory", requireLogin, async (req, res) => {
       categories: [],
       items: []
     });
+  }
+});
+
+// Downloads the inventory list in CSV or Excel-compatible XLS format.
+router.get("/inventory/export", requireLogin, async (req, res) => {
+  const format = String(req.query.format || "csv").trim().toLowerCase();
+
+  if (!["csv", "xls"].includes(format)) {
+    flash(req, { type: "error", message: "Choose CSV or XLS for export." });
+    return res.redirect("/inventory");
+  }
+
+  try {
+    const [items] = await pool.query(
+      `SELECT items.id, items.barcode, items.name, items.cost, items.price, items.quantity, items.min_quantity, items.max_quantity, items.created_at, categories.category_name
+       FROM items
+       LEFT JOIN categories ON items.category_id = categories.id
+       ORDER BY items.id DESC`
+    );
+    const timestamp = getExportTimestamp();
+
+    if (format === "csv") {
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="inventory-${timestamp}.csv"`);
+      return res.send(`\uFEFF${buildInventoryCsv(items)}`);
+    }
+
+    res.setHeader("Content-Type", "application/vnd.ms-excel; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="inventory-${timestamp}.xls"`);
+    return res.send(buildInventoryXls(items));
+  } catch (error) {
+    console.error("Failed to export inventory:", error);
+    flash(req, { type: "error", message: "Unable to export inventory right now." });
+    return res.redirect("/inventory");
   }
 });
 
