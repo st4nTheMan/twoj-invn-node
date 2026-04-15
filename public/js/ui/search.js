@@ -3,6 +3,26 @@
   const InventoryUi = window.InventoryUi || {};
 
   InventoryUi.onReady(() => {
+    // Builds searchable text from visible row content without indexing hidden form options.
+    function getRowSearchText(row) {
+      if (!row) return "";
+
+      const clone = row.cloneNode(true);
+
+      clone.querySelectorAll("input, textarea, button").forEach((element) => element.remove());
+      clone.querySelectorAll("select").forEach((select) => {
+        const selectedText = Array.from(select.selectedOptions || [])
+          .map((option) => option.textContent.trim())
+          .filter(Boolean)
+          .join(" ");
+
+        select.replaceWith(document.createTextNode(selectedText));
+      });
+      clone.querySelectorAll("[hidden], .hidden").forEach((element) => element.remove());
+
+      return clone.textContent.toLowerCase().replace(/\s+/g, " ").trim();
+    }
+
     // Wires one search input to a table body and optional empty-state message.
     function bindSearch(inputId, tableId, emptyId) {
       const searchInput = document.getElementById(inputId);
@@ -20,7 +40,7 @@
         let visibleCount = 0;
 
         rows.forEach((row, index) => {
-          const matches = searchValue && row.textContent.toLowerCase().includes(searchValue);
+          const matches = searchValue && getRowSearchText(row).includes(searchValue);
           const shouldShowRow = searchValue
             ? matches
             : initialVisibleCount > 0
