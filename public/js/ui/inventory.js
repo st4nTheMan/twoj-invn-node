@@ -46,6 +46,58 @@
       return dateTimeFormatter.format(new Date(value));
     }
 
+    // Escapes dynamic text before it is inserted into HTML attributes or cells.
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    // Writes the selected item details into the shared view-item modal.
+    function populateViewItemModal(trigger) {
+      if (!trigger) return;
+
+      const modalFields = {
+        name: document.getElementById("view-item-modal-name"),
+        barcode: document.getElementById("view-item-modal-barcode"),
+        itemName: document.getElementById("view-item-modal-item-name"),
+        cost: document.getElementById("view-item-modal-cost"),
+        price: document.getElementById("view-item-modal-price"),
+        quantity: document.getElementById("view-item-modal-quantity"),
+        minQuantity: document.getElementById("view-item-modal-min-quantity"),
+        maxQuantity: document.getElementById("view-item-modal-max-quantity"),
+        category: document.getElementById("view-item-modal-category")
+      };
+
+      if (!modalFields.name) return;
+
+      modalFields.name.textContent = trigger.dataset.itemName || "Item Details";
+      modalFields.barcode.textContent = trigger.dataset.itemBarcode || "";
+      modalFields.itemName.textContent = trigger.dataset.itemName || "";
+      modalFields.cost.textContent = `PHP ${formatCurrency(trigger.dataset.itemCost)}`;
+      modalFields.price.textContent = `PHP ${formatCurrency(trigger.dataset.itemPrice)}`;
+      modalFields.quantity.textContent = String(trigger.dataset.itemQuantity || "0");
+      modalFields.minQuantity.textContent = String(trigger.dataset.itemMinQuantity || "0");
+      modalFields.maxQuantity.textContent = String(trigger.dataset.itemMaxQuantity || "0");
+      modalFields.category.textContent = trigger.dataset.itemCategory || "No Category";
+    }
+
+    // Binds click handlers so inventory rows can open the item-details modal.
+    function bindViewItemTriggers(scope = document) {
+      scope.querySelectorAll("[data-view-item-trigger]").forEach((trigger) => {
+        if (trigger.dataset.viewItemBound === "true") return;
+
+        trigger.dataset.viewItemBound = "true";
+        trigger.addEventListener("click", () => {
+          populateViewItemModal(trigger);
+          InventoryUi.openModal?.(trigger.dataset.openModal || "view-item-modal");
+        });
+      });
+    }
+
     // Disables a modal form submit button while an async save is in progress.
     function setSubmitDisabled(form, disabled) {
       const submitButton = form.querySelector('button[type="submit"]');
@@ -80,20 +132,37 @@
       row.dataset.row = "";
       row.className = "hover:bg-slate-50";
       row.innerHTML = `
-        <td data-label="Item Number" class="px-4 py-3 font-medium">${item.barcode}</td>
-        <td data-label="Name" class="px-4 py-3">${item.name}</td>
+        <td data-label="Item Number" class="px-4 py-3 font-medium">${escapeHtml(item.barcode)}</td>
+        <td data-label="Name" class="px-4 py-3">${escapeHtml(item.name)}</td>
         <td data-label="Price" class="px-4 py-3">PHP ${formatCurrency(item.price)}</td>
         <td data-label="Qty" class="px-4 py-3">${Number(item.quantity || 0)}</td>
-        <td data-label="Category" class="px-4 py-3">${item.category_name || "No Category"}</td>
-        <td data-label="Created" class="px-4 py-3 text-slate-500">${formatDateTime(item.created_at)}</td>
+        <td data-label="Category" class="px-4 py-3">${escapeHtml(item.category_name || "No Category")}</td>
+        <td data-label="Created" class="px-4 py-3 text-slate-500">${escapeHtml(formatDateTime(item.created_at))}</td>
         <td data-label="Actions" class="px-4 py-3">
           <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-            <a href="/inventory/items/${item.id}" class="rounded-xl border border-sky-300 px-3 py-2 text-center text-xs font-semibold text-sky-700">View Item</a>
+            <button
+              type="button"
+              data-open-modal="view-item-modal"
+              data-view-item-trigger
+              data-item-id="${escapeHtml(item.id)}"
+              data-item-barcode="${escapeHtml(item.barcode)}"
+              data-item-name="${escapeHtml(item.name)}"
+              data-item-cost="${escapeHtml(item.cost)}"
+              data-item-price="${escapeHtml(item.price)}"
+              data-item-quantity="${escapeHtml(Number(item.quantity || 0))}"
+              data-item-min-quantity="${escapeHtml(Number(item.min_quantity || 0))}"
+              data-item-max-quantity="${escapeHtml(Number(item.max_quantity || 0))}"
+              data-item-category="${escapeHtml(item.category_name || "No Category")}"
+              class="rounded-xl border border-sky-300 px-3 py-2 text-center text-xs font-semibold text-sky-700"
+            >
+              View Item
+            </button>
           </div>
         </td>
       `;
 
       inventoryTableBody.prepend(row);
+      bindViewItemTriggers(row);
       inventorySearch?.dispatchEvent(new Event("input"));
       inventoryEmptySearch?.classList.add("hidden");
     }
@@ -301,5 +370,7 @@
     verifyBarcodeButton?.addEventListener("click", async () => {
       await verifyBarcode();
     });
+
+    bindViewItemTriggers();
   });
 }());

@@ -61,7 +61,23 @@
           <td data-label="Created" class="px-4 py-3 text-slate-500"><%= formatDateTime(item.created_at) %></td>
           <td data-label="Actions" class="px-4 py-3">
             <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <a href="/inventory/items/<%= item.id %>" class="rounded-xl border border-sky-300 px-3 py-2 text-center text-xs font-semibold text-sky-700">View Item</a>
+              <button
+                type="button"
+                data-open-modal="view-item-modal"
+                data-view-item-trigger
+                data-item-id="<%= item.id %>"
+                data-item-barcode="<%= item.barcode %>"
+                data-item-name="<%= item.name %>"
+                data-item-cost="<%= item.cost %>"
+                data-item-price="<%= item.price %>"
+                data-item-quantity="<%= item.quantity %>"
+                data-item-min-quantity="<%= item.min_quantity %>"
+                data-item-max-quantity="<%= item.max_quantity %>"
+                data-item-category="<%= item.category_name || 'No Category' %>"
+                class="rounded-xl border border-sky-300 px-3 py-2 text-center text-xs font-semibold text-sky-700"
+              >
+                View Item
+              </button>
             </div>
           </td>
         </tr>
@@ -80,5 +96,6 @@
   scannerHint: "You can scan with the camera or upload a clear barcode photo from your device."
 }) %>
 <%- include("../components/modals/add-category", { categories }) %>
+<%- include("../components/modals/view-item") %>
 
 <%- include("../includes/footer") %>

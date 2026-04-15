@@ -415,7 +415,7 @@ router.post("/inventory/categories", requireLogin, async (req, res) => {
   }
 });
 
-// Loads the detailed edit view for a single inventory item.
+// Redirects the old standalone item details page to inventory where details now open in a modal.
 router.get("/inventory/items/:id", requireLogin, async (req, res) => {
   const id = Number(req.params.id);
 
@@ -424,31 +424,11 @@ router.get("/inventory/items/:id", requireLogin, async (req, res) => {
     return res.redirect("/inventory");
   }
 
-  try {
-    const [rows] = await pool.query(
-      `SELECT items.*, categories.category_name
-       FROM items
-       LEFT JOIN categories ON items.category_id = categories.id
-       WHERE items.id = ?
-       LIMIT 1`,
-      [id]
-    );
-    const item = rows[0];
-
-    if (!item) {
-      flash(req, { type: "error", message: "Item not found." });
-      return res.redirect("/inventory");
-    }
-
-    return res.render("dashboard/view-item", {
-      title: "View Item",
-      item
-    });
-  } catch (error) {
-    console.error("Failed to load item details:", error);
-    flash(req, { type: "error", message: "Unable to load item details." });
-    return res.redirect("/inventory");
-  }
+  flash(req, {
+    type: "success",
+    message: "Item details now open from the Inventory page modal."
+  });
+  return res.redirect("/inventory");
 });
 
 // Loads the history hub page for a single inventory item.
