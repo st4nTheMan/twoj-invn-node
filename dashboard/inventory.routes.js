@@ -1229,11 +1229,11 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
 
     if (jsonResponse) {
       const [updatedRows] = await pool.query(
-        `SELECT items.id, items.quantity, items.min_quantity, items.max_quantity, items.cost, items.price, items.category_id, categories.category_name
-         FROM items
-         LEFT JOIN categories ON items.category_id = categories.id
-         WHERE items.id IN (?)
-         ORDER BY items.id ASC`,
+        `SELECT a.id, a.quantity, a.min_quantity, a.max_quantity, a.cost, a.price, a.category_id, b.category_name
+         FROM items a
+         LEFT JOIN categories b ON a.category_id = b.id
+         WHERE a.id IN (?)
+         ORDER BY a.id ASC`,
         [uniqueIds]
       );
 
