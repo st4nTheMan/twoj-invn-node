@@ -10,7 +10,8 @@ const pool = require("./database/pool");
 const {
   ensureArchiveSchema,
   ensureAdjustmentNotesSchema,
-  ensureAdjustmentAuditSchema
+  ensureAdjustmentAuditSchema,
+  ensureCreditLedgerSchema
 } = require("./database/schema-bootstrap");
 const authRoutes = require("./auth/routes");
 const dashboardRoutes = require("./dashboard/routes");
@@ -79,6 +80,7 @@ async function startServer() {
   await ensureArchiveSchema();
   await ensureAdjustmentNotesSchema();
   await ensureAdjustmentAuditSchema();
+  await ensureCreditLedgerSchema();
 
   const sslOptions = {
     key: fs.readFileSync(SSL_KEY_PATH),

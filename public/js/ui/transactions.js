@@ -9,10 +9,20 @@
     const transactionForm = document.getElementById("transaction-form");
     const paymentModal = document.getElementById("transaction-payment-modal");
     const paymentModalTotal = document.getElementById("payment-modal-total");
+    const paymentMethodInputs = document.querySelectorAll("input[name='payment-method-choice']");
+    const paymentCashFields = document.getElementById("payment-cash-fields");
     const paymentCashInput = document.getElementById("payment-cash-input");
+    const paymentCreditFields = document.getElementById("payment-credit-fields");
+    const paymentCustomerNameInput = document.getElementById("payment-customer-name-input");
+    const paymentCustomerPhoneInput = document.getElementById("payment-customer-phone-input");
+    const paymentChangeCard = document.getElementById("payment-change-card");
     const paymentChange = document.getElementById("payment-modal-change");
     const paymentMessage = document.getElementById("payment-modal-message");
     const confirmTransactionButton = document.getElementById("confirm-transaction-button");
+    const transactionPaymentMethodInput = document.getElementById("transaction-payment-method");
+    const transactionCustomerNameInput = document.getElementById("transaction-customer-name");
+    const transactionCustomerPhoneInput = document.getElementById("transaction-customer-phone");
+    const transactionCashReceivedInput = document.getElementById("transaction-cash-received");
 
     if (!selectedItemsBody || !transactionTotal) {
       return;
@@ -25,6 +35,47 @@
       return Number(transactionTotal.textContent || 0);
     }
 
+    // Returns the currently selected modal payment method.
+    function getSelectedPaymentMethod() {
+      return Array.from(paymentMethodInputs).find((input) => input.checked)?.value || "cash";
+    }
+
+    // Trims user-entered text to keep modal values consistent before submit.
+    function normalizeText(value) {
+      return String(value || "").replace(/\s+/g, " ").trim();
+    }
+
+    // Mirrors modal fields into the hidden transaction form inputs.
+    function syncPaymentFields() {
+      if (transactionPaymentMethodInput) {
+        transactionPaymentMethodInput.value = getSelectedPaymentMethod();
+      }
+
+      if (transactionCustomerNameInput) {
+        transactionCustomerNameInput.value = normalizeText(paymentCustomerNameInput?.value);
+      }
+
+      if (transactionCustomerPhoneInput) {
+        transactionCustomerPhoneInput.value = normalizeText(paymentCustomerPhoneInput?.value);
+      }
+
+      if (transactionCashReceivedInput) {
+        transactionCashReceivedInput.value = String(paymentCashInput?.value || "").trim();
+      }
+    }
+
+    // Updates the visible payment fields based on the selected method.
+    function updatePaymentMethodUi() {
+      const paymentMethod = getSelectedPaymentMethod();
+      const isCash = paymentMethod === "cash";
+
+      paymentCashFields?.classList.toggle("hidden", !isCash);
+      paymentChangeCard?.classList.toggle("hidden", !isCash);
+      paymentCreditFields?.classList.toggle("hidden", isCash);
+
+      syncPaymentFields();
+    }
+
     // Updates payment modal totals, change due, and submit eligibility.
     function updatePaymentSummary() {
       if (!paymentModalTotal || !paymentCashInput || !paymentChange || !paymentMessage || !confirmTransactionButton) {
@@ -32,26 +83,39 @@
       }
 
       const total = getTransactionTotalValue();
+      const paymentMethod = getSelectedPaymentMethod();
       const cash = Number(paymentCashInput.value || 0);
       const change = cash - total;
       const hasItems = selectedItemsBody.querySelectorAll(".selected-item-row").length > 0;
       const hasEnoughCash = cash >= total;
+      const customerName = normalizeText(paymentCustomerNameInput?.value);
+      const customerPhone = normalizeText(paymentCustomerPhoneInput?.value);
+      const hasCreditDetails = customerName && customerPhone;
 
       paymentModalTotal.textContent = total.toFixed(2);
       paymentChange.textContent = Math.max(change, 0).toFixed(2);
+      updatePaymentMethodUi();
 
       if (!hasItems) {
         paymentMessage.textContent = "Select at least one item before completing the transaction.";
-      } else if (cash <= 0) {
+      } else if (paymentMethod === "cash" && cash <= 0) {
         paymentMessage.textContent = "Enter the cash received from the customer.";
-      } else if (!hasEnoughCash) {
+      } else if (paymentMethod === "cash" && !hasEnoughCash) {
         paymentMessage.textContent = `Insufficient cash. Need PHP ${(total - cash).toFixed(2)} more.`;
+      } else if (paymentMethod === "credit" && !customerName) {
+        paymentMessage.textContent = "Enter the customer's name for the credit transaction.";
+      } else if (paymentMethod === "credit" && !customerPhone) {
+        paymentMessage.textContent = "Enter the customer's phone number for the credit transaction.";
       } else {
         paymentMessage.textContent = "";
       }
 
-      confirmTransactionButton.disabled = !hasItems || cash <= 0 || !hasEnoughCash;
-      return hasItems && cash > 0 && hasEnoughCash;
+      const isValid = paymentMethod === "cash"
+        ? hasItems && cash > 0 && hasEnoughCash
+        : hasItems && hasCreditDetails;
+
+      confirmTransactionButton.disabled = !isValid;
+      return isValid;
     }
 
     // Recalculates line subtotals and the overall transaction total.
@@ -137,6 +201,13 @@
         InventoryUi.showFlashFeedback?.("error", "Transaction failed.");
       } finally {
         paymentCashInput.value = "";
+        if (paymentCustomerNameInput) paymentCustomerNameInput.value = "";
+        if (paymentCustomerPhoneInput) paymentCustomerPhoneInput.value = "";
+        const cashOption = document.getElementById("payment-method-cash");
+        if (cashOption) {
+          cashOption.checked = true;
+        }
+        syncPaymentFields();
         isSubmittingTransaction = false;
         updatePaymentSummary();
       }
@@ -230,15 +301,46 @@
     });
 
     paymentModal?.addEventListener("modal:open", () => {
-      if (!paymentCashInput) return;
-
-      paymentCashInput.value = "";
+      if (paymentCashInput) {
+        paymentCashInput.value = "";
+      }
+      if (paymentCustomerNameInput) {
+        paymentCustomerNameInput.value = "";
+      }
+      if (paymentCustomerPhoneInput) {
+        paymentCustomerPhoneInput.value = "";
+      }
+      const cashOption = document.getElementById("payment-method-cash");
+      if (cashOption) {
+        cashOption.checked = true;
+      }
       updatePaymentSummary();
-      paymentCashInput.focus();
+      paymentCashInput?.focus();
     });
 
     paymentCashInput?.addEventListener("input", () => {
       updatePaymentSummary();
+    });
+
+    paymentCustomerNameInput?.addEventListener("input", () => {
+      updatePaymentSummary();
+    });
+
+    paymentCustomerPhoneInput?.addEventListener("input", () => {
+      updatePaymentSummary();
+    });
+
+    paymentMethodInputs.forEach((input) => {
+      input.addEventListener("change", () => {
+        updatePaymentSummary();
+
+        if (getSelectedPaymentMethod() === "credit") {
+          paymentCustomerNameInput?.focus();
+          return;
+        }
+
+        paymentCashInput?.focus();
+      });
     });
 
     confirmTransactionButton?.addEventListener("click", () => {

@@ -22,6 +22,7 @@ DROP TABLE IF EXISTS quantity_adjustments;
 DROP TABLE IF EXISTS cost_adjustments;
 -- Drop the transaction item details table before recreating it.
 DROP TABLE IF EXISTS transaction_items;
+DROP TABLE IF EXISTS credit_ledger;
 -- Drop the transactions table before recreating it.
 DROP TABLE IF EXISTS transactions;
 -- Drop the items table before recreating it.
@@ -78,8 +79,31 @@ CREATE TABLE items (
 CREATE TABLE transactions (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   total_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  payment_method VARCHAR(20) NOT NULL DEFAULT 'cash',
+  customer_name VARCHAR(150) NULL,
+  customer_phone VARCHAR(50) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Store customers with outstanding credit purchases and manual ledger entries.
+CREATE TABLE credit_ledger (
+  id INT NOT NULL AUTO_INCREMENT,
+  transaction_id INT UNSIGNED NULL,
+  customer_name VARCHAR(150) NOT NULL,
+  customer_phone VARCHAR(50) NOT NULL,
+  item_summary TEXT NULL,
+  total_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  balance_due DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_credit_ledger_transaction_id (transaction_id),
+  KEY idx_credit_ledger_customer_name (customer_name),
+  KEY idx_credit_ledger_created_at (created_at),
+  CONSTRAINT fk_credit_ledger_transaction
+    FOREIGN KEY (transaction_id) REFERENCES transactions (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Store the individual items included in each transaction.
