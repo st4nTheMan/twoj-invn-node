@@ -13,18 +13,18 @@ const router = express.Router();
 router.get("/credit-ledger", requireLogin, async (req, res) => {
   try {
     const [items] = await pool.query(
-      `SELECT items.*, categories.category_name
-       FROM items
-       LEFT JOIN categories ON items.category_id = categories.id
-       WHERE items.archived_at IS NULL
-       ORDER BY items.name ASC`
+      `SELECT a.*, b.category_name
+       FROM items a
+       LEFT JOIN categories b ON a.category_id = b.id
+       WHERE a.archived_at IS NULL
+       ORDER BY a.name ASC`
     );
     const [entries] = await pool.query(
-      `SELECT credit_ledger.*,
-              transactions.payment_method
-       FROM credit_ledger
-       LEFT JOIN transactions ON credit_ledger.transaction_id = transactions.id
-       ORDER BY credit_ledger.created_at DESC, credit_ledger.id DESC`
+      `SELECT a.*,
+              b.payment_method
+       FROM credit_ledger a
+       LEFT JOIN transactions b ON a.transaction_id = b.id
+       ORDER BY a.created_at DESC, a.id DESC`
     );
 
     return res.render("dashboard/credit-ledger", {
