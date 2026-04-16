@@ -43,6 +43,7 @@ router.get("/transaction", requireLogin, async (req, res) => {
 
 // Processes a checkout transaction and updates stock inside a database transaction.
 router.post("/transaction", requireLogin, async (req, res) => {
+  const createdByUserId = Number(req.session.user?.id) || null;
   const paymentMethod = normalizeText(req.body.payment_method).toLowerCase() || "cash";
   const customerName = normalizeText(req.body.customer_name);
   const customerPhone = normalizeText(req.body.customer_phone);
@@ -139,13 +140,14 @@ router.post("/transaction", requireLogin, async (req, res) => {
     }
 
     const [transactionResult] = await connection.query(
-      `INSERT INTO transactions (total_amount, payment_method, customer_name, customer_phone)
-       VALUES (?, ?, ?, ?)`,
+      `INSERT INTO transactions (total_amount, payment_method, customer_name, customer_phone, created_by)
+       VALUES (?, ?, ?, ?, ?)`,
       [
         totalAmount,
         paymentMethod,
         customerName || null,
-        customerPhone || null
+        customerPhone || null,
+        createdByUserId
       ]
     );
 
@@ -175,9 +177,9 @@ router.post("/transaction", requireLogin, async (req, res) => {
         .join(", ");
 
       await connection.query(
-        `INSERT INTO credit_ledger (transaction_id, customer_name, customer_phone, item_summary, total_amount, balance_due)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [transactionId, customerName, customerPhone, itemSummary, totalAmount, totalAmount]
+        `INSERT INTO credit_ledger (transaction_id, customer_name, customer_phone, item_summary, total_amount, balance_due, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [transactionId, customerName, customerPhone, itemSummary, totalAmount, totalAmount, createdByUserId]
       );
     }
 

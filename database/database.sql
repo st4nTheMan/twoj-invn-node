@@ -46,9 +46,21 @@ CREATE TABLE users (
 CREATE TABLE categories (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   category_name VARCHAR(100) NOT NULL,
+  created_by INT UNSIGNED NULL,
+  updated_by INT UNSIGNED NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_categories_category_name (category_name)
+  UNIQUE KEY uq_categories_category_name (category_name),
+  KEY idx_categories_created_by (created_by),
+  KEY idx_categories_updated_by (updated_by),
+  CONSTRAINT fk_categories_created_by_user
+    FOREIGN KEY (created_by) REFERENCES users (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL,
+  CONSTRAINT fk_categories_updated_by_user
+    FOREIGN KEY (updated_by) REFERENCES users (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Store inventory items, stock levels, and category assignments.
@@ -62,15 +74,27 @@ CREATE TABLE items (
   min_quantity INT NOT NULL DEFAULT 0,
   max_quantity INT NOT NULL DEFAULT 1,
   category_id INT UNSIGNED NULL,
+  created_by INT UNSIGNED NULL,
+  updated_by INT UNSIGNED NULL,
   archived_at TIMESTAMP NULL DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_items_barcode (barcode),
   KEY idx_items_category_id (category_id),
+  KEY idx_items_created_by (created_by),
+  KEY idx_items_updated_by (updated_by),
   KEY idx_items_archived_at (archived_at),
   CONSTRAINT fk_items_category
     FOREIGN KEY (category_id) REFERENCES categories (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL,
+  CONSTRAINT fk_items_created_by_user
+    FOREIGN KEY (created_by) REFERENCES users (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL,
+  CONSTRAINT fk_items_updated_by_user
+    FOREIGN KEY (updated_by) REFERENCES users (id)
     ON UPDATE CASCADE
     ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -82,8 +106,20 @@ CREATE TABLE transactions (
   payment_method VARCHAR(20) NOT NULL DEFAULT 'cash',
   customer_name VARCHAR(150) NULL,
   customer_phone VARCHAR(50) NULL,
+  created_by INT UNSIGNED NULL,
+  updated_by INT UNSIGNED NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id)
+  PRIMARY KEY (id),
+  KEY idx_transactions_created_by (created_by),
+  KEY idx_transactions_updated_by (updated_by),
+  CONSTRAINT fk_transactions_created_by_user
+    FOREIGN KEY (created_by) REFERENCES users (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL,
+  CONSTRAINT fk_transactions_updated_by_user
+    FOREIGN KEY (updated_by) REFERENCES users (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Store customers with outstanding credit purchases and manual ledger entries.
@@ -95,13 +131,25 @@ CREATE TABLE credit_ledger (
   item_summary TEXT NULL,
   total_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
   balance_due DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  created_by INT UNSIGNED NULL,
+  updated_by INT UNSIGNED NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_credit_ledger_transaction_id (transaction_id),
   KEY idx_credit_ledger_customer_name (customer_name),
+  KEY idx_credit_ledger_created_by (created_by),
+  KEY idx_credit_ledger_updated_by (updated_by),
   KEY idx_credit_ledger_created_at (created_at),
   CONSTRAINT fk_credit_ledger_transaction
     FOREIGN KEY (transaction_id) REFERENCES transactions (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL,
+  CONSTRAINT fk_credit_ledger_created_by_user
+    FOREIGN KEY (created_by) REFERENCES users (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL,
+  CONSTRAINT fk_credit_ledger_updated_by_user
+    FOREIGN KEY (updated_by) REFERENCES users (id)
     ON UPDATE CASCADE
     ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -255,16 +303,16 @@ INSERT INTO users (username, password) VALUES
   ('admin', '0192023a7bbd73250516f069df18b500');
 
 -- Add a few starter categories.
-INSERT INTO categories (category_name) VALUES
-  ('Beverages'),
-  ('Snacks'),
-  ('Household');
+INSERT INTO categories (category_name, created_by) VALUES
+  ('Beverages', 1),
+  ('Snacks', 1),
+  ('Household', 1);
 
 -- Add sample inventory items for testing and demo use.
-INSERT INTO items (barcode, name, cost, price, quantity, min_quantity, max_quantity, category_id) VALUES
-  ('1000001', 'Bottled Water', 10.00, 15.00, 40, 10, 100, 1),
-  ('1000002', 'Chocolate Bar', 18.50, 25.00, 25, 8, 60, 2),
-  ('1000003', 'Dishwashing Liquid', 55.00, 75.00, 12, 5, 30, 3);
+INSERT INTO items (barcode, name, cost, price, quantity, min_quantity, max_quantity, category_id, created_by) VALUES
+  ('1000001', 'Bottled Water', 10.00, 15.00, 40, 10, 100, 1, 1),
+  ('1000002', 'Chocolate Bar', 18.50, 25.00, 25, 8, 60, 2, 1),
+  ('1000003', 'Dishwashing Liquid', 55.00, 75.00, 12, 5, 30, 3, 1);
 
 -- Restore normal foreign key enforcement after the rebuild completes.
 SET FOREIGN_KEY_CHECKS = 1;

@@ -29,6 +29,7 @@
           <th class="px-4 py-3">Ledger Details</th>
           <th class="px-4 py-3">Balance Due</th>
           <th class="px-4 py-3">Source</th>
+          <th class="px-4 py-3">Created By</th>
           <th class="px-4 py-3">Date</th>
         </tr>
       </thead>
@@ -53,10 +54,11 @@
                 <div class="text-xs text-slate-500">Saved directly to ledger</div>
               <% } %>
             </td>
+            <td data-label="Created By" class="px-4 py-3 align-top text-slate-500"><%= entry.created_by_username || "-" %></td>
             <td data-label="Date" class="px-4 py-3 align-top text-slate-500"><%= formatDateTime(entry.created_at) %></td>
           </tr>
         <% }) } else { %>
-          <tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">No credit ledger entries found.</td></tr>
+          <tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">No credit ledger entries found.</td></tr>
         <% } %>
       </tbody>
     </table>

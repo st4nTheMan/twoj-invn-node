@@ -13,18 +13,20 @@ const router = express.Router();
 router.get("/credit-ledger", requireLogin, async (req, res) => {
   try {
     const [items] = await pool.query(
-      `SELECT items.*, categories.category_name
-       FROM items
-       LEFT JOIN categories ON items.category_id = categories.id
-       WHERE items.archived_at IS NULL
-       ORDER BY items.name ASC`
+      `SELECT a.*, b.category_name
+       FROM items a
+       LEFT JOIN categories b ON a.category_id = b.id
+       WHERE a.archived_at IS NULL
+       ORDER BY a.name ASC`
     );
     const [entries] = await pool.query(
-      `SELECT credit_ledger.*,
-              transactions.payment_method
-       FROM credit_ledger
-       LEFT JOIN transactions ON credit_ledger.transaction_id = transactions.id
-       ORDER BY credit_ledger.created_at DESC, credit_ledger.id DESC`
+      `SELECT a.*,
+              b.payment_method,
+              c.username AS created_by_username
+       FROM credit_ledger a
+       LEFT JOIN transactions b ON a.transaction_id = b.id
+       LEFT JOIN users c ON a.created_by = c.id
+       ORDER BY a.created_at DESC, a.id DESC`
     );
 
     return res.render("dashboard/credit-ledger", {
@@ -45,6 +47,7 @@ router.get("/credit-ledger", requireLogin, async (req, res) => {
 
 // Saves a manual credit-ledger entry without requiring a checkout transaction.
 router.post("/credit-ledger", requireLogin, async (req, res) => {
+  const createdByUserId = Number(req.session.user?.id) || null;
   const customerName = normalizeText(req.body.customer_name);
   const customerPhone = normalizeText(req.body.customer_phone);
   const itemIds = Array.isArray(req.body.item_id)
@@ -115,9 +118,9 @@ router.post("/credit-ledger", requireLogin, async (req, res) => {
     }
 
     await pool.query(
-      `INSERT INTO credit_ledger (customer_name, customer_phone, item_summary, total_amount, balance_due)
-       VALUES (?, ?, ?, ?, ?)`,
-      [customerName, customerPhone, itemSummaryParts.join(", "), totalAmount, totalAmount]
+      `INSERT INTO credit_ledger (customer_name, customer_phone, item_summary, total_amount, balance_due, created_by)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [customerName, customerPhone, itemSummaryParts.join(", "), totalAmount, totalAmount, createdByUserId]
     );
 
     flash(req, {

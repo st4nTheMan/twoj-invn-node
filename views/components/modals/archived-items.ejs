@@ -22,6 +22,7 @@
             <th class="px-4 py-3">Item Number</th>
             <th class="px-4 py-3">Name</th>
             <th class="px-4 py-3">Category</th>
+            <th class="px-4 py-3">Created By</th>
             <th class="px-4 py-3">Archived</th>
             <th class="px-4 py-3">Actions</th>
           </tr>
@@ -32,6 +33,7 @@
               <td data-label="Item Number" class="px-4 py-3 font-medium"><%= item.barcode %></td>
               <td data-label="Name" class="px-4 py-3"><%= item.name %></td>
               <td data-label="Category" class="px-4 py-3"><%= item.category_name || "No Category" %></td>
+              <td data-label="Created By" class="px-4 py-3 text-slate-500"><%= item.created_by_username || "-" %></td>
               <td data-label="Archived" class="px-4 py-3 text-slate-500"><%= formatDateTime(item.archived_at) %></td>
               <td data-label="Actions" class="px-4 py-3">
                 <form action="/inventory/items/<%= item.id %>/restore" method="POST">
@@ -42,7 +44,7 @@
               </td>
             </tr>
           <% }) } else { %>
-            <tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">No archived items.</td></tr>
+            <tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">No archived items.</td></tr>
           <% } %>
         </tbody>
       </table>
