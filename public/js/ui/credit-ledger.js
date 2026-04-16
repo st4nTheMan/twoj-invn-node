@@ -7,9 +7,26 @@
     const selectedItemsBody = document.getElementById("credit-ledger-selected-items-body");
     const noSelectedItemsRow = document.getElementById("credit-ledger-no-selected-items-row");
     const totalAmountInput = document.getElementById("credit-ledger-total-amount");
+    const customerPhoneInput = document.getElementById("credit-ledger-customer-phone");
+    const customerPhoneHiddenInput = document.getElementById("credit-ledger-customer-phone-hidden");
 
     if (!form || !selectedItemsBody || !totalAmountInput) {
       return;
+    }
+
+    function normalizePhoneDigits(value) {
+      return String(value || "").replace(/\D/g, "").slice(0, 10);
+    }
+
+    function syncCustomerPhone() {
+      if (!customerPhoneInput || !customerPhoneHiddenInput) {
+        return "";
+      }
+
+      const digits = normalizePhoneDigits(customerPhoneInput.value);
+      customerPhoneInput.value = digits;
+      customerPhoneHiddenInput.value = digits ? `+63${digits}` : "";
+      return digits;
     }
 
     function toggleEmptyState() {
@@ -98,17 +115,17 @@
         row.dataset.barcode = button.dataset.barcode || "";
         row.dataset.price = button.dataset.price || "0";
         row.innerHTML = `
-          <td data-label="Item" class="px-4 py-3 align-top">
-            <div class="font-semibold text-slate-900">${button.dataset.barcode || ""}</div>
+          <td data-label="Item" class="break-words px-4 py-3 align-top">
+            <div class="font-semibold text-slate-900 break-all">${button.dataset.barcode || ""}</div>
             <div class="text-xs text-slate-500">${button.dataset.name || ""}</div>
             <input type="hidden" name="item_id" value="${id}" class="credit-ledger-selected-item-id">
             <input type="hidden" name="quantity" value="1" class="credit-ledger-selected-item-quantity">
           </td>
-          <td data-label="Qty" class="px-4 py-3">
-            <input type="number" min="1" value="1" class="credit-ledger-selected-item-qty w-20 rounded-xl border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200">
+          <td data-label="Qty" class="w-28 px-4 py-3 align-top">
+            <input type="number" min="1" value="1" class="credit-ledger-selected-item-qty w-full max-w-[6rem] rounded-xl border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200">
           </td>
-          <td data-label="Remove" class="px-4 py-3">
-            <button type="button" class="remove-credit-ledger-item-button w-full rounded-xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 sm:w-auto">Remove</button>
+          <td data-label="Remove" class="w-32 px-4 py-3 align-top">
+            <button type="button" class="remove-credit-ledger-item-button w-full rounded-xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50">Remove</button>
           </td>
         `;
 
@@ -120,22 +137,34 @@
 
     form.addEventListener("submit", (event) => {
       updateItemSummary();
+      const phoneDigits = syncCustomerPhone();
 
       if (!selectedItemsBody.querySelector(".credit-ledger-selected-item-row")) {
         event.preventDefault();
         InventoryUi.showFlashFeedback?.("error", "Select at least one inventory item before saving the credit entry.");
+        return;
       }
+
+      if (customerPhoneInput && phoneDigits.length !== 10) {
+        event.preventDefault();
+        InventoryUi.showFlashFeedback?.("error", "Enter a valid 10-digit phone number after +63.");
+      }
+    });
+
+    customerPhoneInput?.addEventListener("input", () => {
+      syncCustomerPhone();
     });
 
     document.getElementById("add-credit-ledger-modal")?.addEventListener("modal:open", () => {
       selectedItemsBody.querySelectorAll(".credit-ledger-selected-item-row").forEach((row) => row.remove());
       const customerName = document.getElementById("credit-ledger-customer-name");
-      const customerPhone = document.getElementById("credit-ledger-customer-phone");
       if (customerName) customerName.value = "";
-      if (customerPhone) customerPhone.value = "";
+      if (customerPhoneInput) customerPhoneInput.value = "";
+      if (customerPhoneHiddenInput) customerPhoneHiddenInput.value = "";
       updateItemSummary();
     });
 
+    syncCustomerPhone();
     updateItemSummary();
   });
 }());

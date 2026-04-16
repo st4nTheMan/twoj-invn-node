@@ -45,6 +45,25 @@
       return String(value || "").replace(/\s+/g, " ").trim();
     }
 
+    // Keeps transaction credit phone input in local 10-digit format after the fixed +63 prefix.
+    function normalizePhoneDigits(value) {
+      return String(value || "").replace(/\D/g, "").slice(0, 10);
+    }
+
+    function syncCustomerPhoneField() {
+      const digits = normalizePhoneDigits(paymentCustomerPhoneInput?.value);
+
+      if (paymentCustomerPhoneInput) {
+        paymentCustomerPhoneInput.value = digits;
+      }
+
+      if (transactionCustomerPhoneInput) {
+        transactionCustomerPhoneInput.value = digits ? `+63${digits}` : "";
+      }
+
+      return digits;
+    }
+
     // Mirrors modal fields into the hidden transaction form inputs.
     function syncPaymentFields() {
       if (transactionPaymentMethodInput) {
@@ -55,9 +74,7 @@
         transactionCustomerNameInput.value = normalizeText(paymentCustomerNameInput?.value);
       }
 
-      if (transactionCustomerPhoneInput) {
-        transactionCustomerPhoneInput.value = normalizeText(paymentCustomerPhoneInput?.value);
-      }
+      syncCustomerPhoneField();
 
       if (transactionCashReceivedInput) {
         transactionCashReceivedInput.value = String(paymentCashInput?.value || "").trim();
@@ -89,8 +106,8 @@
       const hasItems = selectedItemsBody.querySelectorAll(".selected-item-row").length > 0;
       const hasEnoughCash = cash >= total;
       const customerName = normalizeText(paymentCustomerNameInput?.value);
-      const customerPhone = normalizeText(paymentCustomerPhoneInput?.value);
-      const hasCreditDetails = customerName && customerPhone;
+      const customerPhoneDigits = syncCustomerPhoneField();
+      const hasCreditDetails = customerName && customerPhoneDigits.length === 10;
 
       paymentModalTotal.textContent = total.toFixed(2);
       paymentChange.textContent = Math.max(change, 0).toFixed(2);
@@ -104,8 +121,8 @@
         paymentMessage.textContent = `Insufficient cash. Need PHP ${(total - cash).toFixed(2)} more.`;
       } else if (paymentMethod === "credit" && !customerName) {
         paymentMessage.textContent = "Enter the customer's name for the credit transaction.";
-      } else if (paymentMethod === "credit" && !customerPhone) {
-        paymentMessage.textContent = "Enter the customer's phone number for the credit transaction.";
+      } else if (paymentMethod === "credit" && customerPhoneDigits.length !== 10) {
+        paymentMessage.textContent = "Enter a valid 10-digit phone number after +63.";
       } else {
         paymentMessage.textContent = "";
       }
@@ -327,6 +344,7 @@
     });
 
     paymentCustomerPhoneInput?.addEventListener("input", () => {
+      syncCustomerPhoneField();
       updatePaymentSummary();
     });
 
@@ -363,6 +381,7 @@
     });
 
     toggleSelectedItemsEmptyState();
+    syncCustomerPhoneField();
     updateTransactionTotal();
   });
 }());

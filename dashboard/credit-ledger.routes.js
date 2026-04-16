@@ -9,6 +9,33 @@ const {
 // Defines the credit-ledger pages and manual entry actions.
 const router = express.Router();
 
+// Normalizes phone input into the +63XXXXXXXXXX format used by the credit ledger.
+function normalizePhilippinePhone(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+
+  if (!digits) {
+    return "";
+  }
+
+  let localNumber = digits;
+
+  if (localNumber.startsWith("63")) {
+    localNumber = localNumber.slice(2);
+  }
+
+  if (localNumber.startsWith("0")) {
+    localNumber = localNumber.slice(1);
+  }
+
+  localNumber = localNumber.slice(0, 10);
+
+  if (localNumber.length !== 10) {
+    return "";
+  }
+
+  return `+63${localNumber}`;
+}
+
 // Loads the ledger page with recent credit balances and linked invoice details.
 router.get("/credit-ledger", requireLogin, async (req, res) => {
   try {
@@ -49,7 +76,7 @@ router.get("/credit-ledger", requireLogin, async (req, res) => {
 router.post("/credit-ledger", requireLogin, async (req, res) => {
   const createdByUserId = Number(req.session.user?.id) || null;
   const customerName = normalizeText(req.body.customer_name);
-  const customerPhone = normalizeText(req.body.customer_phone);
+  const customerPhone = normalizePhilippinePhone(req.body.customer_phone);
   const itemIds = Array.isArray(req.body.item_id)
     ? req.body.item_id
     : req.body.item_id

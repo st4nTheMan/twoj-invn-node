@@ -45,7 +45,10 @@
         </div>
         <div class="sm:col-span-1">
           <label for="payment-customer-phone-input" class="mb-2 block text-sm font-medium text-slate-700">Phone Number</label>
-          <input id="payment-customer-phone-input" type="text" maxlength="50" class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm">
+          <div class="flex overflow-hidden rounded-2xl border border-slate-300 bg-white">
+            <span class="inline-flex items-center border-r border-slate-300 bg-slate-100 px-4 text-sm font-semibold text-slate-600">+63</span>
+            <input id="payment-customer-phone-input" type="text" inputmode="numeric" autocomplete="tel-national" maxlength="10" placeholder="9XXXXXXXXX" class="w-full border-0 bg-transparent px-4 py-3 text-sm focus:outline-none focus:ring-0">
+          </div>
         </div>
       </div>
 

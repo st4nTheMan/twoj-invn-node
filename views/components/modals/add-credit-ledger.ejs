@@ -1,6 +1,6 @@
 <% /* Modal for manually adding a credit-ledger entry without a linked transaction. */ %>
 <section id="add-credit-ledger-modal" data-modal class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-950/60 p-4">
-  <div class="mx-auto my-8 max-w-5xl rounded-3xl bg-white p-6 shadow-2xl sm:my-12 max-h-[calc(100vh-4rem)] overflow-y-auto">
+  <div class="mx-auto my-8 max-w-6xl rounded-3xl bg-white p-6 shadow-2xl sm:my-12 max-h-[calc(100vh-4rem)] overflow-y-auto">
     <div class="flex items-start justify-between gap-4">
       <div>
         <h2 class="text-lg font-semibold text-slate-900">Add Credit Entry</h2>
@@ -9,8 +9,8 @@
       <button type="button" data-close-modal class="rounded-2xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600">Close</button>
     </div>
 
-    <form id="credit-ledger-form" action="/credit-ledger" method="POST" class="mt-6 grid gap-6 xl:grid-cols-[1.3fr_1fr] items-start">
-      <div class="rounded-2xl border border-slate-200 p-4">
+    <form id="credit-ledger-form" action="/credit-ledger" method="POST" class="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(20rem,0.95fr)]">
+      <div class="min-w-0 rounded-2xl border border-slate-200 p-4">
           <div class="relative">
             <input id="credit-ledger-item-search" type="text" placeholder="Search inventory by item number, name, or category..." class="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm">
             <button type="button" id="credit-ledger-item-search-clear" class="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600">
@@ -58,11 +58,11 @@
           <p id="credit-ledger-item-empty-search" class="hidden pt-4 text-center text-sm text-slate-500">No inventory items found.</p>
       </div>
 
-      <div class="grid gap-4">
-        <div class="rounded-2xl border border-slate-200 p-4">
+      <div class="grid min-w-0 gap-4">
+        <div class="min-w-0 rounded-2xl border border-slate-200 p-4">
           <h3 class="text-sm font-semibold text-slate-900">Selected Items</h3>
-          <div class="table-scroll mt-3 overflow-x-auto">
-            <table class="responsive-table min-w-full text-left text-sm">
+          <div class="table-scroll mt-3 max-h-[18rem] min-w-0 overflow-x-hidden overflow-y-auto">
+            <table class="responsive-table min-w-full table-fixed text-left text-sm">
               <thead class="bg-slate-50 text-slate-600">
                 <tr>
                   <th class="px-4 py-3">Item</th>
@@ -86,7 +86,11 @@
           </div>
           <div>
             <label for="credit-ledger-customer-phone" class="mb-2 block text-sm font-medium text-slate-700">Phone Number</label>
-            <input id="credit-ledger-customer-phone" name="customer_phone" type="text" maxlength="50" required class="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+            <div class="flex overflow-hidden rounded-2xl border border-slate-300 bg-slate-50">
+              <span class="inline-flex items-center border-r border-slate-300 bg-slate-100 px-4 text-sm font-semibold text-slate-600">+63</span>
+              <input id="credit-ledger-customer-phone" type="text" inputmode="numeric" autocomplete="tel-national" maxlength="10" placeholder="9XXXXXXXXX" required class="w-full border-0 bg-transparent px-4 py-3 text-sm focus:outline-none focus:ring-0">
+            </div>
+            <input id="credit-ledger-customer-phone-hidden" name="customer_phone" type="hidden" value="">
           </div>
         </div>
 
