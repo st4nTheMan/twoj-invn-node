@@ -10,9 +10,10 @@ const router = express.Router();
 router.get("/reports", requireLogin, async (req, res) => {
   try {
     const [transactions] = await pool.query(
-      `SELECT *
-       FROM transactions
-       ORDER BY created_at DESC, id DESC`
+      `SELECT a.*, b.username AS created_by_username
+       FROM transactions a
+       LEFT JOIN users b ON a.created_by = b.id
+       ORDER BY a.created_at DESC, a.id DESC`
     );
 
     return res.render("dashboard/reports", {

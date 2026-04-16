@@ -8,11 +8,11 @@ const {
 // Builds stock alert data that is shown globally in the dashboard layout.
 async function getStockNotifications() {
   const [items] = await pool.query(
-    `SELECT items.*, categories.category_name
-     FROM items
-     LEFT JOIN categories ON items.category_id = categories.id
-     WHERE items.archived_at IS NULL
-     ORDER BY items.name ASC`
+    `SELECT a.*, b.category_name
+     FROM items a
+     LEFT JOIN categories b ON a.category_id = b.id
+     WHERE a.archived_at IS NULL
+     ORDER BY a.name ASC`
   );
 
   const lowStockItems = [];

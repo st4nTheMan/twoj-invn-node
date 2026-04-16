@@ -242,19 +242,26 @@ function respondAdjustmentResult(req, res, type, message) {
 router.get("/inventory", requireLogin, async (req, res) => {
   try {
     const [categories] = await pool.query(
-      "SELECT * FROM categories ORDER BY category_name ASC"
+      `SELECT a.*, b.username AS created_by_username
+       FROM categories a
+       LEFT JOIN users b ON a.created_by = b.id
+       ORDER BY a.category_name ASC`
     );
     const [items] = await pool.query(
-      `SELECT a.*, b.category_name
+      `SELECT a.*, b.category_name, c.username AS created_by_username, d.username AS updated_by_username
        FROM items a
        LEFT JOIN categories b ON a.category_id = b.id
+       LEFT JOIN users c ON a.created_by = c.id
+       LEFT JOIN users d ON a.updated_by = d.id
        WHERE a.archived_at IS NULL
        ORDER BY a.id DESC`
     );
     const [archivedItems] = await pool.query(
-      `SELECT a.*, b.category_name
+      `SELECT a.*, b.category_name, c.username AS created_by_username, d.username AS updated_by_username
        FROM items a
        LEFT JOIN categories b ON a.category_id = b.id
+       LEFT JOIN users c ON a.created_by = c.id
+       LEFT JOIN users d ON a.updated_by = d.id
        WHERE a.archived_at IS NOT NULL
        ORDER BY a.archived_at DESC, a.id DESC`
     );
@@ -434,6 +441,7 @@ router.get("/history", requireLogin, async (req, res) => {
 
 // Creates a new inventory item and preserves form state on validation errors.
 router.post("/inventory/items", requireLogin, async (req, res) => {
+  const createdByUserId = Number(req.session.user?.id) || null;
   const barcode = normalizeBarcode(req.body.barcode);
   const name = toUppercaseText(req.body.name);
   const cost = normalizeDecimalInput(req.body.cost);
@@ -514,16 +522,18 @@ router.post("/inventory/items", requireLogin, async (req, res) => {
     }
 
     const [insertResult] = await pool.query(
-      `INSERT INTO items (barcode, name, cost, price, quantity, min_quantity, max_quantity, category_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [barcode, name, parsedCost, parsedPrice, quantity, minQuantity, maxQuantity, categoryId]
+      `INSERT INTO items (barcode, name, cost, price, quantity, min_quantity, max_quantity, category_id, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [barcode, name, parsedCost, parsedPrice, quantity, minQuantity, maxQuantity, categoryId, createdByUserId]
     );
 
     if (jsonResponse) {
       const [rows] = await pool.query(
-        `SELECT a.*, b.category_name
+        `SELECT a.*, b.category_name, c.username AS created_by_username, d.username AS updated_by_username
          FROM items a
          LEFT JOIN categories b ON a.category_id = b.id
+         LEFT JOIN users c ON a.created_by = c.id
+         LEFT JOIN users d ON a.updated_by = d.id
          WHERE a.id = ?
          LIMIT 1`,
         [insertResult.insertId]
@@ -564,6 +574,7 @@ router.post("/inventory/items/:id", requireLogin, async (req, res) => {
 
 // Archives an item so it is hidden from active inventory screens without deleting history.
 router.post("/inventory/items/:id/archive", requireLogin, async (req, res) => {
+  const updatedByUserId = Number(req.session.user?.id) || null;
   const id = Number(req.params.id);
 
   if (!id) {
@@ -589,8 +600,8 @@ router.post("/inventory/items/:id/archive", requireLogin, async (req, res) => {
     }
 
     await pool.query(
-      "UPDATE items SET archived_at = CURRENT_TIMESTAMP WHERE id = ?",
-      [id]
+      "UPDATE items SET archived_at = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ?",
+      [updatedByUserId, id]
     );
 
     flash(req, { type: "success", message: `Item ${item.name} archived successfully.` });
@@ -604,6 +615,7 @@ router.post("/inventory/items/:id/archive", requireLogin, async (req, res) => {
 
 // Restores an archived item back into active inventory screens.
 router.post("/inventory/items/:id/restore", requireLogin, async (req, res) => {
+  const updatedByUserId = Number(req.session.user?.id) || null;
   const id = Number(req.params.id);
 
   if (!id) {
@@ -629,8 +641,8 @@ router.post("/inventory/items/:id/restore", requireLogin, async (req, res) => {
     }
 
     await pool.query(
-      "UPDATE items SET archived_at = NULL WHERE id = ?",
-      [id]
+      "UPDATE items SET archived_at = NULL, updated_by = ? WHERE id = ?",
+      [updatedByUserId, id]
     );
 
     flash(req, { type: "success", message: `Item ${item.name} restored successfully.` });
@@ -644,6 +656,7 @@ router.post("/inventory/items/:id/restore", requireLogin, async (req, res) => {
 
 // Creates a new category directly from the inventory page modal.
 router.post("/inventory/categories", requireLogin, async (req, res) => {
+  const createdByUserId = Number(req.session.user?.id) || null;
   const categoryName = toUppercaseText(req.body.category_name);
   const jsonResponse = wantsJsonResponse(req);
 
@@ -678,8 +691,8 @@ router.post("/inventory/categories", requireLogin, async (req, res) => {
     }
 
     const [insertResult] = await pool.query(
-      "INSERT INTO categories (category_name) VALUES (?)",
-      [categoryName]
+      "INSERT INTO categories (category_name, created_by) VALUES (?, ?)",
+      [categoryName, createdByUserId]
     );
 
     if (jsonResponse) {
@@ -688,7 +701,8 @@ router.post("/inventory/categories", requireLogin, async (req, res) => {
         message: `Category ${categoryName} saved successfully.`,
         category: {
           id: insertResult.insertId,
-          category_name: categoryName
+          category_name: categoryName,
+          created_by_username: req.session.user?.username || ""
         }
       });
     }
@@ -1077,12 +1091,12 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
           throw new Error("All selected OH qty values must be whole numbers 0 or higher.");
         }
 
-        await connection.query(
-          "UPDATE items SET quantity = ? WHERE id = ?",
-          [quantity, itemId]
-        );
-
         if (Number(currentItem.quantity) !== quantity) {
+          await connection.query(
+            "UPDATE items SET quantity = ?, updated_by = ? WHERE id = ?",
+            [quantity, adjustedByUserId, itemId]
+          );
+
           await connection.query(
             "INSERT INTO qty_adjustments (item_id, old_quantity, new_quantity, adjustment_note, adjusted_by) VALUES (?, ?, ?, ?, ?)",
             [itemId, currentItem.quantity, quantity, adjustmentNote || null, adjustedByUserId]
@@ -1114,12 +1128,12 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
           throw new Error("Maximum quantity must be greater than or equal to minimum quantity.");
         }
 
-        await connection.query(
-          "UPDATE items SET min_quantity = ?, max_quantity = ? WHERE id = ?",
-          [minQuantity, maxQuantity, itemId]
-        );
-
         if (Number(currentItem.min_quantity) !== minQuantity || Number(currentItem.max_quantity) !== maxQuantity) {
+          await connection.query(
+            "UPDATE items SET min_quantity = ?, max_quantity = ?, updated_by = ? WHERE id = ?",
+            [minQuantity, maxQuantity, adjustedByUserId, itemId]
+          );
+
           await connection.query(
             `INSERT INTO min_max_adjustments (
               item_id,
@@ -1148,12 +1162,12 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
           throw new Error("All selected cost values must be valid numbers 0 or higher.");
         }
 
-        await connection.query(
-          "UPDATE items SET cost = ? WHERE id = ?",
-          [newCost, itemId]
-        );
-
         if (Number(currentItem.cost) !== newCost) {
+          await connection.query(
+            "UPDATE items SET cost = ?, updated_by = ? WHERE id = ?",
+            [newCost, adjustedByUserId, itemId]
+          );
+
           await connection.query(
             "INSERT INTO cost_adjustments (item_id, old_cost, new_cost, adjustment_note, adjusted_by) VALUES (?, ?, ?, ?, ?)",
             [itemId, currentItem.cost, newCost, adjustmentNote || null, adjustedByUserId]
@@ -1174,12 +1188,12 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
           throw new Error("All selected price values must be valid numbers 0 or higher.");
         }
 
-        await connection.query(
-          "UPDATE items SET price = ? WHERE id = ?",
-          [newPrice, itemId]
-        );
-
         if (Number(currentItem.price) !== newPrice) {
+          await connection.query(
+            "UPDATE items SET price = ?, updated_by = ? WHERE id = ?",
+            [newPrice, adjustedByUserId, itemId]
+          );
+
           await connection.query(
             "INSERT INTO price_adjustments (item_id, old_price, new_price, adjustment_note, adjusted_by) VALUES (?, ?, ?, ?, ?)",
             [itemId, currentItem.price, newPrice, adjustmentNote || null, adjustedByUserId]
@@ -1205,12 +1219,12 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
           throw new Error("One or more selected categories could not be found.");
         }
 
-        await connection.query(
-          "UPDATE items SET category_id = ? WHERE id = ?",
-          [categoryId, itemId]
-        );
-
         if (Number(currentItem.category_id || 0) !== Number(categoryId || 0)) {
+          await connection.query(
+            "UPDATE items SET category_id = ?, updated_by = ? WHERE id = ?",
+            [categoryId, adjustedByUserId, itemId]
+          );
+
           await connection.query(
             `INSERT INTO category_adjustments (
               item_id,
@@ -1229,9 +1243,10 @@ router.post("/inventory/adjustments", requireLogin, async (req, res) => {
 
     if (jsonResponse) {
       const [updatedRows] = await pool.query(
-        `SELECT a.id, a.quantity, a.min_quantity, a.max_quantity, a.cost, a.price, a.category_id, b.category_name
+        `SELECT a.id, a.quantity, a.min_quantity, a.max_quantity, a.cost, a.price, a.category_id, b.category_name, c.username AS updated_by_username
          FROM items a
          LEFT JOIN categories b ON a.category_id = b.id
+         LEFT JOIN users c ON a.updated_by = c.id
          WHERE a.id IN (?)
          ORDER BY a.id ASC`,
         [uniqueIds]

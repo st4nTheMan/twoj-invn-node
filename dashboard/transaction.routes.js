@@ -1,7 +1,12 @@
 const express = require("express");
 const pool = require("../database/pool");
 const { requireLogin } = require("../middleware/auth");
-const { flash, formatInvoice } = require("../includes/helpers");
+const {
+  flash,
+  formatInvoice,
+  normalizeDecimalInput,
+  normalizeText
+} = require("../includes/helpers");
 
 // Defines transaction pages and checkout actions.
 const router = express.Router();
@@ -38,6 +43,11 @@ router.get("/transaction", requireLogin, async (req, res) => {
 
 // Processes a checkout transaction and updates stock inside a database transaction.
 router.post("/transaction", requireLogin, async (req, res) => {
+  const createdByUserId = Number(req.session.user?.id) || null;
+  const paymentMethod = normalizeText(req.body.payment_method).toLowerCase() || "cash";
+  const customerName = normalizeText(req.body.customer_name);
+  const customerPhone = normalizeText(req.body.customer_phone);
+  const normalizedCashReceived = normalizeDecimalInput(req.body.cash_received);
   const jsonResponse = wantsJsonResponse(req);
   const itemIds = Array.isArray(req.body.item_id)
     ? req.body.item_id
@@ -67,12 +77,25 @@ router.post("/transaction", requireLogin, async (req, res) => {
     return res.redirect("/transaction");
   }
 
+  if (!["cash", "credit"].includes(paymentMethod)) {
+    if (jsonResponse) {
+      return res.status(400).json({
+        ok: false,
+        message: "Choose either cash or credit as the payment method."
+      });
+    }
+
+    flash(req, { type: "error", message: "Choose either cash or credit as the payment method." });
+    return res.redirect("/transaction");
+  }
+
   const connection = await pool.getConnection();
 
   try {
     await connection.beginTransaction();
 
     let totalAmount = 0;
+    const lineItems = [];
 
     for (let index = 0; index < itemIds.length; index += 1) {
       const itemId = Number(itemIds[index]);
@@ -84,7 +107,7 @@ router.post("/transaction", requireLogin, async (req, res) => {
       }
 
       const [rows] = await connection.query(
-        "SELECT quantity FROM items WHERE id = ? AND archived_at IS NULL LIMIT 1",
+        "SELECT id, name, quantity FROM items WHERE id = ? AND archived_at IS NULL LIMIT 1",
         [itemId]
       );
       const item = rows[0];
@@ -98,11 +121,34 @@ router.post("/transaction", requireLogin, async (req, res) => {
       }
 
       totalAmount += price * qty;
+      lineItems.push({
+        id: item.id,
+        name: item.name,
+        price,
+        quantity: qty
+      });
+    }
+
+    if (paymentMethod === "cash") {
+      const cashReceived = Number(normalizedCashReceived);
+
+      if (normalizedCashReceived === "" || !Number.isFinite(cashReceived) || cashReceived < totalAmount) {
+        throw new Error("Cash received must cover the full transaction total.");
+      }
+    } else if (!customerName || !customerPhone) {
+      throw new Error("Customer name and phone number are required for credit transactions.");
     }
 
     const [transactionResult] = await connection.query(
-      "INSERT INTO transactions (total_amount) VALUES (?)",
-      [totalAmount]
+      `INSERT INTO transactions (total_amount, payment_method, customer_name, customer_phone, created_by)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        totalAmount,
+        paymentMethod,
+        customerName || null,
+        customerPhone || null,
+        createdByUserId
+      ]
     );
 
     const transactionId = transactionResult.insertId;
@@ -125,7 +171,23 @@ router.post("/transaction", requireLogin, async (req, res) => {
       );
     }
 
+    if (paymentMethod === "credit") {
+      const itemSummary = lineItems
+        .map((item) => `${item.name} x${item.quantity}`)
+        .join(", ");
+
+      await connection.query(
+        `INSERT INTO credit_ledger (transaction_id, customer_name, customer_phone, item_summary, total_amount, balance_due, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [transactionId, customerName, customerPhone, itemSummary, totalAmount, totalAmount, createdByUserId]
+      );
+    }
+
     await connection.commit();
+
+    const successMessage = paymentMethod === "credit"
+      ? `Credit transaction ${formatInvoice(transactionId)} recorded for ${customerName}.`
+      : `Transaction ${formatInvoice(transactionId)} completed.`;
 
     if (jsonResponse) {
       const uniqueItemIds = [...new Set(itemIds.map((value) => Number(value)).filter(Boolean))];
@@ -136,14 +198,14 @@ router.post("/transaction", requireLogin, async (req, res) => {
 
       return res.status(200).json({
         ok: true,
-        message: `Transaction ${formatInvoice(transactionId)} completed.`,
+        message: successMessage,
         transactionId,
         invoice: formatInvoice(transactionId),
         items: updatedItems
       });
     }
 
-    flash(req, { type: "success", message: `Transaction ${formatInvoice(transactionId)} completed.` });
+    flash(req, { type: "success", message: successMessage });
     return res.redirect("/transaction");
   } catch (error) {
     await connection.rollback();
