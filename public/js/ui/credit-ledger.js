@@ -6,10 +6,9 @@
     const form = document.getElementById("credit-ledger-form");
     const selectedItemsBody = document.getElementById("credit-ledger-selected-items-body");
     const noSelectedItemsRow = document.getElementById("credit-ledger-no-selected-items-row");
-    const itemPreview = document.getElementById("credit-ledger-item-preview");
     const totalAmountInput = document.getElementById("credit-ledger-total-amount");
 
-    if (!form || !selectedItemsBody || !itemPreview || !totalAmountInput) {
+    if (!form || !selectedItemsBody || !totalAmountInput) {
       return;
     }
 
@@ -57,7 +56,7 @@
       });
 
       const summary = parts.join(", ");
-      itemPreview.value = summary;
+      form.dataset.itemSummary = summary;
       totalAmountInput.value = totalAmount.toFixed(2);
       toggleEmptyState();
     }
