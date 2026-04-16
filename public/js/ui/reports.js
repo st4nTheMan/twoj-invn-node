@@ -9,11 +9,13 @@
         const reportInvoice = document.getElementById("report_invoice_no");
         const reportDate = document.getElementById("report_date");
         const reportTotal = document.getElementById("report_total_amount");
+        const reportCreatedBy = document.getElementById("report_created_by");
         const reportItemsBody = document.getElementById("report-items-body");
 
         if (reportInvoice) reportInvoice.textContent = button.dataset.invoice || transactionId;
         if (reportDate) reportDate.textContent = button.dataset.date || "";
         if (reportTotal) reportTotal.textContent = button.dataset.total || "0.00";
+        if (reportCreatedBy) reportCreatedBy.textContent = button.dataset.createdBy || "-";
         if (reportItemsBody) {
           reportItemsBody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-sm text-slate-500">Loading...</td></tr>';
         }

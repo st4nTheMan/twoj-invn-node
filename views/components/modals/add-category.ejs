@@ -28,7 +28,7 @@
       <select class="mt-4 w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-700">
         <option>Existing categories</option>
         <% categories.forEach((category) => { %>
-          <option><%= category.category_name %></option>
+          <option><%= category.category_name %><%= category.created_by_username ? ` - ${category.created_by_username}` : "" %></option>
         <% }) %>
       </select>
 

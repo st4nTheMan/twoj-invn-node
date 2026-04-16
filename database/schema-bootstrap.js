@@ -98,6 +98,94 @@ async function ensureAdjustmentAuditSchema() {
   }
 }
 
+// Adds created-by user tracking columns to record tables when needed.
+async function ensureCreatedBySchema() {
+  const [userIdTypeRows] = await pool.query(
+    `SELECT COLUMN_TYPE
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'users'
+       AND COLUMN_NAME = 'id'
+     LIMIT 1`
+  );
+  const userIdType = userIdTypeRows[0]?.COLUMN_TYPE || "int";
+  const createdByTargets = [
+    { table: "items", afterColumn: "category_id", keyName: "idx_items_created_by", foreignKey: "fk_items_created_by_user" },
+    { table: "categories", afterColumn: "category_name", keyName: "idx_categories_created_by", foreignKey: "fk_categories_created_by_user" },
+    { table: "transactions", afterColumn: "customer_phone", keyName: "idx_transactions_created_by", foreignKey: "fk_transactions_created_by_user" },
+    { table: "credit_ledger", afterColumn: "balance_due", keyName: "idx_credit_ledger_created_by", foreignKey: "fk_credit_ledger_created_by_user" }
+  ];
+
+  for (const target of createdByTargets) {
+    const [rows] = await pool.query(
+      `SELECT COUNT(*) AS count
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = ?
+         AND COLUMN_NAME = 'created_by'`,
+      [target.table]
+    );
+
+    if (Number(rows[0]?.count || 0) > 0) {
+      continue;
+    }
+
+    await pool.query(
+      `ALTER TABLE ${target.table}
+       ADD COLUMN created_by ${userIdType} NULL AFTER ${target.afterColumn},
+       ADD KEY ${target.keyName} (created_by),
+       ADD CONSTRAINT ${target.foreignKey}
+         FOREIGN KEY (created_by) REFERENCES users (id)
+         ON UPDATE CASCADE
+         ON DELETE SET NULL`
+    );
+  }
+}
+
+// Adds updated-by user tracking columns to record tables when needed.
+async function ensureUpdatedBySchema() {
+  const [userIdTypeRows] = await pool.query(
+    `SELECT COLUMN_TYPE
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'users'
+       AND COLUMN_NAME = 'id'
+     LIMIT 1`
+  );
+  const userIdType = userIdTypeRows[0]?.COLUMN_TYPE || "int";
+  const updatedByTargets = [
+    { table: "items", afterColumn: "created_by", keyName: "idx_items_updated_by", foreignKey: "fk_items_updated_by_user" },
+    { table: "categories", afterColumn: "created_by", keyName: "idx_categories_updated_by", foreignKey: "fk_categories_updated_by_user" },
+    { table: "transactions", afterColumn: "created_by", keyName: "idx_transactions_updated_by", foreignKey: "fk_transactions_updated_by_user" },
+    { table: "credit_ledger", afterColumn: "created_by", keyName: "idx_credit_ledger_updated_by", foreignKey: "fk_credit_ledger_updated_by_user" }
+  ];
+
+  for (const target of updatedByTargets) {
+    const [rows] = await pool.query(
+      `SELECT COUNT(*) AS count
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = ?
+         AND COLUMN_NAME = 'updated_by'`,
+      [target.table]
+    );
+
+    if (Number(rows[0]?.count || 0) > 0) {
+      continue;
+    }
+
+    await pool.query(
+      `ALTER TABLE ${target.table}
+       ADD COLUMN updated_by ${userIdType} NULL AFTER ${target.afterColumn},
+       ADD KEY ${target.keyName} (updated_by),
+       ADD CONSTRAINT ${target.foreignKey}
+         FOREIGN KEY (updated_by) REFERENCES users (id)
+         ON UPDATE CASCADE
+         ON DELETE SET NULL`
+    );
+  }
+}
+
 // Adds credit-ledger tables and transaction payment columns for existing databases.
 async function ensureCreditLedgerSchema() {
   const transactionColumns = [
@@ -223,5 +311,7 @@ module.exports = {
   ensureArchiveSchema,
   ensureAdjustmentNotesSchema,
   ensureAdjustmentAuditSchema,
+  ensureCreatedBySchema,
+  ensureUpdatedBySchema,
   ensureCreditLedgerSchema
 };

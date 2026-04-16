@@ -82,7 +82,9 @@
         quantity: document.getElementById("view-item-modal-quantity"),
         minQuantity: document.getElementById("view-item-modal-min-quantity"),
         maxQuantity: document.getElementById("view-item-modal-max-quantity"),
-        category: document.getElementById("view-item-modal-category")
+        category: document.getElementById("view-item-modal-category"),
+        createdBy: document.getElementById("view-item-modal-created-by"),
+        updatedBy: document.getElementById("view-item-modal-updated-by")
       };
 
       if (!modalFields.name) return;
@@ -96,6 +98,8 @@
       modalFields.minQuantity.textContent = String(trigger.dataset.itemMinQuantity || "0");
       modalFields.maxQuantity.textContent = String(trigger.dataset.itemMaxQuantity || "0");
       modalFields.category.textContent = trigger.dataset.itemCategory || "No Category";
+      modalFields.createdBy.textContent = trigger.dataset.itemCreatedBy || "-";
+      modalFields.updatedBy.textContent = trigger.dataset.itemUpdatedBy || "-";
 
       if (archiveItemButton) {
         archiveItemButton.dataset.itemId = trigger.dataset.itemId || "";
@@ -143,7 +147,7 @@
 
     // Removes the placeholder row shown when the inventory list is empty.
     function removeEmptyInventoryRow() {
-      inventoryTableBody?.querySelector("td[colspan='7']")?.closest("tr")?.remove();
+      inventoryTableBody?.querySelector("td[colspan='8']")?.closest("tr")?.remove();
     }
 
     // Inserts a newly created item at the top of the inventory table.
@@ -161,6 +165,7 @@
         <td data-label="Price" class="px-4 py-3">PHP ${formatCurrency(item.price)}</td>
         <td data-label="Qty" class="px-4 py-3">${Number(item.quantity || 0)}</td>
         <td data-label="Category" class="px-4 py-3">${escapeHtml(item.category_name || "No Category")}</td>
+        <td data-label="Created By" class="px-4 py-3 text-slate-500">${escapeHtml(item.created_by_username || "-")}</td>
         <td data-label="Created" class="px-4 py-3 text-slate-500">${escapeHtml(formatDateTime(item.created_at))}</td>
         <td data-label="Actions" class="px-4 py-3">
           <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -177,6 +182,8 @@
               data-item-min-quantity="${escapeHtml(Number(item.min_quantity || 0))}"
               data-item-max-quantity="${escapeHtml(Number(item.max_quantity || 0))}"
               data-item-category="${escapeHtml(item.category_name || "No Category")}"
+              data-item-created-by="${escapeHtml(item.created_by_username || "-")}"
+              data-item-updated-by="${escapeHtml(item.updated_by_username || "-")}"
               class="rounded-xl border border-sky-300 px-3 py-2 text-center text-xs font-semibold text-sky-700"
             >
               View Item
@@ -203,7 +210,9 @@
       if (existing) return;
 
       const option = document.createElement("option");
-      option.textContent = category.category_name;
+      option.textContent = includeValue || !category.created_by_username
+        ? category.category_name
+        : `${category.category_name} - ${category.created_by_username}`;
       if (includeValue) {
         option.value = String(category.id);
       }
