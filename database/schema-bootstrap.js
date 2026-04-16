@@ -1,5 +1,20 @@
 const pool = require("./pool");
 
+// Reads the live column type for a table column so new foreign keys match older schemas.
+async function getColumnType(tableName, columnName, fallback = "int") {
+  const [rows] = await pool.query(
+    `SELECT COLUMN_TYPE
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = ?
+       AND COLUMN_NAME = ?
+     LIMIT 1`,
+    [tableName, columnName]
+  );
+
+  return rows[0]?.COLUMN_TYPE || fallback;
+}
+
 // Ensures the archive column exists so archived items can be hidden from active flows.
 async function ensureArchiveSchema() {
   const [rows] = await pool.query(
@@ -55,15 +70,7 @@ async function ensureAdjustmentNotesSchema() {
 
 // Adds adjusted-by user tracking columns to adjustment-history tables when needed.
 async function ensureAdjustmentAuditSchema() {
-  const [userIdTypeRows] = await pool.query(
-    `SELECT COLUMN_TYPE
-     FROM information_schema.COLUMNS
-     WHERE TABLE_SCHEMA = DATABASE()
-       AND TABLE_NAME = 'users'
-       AND COLUMN_NAME = 'id'
-     LIMIT 1`
-  );
-  const userIdType = userIdTypeRows[0]?.COLUMN_TYPE || "int";
+  const userIdType = await getColumnType("users", "id");
   const auditTargets = [
     { table: "cost_adjustments", afterColumn: "adjustment_note", keyName: "idx_cost_adjustments_adjusted_by", foreignKey: "fk_cost_adjustments_user" },
     { table: "qty_adjustments", afterColumn: "adjustment_note", keyName: "idx_qty_adjustments_adjusted_by", foreignKey: "fk_qty_adjustments_user" },
@@ -73,6 +80,18 @@ async function ensureAdjustmentAuditSchema() {
   ];
 
   for (const target of auditTargets) {
+    const [tableRows] = await pool.query(
+      `SELECT COUNT(*) AS count
+       FROM information_schema.TABLES
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = ?`,
+      [target.table]
+    );
+
+    if (Number(tableRows[0]?.count || 0) === 0) {
+      continue;
+    }
+
     const [rows] = await pool.query(
       `SELECT COUNT(*) AS count
        FROM information_schema.COLUMNS
@@ -100,15 +119,7 @@ async function ensureAdjustmentAuditSchema() {
 
 // Adds created-by user tracking columns to record tables when needed.
 async function ensureCreatedBySchema() {
-  const [userIdTypeRows] = await pool.query(
-    `SELECT COLUMN_TYPE
-     FROM information_schema.COLUMNS
-     WHERE TABLE_SCHEMA = DATABASE()
-       AND TABLE_NAME = 'users'
-       AND COLUMN_NAME = 'id'
-     LIMIT 1`
-  );
-  const userIdType = userIdTypeRows[0]?.COLUMN_TYPE || "int";
+  const userIdType = await getColumnType("users", "id");
   const createdByTargets = [
     { table: "items", afterColumn: "category_id", keyName: "idx_items_created_by", foreignKey: "fk_items_created_by_user" },
     { table: "categories", afterColumn: "category_name", keyName: "idx_categories_created_by", foreignKey: "fk_categories_created_by_user" },
@@ -144,15 +155,7 @@ async function ensureCreatedBySchema() {
 
 // Adds updated-by user tracking columns to record tables when needed.
 async function ensureUpdatedBySchema() {
-  const [userIdTypeRows] = await pool.query(
-    `SELECT COLUMN_TYPE
-     FROM information_schema.COLUMNS
-     WHERE TABLE_SCHEMA = DATABASE()
-       AND TABLE_NAME = 'users'
-       AND COLUMN_NAME = 'id'
-     LIMIT 1`
-  );
-  const userIdType = userIdTypeRows[0]?.COLUMN_TYPE || "int";
+  const userIdType = await getColumnType("users", "id");
   const updatedByTargets = [
     { table: "items", afterColumn: "created_by", keyName: "idx_items_updated_by", foreignKey: "fk_items_updated_by_user" },
     { table: "categories", afterColumn: "created_by", keyName: "idx_categories_updated_by", foreignKey: "fk_categories_updated_by_user" },
@@ -228,15 +231,7 @@ async function ensureCreditLedgerSchema() {
   );
 
   if (Number(ledgerRows[0]?.count || 0) === 0) {
-    const [transactionIdTypeRows] = await pool.query(
-      `SELECT COLUMN_TYPE
-       FROM information_schema.COLUMNS
-       WHERE TABLE_SCHEMA = DATABASE()
-         AND TABLE_NAME = 'transactions'
-         AND COLUMN_NAME = 'id'
-       LIMIT 1`
-    );
-    const transactionIdType = transactionIdTypeRows[0]?.COLUMN_TYPE || "int";
+    const transactionIdType = await getColumnType("transactions", "id");
 
     await pool.query(
       `CREATE TABLE credit_ledger (
@@ -262,10 +257,11 @@ async function ensureCreditLedgerSchema() {
     return;
   }
 
+  const transactionIdType = await getColumnType("transactions", "id");
   const ledgerColumns = [
     {
       name: "transaction_id",
-      alter: "ADD COLUMN transaction_id INT NULL AFTER id"
+      alter: `ADD COLUMN transaction_id ${transactionIdType} NULL AFTER id`
     },
     {
       name: "customer_name",
@@ -307,11 +303,63 @@ async function ensureCreditLedgerSchema() {
   }
 }
 
+// Adds the category adjustment history table for older databases.
+async function ensureCategoryAdjustmentSchema() {
+  const [tableRows] = await pool.query(
+    `SELECT COUNT(*) AS count
+     FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'category_adjustments'`
+  );
+
+  if (Number(tableRows[0]?.count || 0) === 0) {
+    const itemIdType = await getColumnType("items", "id");
+    const categoryIdType = await getColumnType("categories", "id");
+    const userIdType = await getColumnType("users", "id");
+
+    await pool.query(
+      `CREATE TABLE category_adjustments (
+         id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+         item_id ${itemIdType} NOT NULL,
+         old_category_id ${categoryIdType} NULL,
+         new_category_id ${categoryIdType} NULL,
+         adjustment_note VARCHAR(255) NULL,
+         adjusted_by ${userIdType} NULL,
+         adjusted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+         PRIMARY KEY (id),
+         KEY idx_category_adjustments_item_id (item_id),
+         KEY idx_category_adjustments_old_category_id (old_category_id),
+         KEY idx_category_adjustments_new_category_id (new_category_id),
+         KEY idx_category_adjustments_adjusted_by (adjusted_by),
+         CONSTRAINT fk_category_adjustments_item
+           FOREIGN KEY (item_id) REFERENCES items (id)
+           ON UPDATE CASCADE
+           ON DELETE CASCADE,
+         CONSTRAINT fk_category_adjustments_old_category
+           FOREIGN KEY (old_category_id) REFERENCES categories (id)
+           ON UPDATE CASCADE
+           ON DELETE SET NULL,
+         CONSTRAINT fk_category_adjustments_new_category
+           FOREIGN KEY (new_category_id) REFERENCES categories (id)
+           ON UPDATE CASCADE
+           ON DELETE SET NULL,
+         CONSTRAINT fk_category_adjustments_user
+           FOREIGN KEY (adjusted_by) REFERENCES users (id)
+           ON UPDATE CASCADE
+           ON DELETE SET NULL
+       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+    );
+
+    return;
+  }
+}
+
 module.exports = {
   ensureArchiveSchema,
   ensureAdjustmentNotesSchema,
   ensureAdjustmentAuditSchema,
   ensureCreatedBySchema,
   ensureUpdatedBySchema,
-  ensureCreditLedgerSchema
+  ensureCreditLedgerSchema,
+  ensureCategoryAdjustmentSchema
 };
