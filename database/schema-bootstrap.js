@@ -98,8 +98,130 @@ async function ensureAdjustmentAuditSchema() {
   }
 }
 
+// Adds credit-ledger tables and transaction payment columns for existing databases.
+async function ensureCreditLedgerSchema() {
+  const transactionColumns = [
+    {
+      name: "payment_method",
+      alter: "ADD COLUMN payment_method VARCHAR(20) NOT NULL DEFAULT 'cash' AFTER total_amount"
+    },
+    {
+      name: "customer_name",
+      alter: "ADD COLUMN customer_name VARCHAR(150) NULL AFTER payment_method"
+    },
+    {
+      name: "customer_phone",
+      alter: "ADD COLUMN customer_phone VARCHAR(50) NULL AFTER customer_name"
+    }
+  ];
+
+  for (const column of transactionColumns) {
+    const [rows] = await pool.query(
+      `SELECT COUNT(*) AS count
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'transactions'
+         AND COLUMN_NAME = ?`,
+      [column.name]
+    );
+
+    if (Number(rows[0]?.count || 0) > 0) {
+      continue;
+    }
+
+    await pool.query(`ALTER TABLE transactions ${column.alter}`);
+  }
+
+  const [ledgerRows] = await pool.query(
+    `SELECT COUNT(*) AS count
+     FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'credit_ledger'`
+  );
+
+  if (Number(ledgerRows[0]?.count || 0) === 0) {
+    const [transactionIdTypeRows] = await pool.query(
+      `SELECT COLUMN_TYPE
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'transactions'
+         AND COLUMN_NAME = 'id'
+       LIMIT 1`
+    );
+    const transactionIdType = transactionIdTypeRows[0]?.COLUMN_TYPE || "int";
+
+    await pool.query(
+      `CREATE TABLE credit_ledger (
+         id INT NOT NULL AUTO_INCREMENT,
+         transaction_id ${transactionIdType} NULL,
+         customer_name VARCHAR(150) NOT NULL,
+         customer_phone VARCHAR(50) NOT NULL,
+         item_summary TEXT NULL,
+         total_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+         balance_due DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+         PRIMARY KEY (id),
+         KEY idx_credit_ledger_transaction_id (transaction_id),
+         KEY idx_credit_ledger_customer_name (customer_name),
+         KEY idx_credit_ledger_created_at (created_at),
+         CONSTRAINT fk_credit_ledger_transaction
+           FOREIGN KEY (transaction_id) REFERENCES transactions (id)
+           ON UPDATE CASCADE
+           ON DELETE SET NULL
+       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+    );
+
+    return;
+  }
+
+  const ledgerColumns = [
+    {
+      name: "transaction_id",
+      alter: "ADD COLUMN transaction_id INT NULL AFTER id"
+    },
+    {
+      name: "customer_name",
+      alter: "ADD COLUMN customer_name VARCHAR(150) NOT NULL AFTER transaction_id"
+    },
+    {
+      name: "customer_phone",
+      alter: "ADD COLUMN customer_phone VARCHAR(50) NOT NULL AFTER customer_name"
+    },
+    {
+      name: "item_summary",
+      alter: "ADD COLUMN item_summary TEXT NULL AFTER customer_phone"
+    },
+    {
+      name: "total_amount",
+      alter: "ADD COLUMN total_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER item_summary"
+    },
+    {
+      name: "balance_due",
+      alter: "ADD COLUMN balance_due DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER total_amount"
+    }
+  ];
+
+  for (const column of ledgerColumns) {
+    const [rows] = await pool.query(
+      `SELECT COUNT(*) AS count
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'credit_ledger'
+         AND COLUMN_NAME = ?`,
+      [column.name]
+    );
+
+    if (Number(rows[0]?.count || 0) > 0) {
+      continue;
+    }
+
+    await pool.query(`ALTER TABLE credit_ledger ${column.alter}`);
+  }
+}
+
 module.exports = {
   ensureArchiveSchema,
   ensureAdjustmentNotesSchema,
-  ensureAdjustmentAuditSchema
+  ensureAdjustmentAuditSchema,
+  ensureCreditLedgerSchema
 };

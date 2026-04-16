@@ -55,6 +55,10 @@
 
   <form id="transaction-form" action="/transaction" method="POST" class="order-1 rounded-3xl bg-white p-6 shadow-soft xl:order-2">
     <h2 class="text-xl font-semibold">Selected Items</h2>
+    <input id="transaction-payment-method" type="hidden" name="payment_method" value="cash">
+    <input id="transaction-customer-name" type="hidden" name="customer_name" value="">
+    <input id="transaction-customer-phone" type="hidden" name="customer_phone" value="">
+    <input id="transaction-cash-received" type="hidden" name="cash_received" value="">
     <div class="table-scroll mt-4 overflow-x-auto">
       <table class="responsive-table min-w-full text-left text-sm">
         <thead class="bg-slate-50 text-slate-600">

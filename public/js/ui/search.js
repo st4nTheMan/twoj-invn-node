@@ -88,6 +88,8 @@
     bindSearch("history-search", "history-table", "history-empty-search");
     bindSearch("price-lookup-search", "price-lookup-table", "price-lookup-empty-search");
     bindSearch("transaction-search", "transaction-table", "transaction-empty-search");
+    bindSearch("credit-ledger-search", "credit-ledger-table", "credit-ledger-empty-search");
+    bindSearch("credit-ledger-item-search", "credit-ledger-item-table", "credit-ledger-item-empty-search");
     bindSearch("reports-search", "reports-table", "reports-empty-search");
   });
 }());
