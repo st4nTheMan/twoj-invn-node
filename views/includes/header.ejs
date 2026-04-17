@@ -54,7 +54,6 @@
             <% if (isAdmin) { %>
               <a href="/reports" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= currentPath === '/reports' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Reports</a>
               <a href="/admin" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= currentPath === '/admin' ? 'bg-sky-200 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Admin</a>
-              <a href="/admin/activity-logs" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= currentPath === '/admin/activity-logs' ? 'bg-emerald-200 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Activity Logs</a>
             <% } %>
             <button type="button" data-open-modal="stock-notifications-modal" class="relative rounded-full border border-slate-700 p-2 text-slate-200 transition hover:border-sky-400 hover:text-white">
               <span class="sr-only">Open stock notifications</span>
@@ -114,7 +113,6 @@
             <% if (isAdmin) { %>
               <a href="/reports" class="rounded-2xl px-4 py-3 text-left transition <%= currentPath === '/reports' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Reports</a>
               <a href="/admin" class="rounded-2xl px-4 py-3 text-left transition <%= currentPath === '/admin' ? 'bg-sky-200 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Admin</a>
-              <a href="/admin/activity-logs" class="rounded-2xl px-4 py-3 text-left transition <%= currentPath === '/admin/activity-logs' ? 'bg-emerald-200 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Activity Logs</a>
             <% } %>
             <button type="button" data-open-modal="stock-notifications-modal" class="flex items-center justify-between rounded-2xl border border-slate-700 px-4 py-3 text-left text-slate-200 transition hover:border-sky-400 hover:text-white">
               <span>Notifications</span>

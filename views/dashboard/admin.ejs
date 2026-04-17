@@ -33,6 +33,21 @@
   </article>
 </section>
 
+<section class="mb-6 rounded-3xl bg-white p-5 shadow-soft sm:p-6">
+  <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div>
+      <h2 class="text-lg font-semibold text-slate-950">Audit Trail</h2>
+      <p class="mt-1 text-sm text-slate-500">Open the full activity history to review logins, user management, inventory changes, exports, and transactions.</p>
+    </div>
+    <a
+      href="/admin/activity-logs"
+      class="inline-flex items-center justify-center rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+    >
+      Open Activity Logs
+    </a>
+  </div>
+</section>
+
 <section class="rounded-3xl bg-white shadow-soft">
   <div class="border-b border-slate-200 px-5 py-4 sm:px-6">
     <h2 class="text-lg font-semibold text-slate-950">User Accounts</h2>
@@ -47,6 +62,7 @@
           <th class="px-4 py-3">Role</th>
           <th class="px-4 py-3">Created</th>
           <th class="px-4 py-3">Status</th>
+          <th class="px-4 py-3">Actions</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-200">
@@ -65,10 +81,22 @@
             </td>
             <td data-label="Created" class="px-4 py-3 text-slate-500"><%= formatDateTime(managedUser.created_at) %></td>
             <td data-label="Status" class="px-4 py-3 text-slate-500">Active</td>
+            <td data-label="Actions" class="px-4 py-3">
+              <button
+                type="button"
+                data-open-modal="reset-user-password-modal"
+                data-reset-password-trigger
+                data-user-id="<%= managedUser.id %>"
+                data-username="<%= managedUser.username %>"
+                class="w-full rounded-xl border border-amber-300 px-3 py-2 text-xs font-semibold text-amber-700 sm:w-auto"
+              >
+                Reset Password
+              </button>
+            </td>
           </tr>
         <% }) } else { %>
           <tr>
-            <td colspan="4" class="px-4 py-8 text-center text-slate-500">No users found.</td>
+            <td colspan="5" class="px-4 py-8 text-center text-slate-500">No users found.</td>
           </tr>
         <% } %>
       </tbody>
@@ -77,5 +105,6 @@
 </section>
 
 <%- include("../components/modals/add-user") %>
+<%- include("../components/modals/reset-user-password") %>
 
 <%- include("../includes/footer") %>
