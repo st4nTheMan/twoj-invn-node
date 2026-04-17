@@ -41,6 +41,46 @@ async function ensureUserRolesSchema() {
   );
 }
 
+// Adds the central activity log table used by admin audit views.
+async function ensureActivityLogSchema() {
+  const [tableRows] = await pool.query(
+    `SELECT COUNT(*) AS count
+     FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'activity_logs'`
+  );
+
+  if (Number(tableRows[0]?.count || 0) > 0) {
+    return;
+  }
+
+  const userIdType = await getColumnType("users", "id");
+
+  await pool.query(
+    `CREATE TABLE activity_logs (
+       id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+       user_id ${userIdType} NULL,
+       username_snapshot VARCHAR(50) NULL,
+       role_snapshot VARCHAR(20) NULL,
+       action VARCHAR(100) NOT NULL,
+       entity_type VARCHAR(100) NULL,
+       entity_id VARCHAR(100) NULL,
+       description VARCHAR(255) NOT NULL,
+       metadata_json LONGTEXT NULL,
+       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+       PRIMARY KEY (id),
+       KEY idx_activity_logs_user_id (user_id),
+       KEY idx_activity_logs_action (action),
+       KEY idx_activity_logs_entity (entity_type, entity_id),
+       KEY idx_activity_logs_created_at (created_at),
+       CONSTRAINT fk_activity_logs_user
+         FOREIGN KEY (user_id) REFERENCES users (id)
+         ON UPDATE CASCADE
+         ON DELETE SET NULL
+     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  );
+}
+
 // Ensures the archive column exists so archived items can be hidden from active flows.
 async function ensureArchiveSchema() {
   const [rows] = await pool.query(
@@ -381,6 +421,7 @@ async function ensureCategoryAdjustmentSchema() {
 }
 
 module.exports = {
+  ensureActivityLogSchema,
   ensureUserRolesSchema,
   ensureArchiveSchema,
   ensureAdjustmentNotesSchema,

@@ -1,5 +1,6 @@
 const express = require("express");
 const pool = require("../database/pool");
+const { logActivity } = require("../database/activity-log");
 const { requireLogin } = require("../middleware/auth");
 const {
   flash,
@@ -144,11 +145,26 @@ router.post("/credit-ledger", requireLogin, async (req, res) => {
       return res.redirect("/credit-ledger");
     }
 
-    await pool.query(
+    const [insertResult] = await pool.query(
       `INSERT INTO credit_ledger (customer_name, customer_phone, item_summary, total_amount, balance_due, created_by)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [customerName, customerPhone, itemSummaryParts.join(", "), totalAmount, totalAmount, createdByUserId]
     );
+
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "credit_entry_created",
+      entityType: "credit_ledger",
+      entityId: insertResult.insertId,
+      description: `${req.session.user?.username || "User"} added a credit entry for ${customerName}.`,
+      metadata: {
+        customer_name: customerName,
+        total_amount: totalAmount,
+        item_count: normalizedPairs.length
+      }
+    });
 
     flash(req, {
       type: "success",

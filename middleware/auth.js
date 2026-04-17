@@ -18,6 +18,13 @@ function userHasRole(user, allowedRoles) {
   return allowed.map(normalizeUserRole).includes(normalizeUserRole(user.role));
 }
 
+// Chooses the best dashboard landing page for the current user role.
+function getDefaultDashboardPath(user) {
+  return normalizeUserRole(user?.role) === "cashier"
+    ? "/transaction"
+    : "/inventory";
+}
+
 // Blocks protected routes until a valid session user is present.
 function requireLogin(req, res, next) {
   if (!req.session.user) {
@@ -55,13 +62,14 @@ function requireRole(allowedRoles) {
     }
 
     flash(req, { type: "error", message });
-    return res.redirect("/inventory");
+    return res.redirect(getDefaultDashboardPath(req.session.user));
   };
 }
 
 const requireAdmin = requireRole("admin");
 
 module.exports = {
+  getDefaultDashboardPath,
   normalizeUserRole,
   userHasRole,
   requireLogin,

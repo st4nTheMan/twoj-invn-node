@@ -1,6 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const pool = require("../database/pool");
+const { logActivity } = require("../database/activity-log");
 const { requireAdmin, normalizeUserRole } = require("../middleware/auth");
 const { flash, normalizeText } = require("../includes/helpers");
 
@@ -38,6 +39,30 @@ router.get("/admin", requireAdmin, async (req, res) => {
         adminCount: 0,
         cashierCount: 0
       }
+    });
+  }
+});
+
+// Loads the audit trail page with the newest app activities first.
+router.get("/admin/activity-logs", requireAdmin, async (req, res) => {
+  try {
+    const [activities] = await pool.query(
+      `SELECT id, username_snapshot, role_snapshot, action, entity_type, entity_id, description, created_at
+       FROM activity_logs
+       ORDER BY created_at DESC, id DESC
+       LIMIT 300`
+    );
+
+    return res.render("dashboard/activity-logs", {
+      title: "Activity Logs",
+      activities
+    });
+  } catch (error) {
+    console.error("Failed to load activity logs:", error);
+    flash(req, { type: "error", message: "Unable to load activity logs right now." });
+    return res.render("dashboard/activity-logs", {
+      title: "Activity Logs",
+      activities: []
     });
   }
 });
@@ -89,6 +114,20 @@ router.post("/admin/users", requireAdmin, async (req, res) => {
       "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
       [username, passwordHash, role]
     );
+
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "user_created",
+      entityType: "user",
+      entityId: username,
+      description: `${req.session.user?.username || "Admin"} added user ${username} as ${role}.`,
+      metadata: {
+        username,
+        role
+      }
+    });
 
     flash(req, {
       type: "success",

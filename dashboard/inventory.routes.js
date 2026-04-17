@@ -1,5 +1,6 @@
 const express = require("express");
 const pool = require("../database/pool");
+const { logActivity } = require("../database/activity-log");
 const { requireLogin, requireAdmin } = require("../middleware/auth");
 const {
   flash,
@@ -239,7 +240,7 @@ function respondAdjustmentResult(req, res, type, message) {
 }
 
 // Loads the inventory dashboard with categories and the latest item list.
-router.get("/inventory", requireLogin, async (req, res) => {
+router.get("/inventory", requireAdmin, async (req, res) => {
   try {
     const [categories] = await pool.query(
       `SELECT a.*, b.username AS created_by_username
@@ -304,10 +305,38 @@ router.get("/inventory/export", requireAdmin, async (req, res) => {
     const timestamp = getExportTimestamp();
 
     if (format === "csv") {
+      await logActivity({
+        actorId: req.session.user?.id,
+        username: req.session.user?.username,
+        role: req.session.user?.role,
+        action: "inventory_exported",
+        entityType: "inventory_export",
+        entityId: format,
+        description: `${req.session.user?.username || "Admin"} exported inventory as ${format.toUpperCase()}.`,
+        metadata: {
+          format,
+          item_count: items.length
+        }
+      });
+
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename="inventory-${timestamp}.csv"`);
       return res.send(`\uFEFF${buildInventoryCsv(items)}`);
     }
+
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "inventory_exported",
+      entityType: "inventory_export",
+      entityId: format,
+      description: `${req.session.user?.username || "Admin"} exported inventory as ${format.toUpperCase()}.`,
+      metadata: {
+        format,
+        item_count: items.length
+      }
+    });
 
     res.setHeader("Content-Type", "application/vnd.ms-excel; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="inventory-${timestamp}.xls"`);
@@ -320,7 +349,7 @@ router.get("/inventory/export", requireAdmin, async (req, res) => {
 });
 
 // Checks whether an item number is already present before the add-item form is submitted.
-router.get("/inventory/items/verify", requireLogin, async (req, res) => {
+router.get("/inventory/items/verify", requireAdmin, async (req, res) => {
   const barcode = normalizeBarcode(req.query.barcode);
 
   if (!barcode) {
@@ -527,6 +556,22 @@ router.post("/inventory/items", requireAdmin, async (req, res) => {
       [barcode, name, parsedCost, parsedPrice, quantity, minQuantity, maxQuantity, categoryId, createdByUserId]
     );
 
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "item_created",
+      entityType: "item",
+      entityId: insertResult.insertId,
+      description: `${req.session.user?.username || "Admin"} added item ${name}.`,
+      metadata: {
+        barcode,
+        name,
+        quantity,
+        category_id: categoryId
+      }
+    });
+
     if (jsonResponse) {
       const [rows] = await pool.query(
         `SELECT a.*, b.category_name, c.username AS created_by_username, d.username AS updated_by_username
@@ -604,6 +649,19 @@ router.post("/inventory/items/:id/archive", requireAdmin, async (req, res) => {
       [updatedByUserId, id]
     );
 
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "item_archived",
+      entityType: "item",
+      entityId: id,
+      description: `${req.session.user?.username || "Admin"} archived item ${item.name}.`,
+      metadata: {
+        item_name: item.name
+      }
+    });
+
     flash(req, { type: "success", message: `Item ${item.name} archived successfully.` });
     return res.redirect("/inventory");
   } catch (error) {
@@ -644,6 +702,19 @@ router.post("/inventory/items/:id/restore", requireAdmin, async (req, res) => {
       "UPDATE items SET archived_at = NULL, updated_by = ? WHERE id = ?",
       [updatedByUserId, id]
     );
+
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "item_restored",
+      entityType: "item",
+      entityId: id,
+      description: `${req.session.user?.username || "Admin"} restored item ${item.name}.`,
+      metadata: {
+        item_name: item.name
+      }
+    });
 
     flash(req, { type: "success", message: `Item ${item.name} restored successfully.` });
     return res.redirect("/inventory");
@@ -695,6 +766,19 @@ router.post("/inventory/categories", requireAdmin, async (req, res) => {
       [categoryName, createdByUserId]
     );
 
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "category_created",
+      entityType: "category",
+      entityId: insertResult.insertId,
+      description: `${req.session.user?.username || "Admin"} added category ${categoryName}.`,
+      metadata: {
+        category_name: categoryName
+      }
+    });
+
     if (jsonResponse) {
       return res.status(201).json({
         ok: true,
@@ -725,7 +809,7 @@ router.post("/inventory/categories", requireAdmin, async (req, res) => {
 });
 
 // Redirects the old standalone item details page to inventory where details now open in a modal.
-router.get("/inventory/items/:id", requireLogin, async (req, res) => {
+router.get("/inventory/items/:id", requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
 
   if (!id) {
@@ -1240,6 +1324,22 @@ router.post("/inventory/adjustments", requireAdmin, async (req, res) => {
     }
 
     await connection.commit();
+
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "inventory_adjusted",
+      entityType: "adjustment",
+      entityId: adjustmentType,
+      description: `${req.session.user?.username || "Admin"} updated ${pluralize(uniqueIds.length, "item")} for ${getAdjustmentLabel(adjustmentType)}.`,
+      metadata: {
+        adjustment_type: adjustmentType,
+        item_ids: uniqueIds,
+        item_count: uniqueIds.length,
+        note: adjustmentNote || null
+      }
+    });
 
     if (jsonResponse) {
       const [updatedRows] = await pool.query(

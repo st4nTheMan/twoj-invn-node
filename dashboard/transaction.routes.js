@@ -1,5 +1,6 @@
 const express = require("express");
 const pool = require("../database/pool");
+const { logActivity } = require("../database/activity-log");
 const { requireLogin } = require("../middleware/auth");
 const {
   flash,
@@ -211,6 +212,22 @@ router.post("/transaction", requireLogin, async (req, res) => {
     }
 
     await connection.commit();
+
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "transaction_completed",
+      entityType: "transaction",
+      entityId: transactionId,
+      description: `${req.session.user?.username || "User"} completed ${paymentMethod} transaction ${formatInvoice(transactionId)}.`,
+      metadata: {
+        payment_method: paymentMethod,
+        total_amount: totalAmount,
+        item_count: lineItems.length,
+        customer_name: customerName || null
+      }
+    });
 
     const successMessage = paymentMethod === "credit"
       ? `Credit transaction ${formatInvoice(transactionId)} recorded for ${customerName}.`
