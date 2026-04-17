@@ -1,13 +1,13 @@
 const express = require("express");
 const pool = require("../database/pool");
-const { requireLogin } = require("../middleware/auth");
+const { requireAdmin } = require("../middleware/auth");
 const { flash } = require("../includes/helpers");
 
 // Defines report pages that summarize completed sales activity.
 const router = express.Router();
 
 // Loads the reports page with completed transaction summaries.
-router.get("/reports", requireLogin, async (req, res) => {
+router.get("/reports", requireAdmin, async (req, res) => {
   try {
     const [transactions] = await pool.query(
       `SELECT a.*, b.username AS created_by_username

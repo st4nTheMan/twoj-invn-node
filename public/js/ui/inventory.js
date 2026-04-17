@@ -19,7 +19,7 @@
     let lastVerifiedBarcode = "";
     let lastVerificationExists = null;
 
-    if (!addItemForm || !addCategoryForm || !InventoryUi.showFlashFeedback) {
+    if (!InventoryUi.showFlashFeedback) {
       return;
     }
 
@@ -351,66 +351,70 @@
       }
     }
 
-    addItemForm.addEventListener("submit", async (event) => {
-      if (event.defaultPrevented) {
-        return;
-      }
-
-      event.preventDefault();
-      addItemForm.querySelectorAll('input[name="barcode"], input[name="name"]').forEach((input) => {
-        if (!input) return;
-        input.value = normalizeText(input.value);
-      });
-      addItemForm.querySelectorAll('input[name="cost"], input[name="price"]').forEach((input) => {
-        if (!input) return;
-        input.value = normalizeDecimalInput(input.value);
-      });
-
-      const currentBarcode = normalizeText(barcodeInput?.value);
-
-      if (currentBarcode && currentBarcode !== lastVerifiedBarcode) {
-        const verification = await verifyBarcode();
-        if (!verification.ok || verification.exists) {
+    if (addItemForm) {
+      addItemForm.addEventListener("submit", async (event) => {
+        if (event.defaultPrevented) {
           return;
         }
-      } else if (lastVerificationExists) {
-        setBarcodeVerificationStatus("error", "Item number already exists.");
-        barcodeInput?.focus();
-        return;
-      }
 
-      const payload = await submitInventoryForm(addItemForm);
+        event.preventDefault();
+        addItemForm.querySelectorAll('input[name="barcode"], input[name="name"]').forEach((input) => {
+          if (!input) return;
+          input.value = normalizeText(input.value);
+        });
+        addItemForm.querySelectorAll('input[name="cost"], input[name="price"]').forEach((input) => {
+          if (!input) return;
+          input.value = normalizeDecimalInput(input.value);
+        });
 
-      if (!payload?.ok) {
-        return;
-      }
+        const currentBarcode = normalizeText(barcodeInput?.value);
 
-      prependInventoryRow(payload.item);
-      addItemForm.reset();
-      resetBarcodeVerification();
-    });
+        if (currentBarcode && currentBarcode !== lastVerifiedBarcode) {
+          const verification = await verifyBarcode();
+          if (!verification.ok || verification.exists) {
+            return;
+          }
+        } else if (lastVerificationExists) {
+          setBarcodeVerificationStatus("error", "Item number already exists.");
+          barcodeInput?.focus();
+          return;
+        }
 
-    addCategoryForm.addEventListener("submit", async (event) => {
-      if (event.defaultPrevented) {
-        return;
-      }
+        const payload = await submitInventoryForm(addItemForm);
 
-      event.preventDefault();
-      const categoryNameInput = addCategoryForm.querySelector('input[name="category_name"]');
-      if (categoryNameInput) {
-        categoryNameInput.value = normalizeText(categoryNameInput.value);
-      }
+        if (!payload?.ok) {
+          return;
+        }
 
-      const payload = await submitInventoryForm(addCategoryForm);
+        prependInventoryRow(payload.item);
+        addItemForm.reset();
+        resetBarcodeVerification();
+      });
+    }
 
-      if (!payload?.ok || !payload.category) {
-        return;
-      }
+    if (addCategoryForm) {
+      addCategoryForm.addEventListener("submit", async (event) => {
+        if (event.defaultPrevented) {
+          return;
+        }
 
-      appendCategoryOption(addItemCategorySelect, payload.category, true);
-      appendCategoryOption(addCategoryExistingSelect, payload.category, false);
-      addCategoryForm.reset();
-    });
+        event.preventDefault();
+        const categoryNameInput = addCategoryForm.querySelector('input[name="category_name"]');
+        if (categoryNameInput) {
+          categoryNameInput.value = normalizeText(categoryNameInput.value);
+        }
+
+        const payload = await submitInventoryForm(addCategoryForm);
+
+        if (!payload?.ok || !payload.category) {
+          return;
+        }
+
+        appendCategoryOption(addItemCategorySelect, payload.category, true);
+        appendCategoryOption(addCategoryExistingSelect, payload.category, false);
+        addCategoryForm.reset();
+      });
+    }
 
     barcodeInput?.addEventListener("input", () => {
       if (normalizeText(barcodeInput.value) !== lastVerifiedBarcode) {
