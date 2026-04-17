@@ -9,21 +9,6 @@
       <p class="mt-2 max-w-2xl text-sm text-slate-200">Create users, define custom roles, and choose exactly which pages and actions each role can access.</p>
     </div>
     <div class="flex flex-col gap-3 sm:flex-row">
-      <% if (can('admin.data.manage')) { %>
-        <a
-          href="/admin/data/export"
-          class="rounded-2xl border border-white/30 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/20"
-        >
-          Export All Data
-        </a>
-        <button
-          type="button"
-          data-open-modal="manage-app-backup-modal"
-          class="rounded-2xl border border-amber-300 bg-amber-400/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-400/25"
-        >
-          Import All Data
-        </button>
-      <% } %>
       <% if (can('admin.roles.create')) { %>
         <button
           type="button"
