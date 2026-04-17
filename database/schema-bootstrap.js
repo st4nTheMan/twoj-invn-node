@@ -1,4 +1,9 @@
 const pool = require("./pool");
+const {
+  SYSTEM_ROLE_DEFINITIONS,
+  normalizePermissionList,
+  normalizeRoleName
+} = require("../includes/permissions");
 
 // Reads the live column type for a table column so new foreign keys match older schemas.
 async function getColumnType(tableName, columnName, fallback = "int") {
@@ -28,7 +33,18 @@ async function ensureUserRolesSchema() {
   if (Number(rows[0]?.count || 0) === 0) {
     await pool.query(
       `ALTER TABLE users
-       ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'admin' AFTER password`
+       ADD COLUMN role VARCHAR(100)
+       CHARACTER SET utf8mb4
+       COLLATE utf8mb4_unicode_ci
+       NOT NULL DEFAULT 'admin' AFTER password`
+    );
+  } else {
+    await pool.query(
+      `ALTER TABLE users
+       MODIFY COLUMN role VARCHAR(100)
+       CHARACTER SET utf8mb4
+       COLLATE utf8mb4_unicode_ci
+       NOT NULL DEFAULT 'admin'`
     );
   }
 
@@ -36,9 +52,103 @@ async function ensureUserRolesSchema() {
     `UPDATE users
      SET role = 'admin'
      WHERE role IS NULL
-        OR TRIM(role) = ''
-        OR LOWER(role) NOT IN ('admin', 'cashier')`
+        OR TRIM(role) = ''`
   );
+}
+
+// Adds role and permission tables used by the custom-role system.
+async function ensureRolesSchema() {
+  const [roleTableRows] = await pool.query(
+    `SELECT COUNT(*) AS count
+     FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'roles'`
+  );
+
+  if (Number(roleTableRows[0]?.count || 0) === 0) {
+    await pool.query(
+      `CREATE TABLE roles (
+         id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+         name VARCHAR(100) NOT NULL,
+         display_name VARCHAR(150) NOT NULL,
+         is_system TINYINT(1) NOT NULL DEFAULT 0,
+         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+         PRIMARY KEY (id),
+         UNIQUE KEY uq_roles_name (name)
+       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+    );
+  } else {
+    await pool.query(
+      `ALTER TABLE roles
+       MODIFY COLUMN name VARCHAR(100)
+       CHARACTER SET utf8mb4
+       COLLATE utf8mb4_unicode_ci
+       NOT NULL,
+       MODIFY COLUMN display_name VARCHAR(150)
+       CHARACTER SET utf8mb4
+       COLLATE utf8mb4_unicode_ci
+       NOT NULL`
+    );
+  }
+
+  const [permissionTableRows] = await pool.query(
+    `SELECT COUNT(*) AS count
+     FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'role_permissions'`
+  );
+
+  if (Number(permissionTableRows[0]?.count || 0) === 0) {
+    const roleIdType = await getColumnType("roles", "id", "int unsigned");
+
+    await pool.query(
+      `CREATE TABLE role_permissions (
+         id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+         role_id ${roleIdType} NOT NULL,
+         permission_key VARCHAR(100) NOT NULL,
+         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+         PRIMARY KEY (id),
+         UNIQUE KEY uq_role_permissions_role_permission (role_id, permission_key),
+         KEY idx_role_permissions_permission_key (permission_key),
+         CONSTRAINT fk_role_permissions_role
+           FOREIGN KEY (role_id) REFERENCES roles (id)
+           ON UPDATE CASCADE
+           ON DELETE CASCADE
+       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+    );
+  }
+
+  for (const roleDefinition of SYSTEM_ROLE_DEFINITIONS) {
+    const roleName = normalizeRoleName(roleDefinition.name);
+    const [existingRows] = await pool.query(
+      "SELECT id FROM roles WHERE name = ? LIMIT 1",
+      [roleName]
+    );
+
+    let roleId = existingRows[0]?.id || null;
+
+    if (!roleId) {
+      const [insertResult] = await pool.query(
+        "INSERT INTO roles (name, display_name, is_system) VALUES (?, ?, 1)",
+        [roleName, roleDefinition.displayName]
+      );
+      roleId = insertResult.insertId;
+    } else {
+      await pool.query(
+        "UPDATE roles SET display_name = ?, is_system = 1 WHERE id = ?",
+        [roleDefinition.displayName, roleId]
+      );
+    }
+
+    await pool.query("DELETE FROM role_permissions WHERE role_id = ?", [roleId]);
+
+    for (const permissionKey of normalizePermissionList(roleDefinition.permissions)) {
+      await pool.query(
+        "INSERT INTO role_permissions (role_id, permission_key) VALUES (?, ?)",
+        [roleId, permissionKey]
+      );
+    }
+  }
 }
 
 // Adds the central activity log table used by admin audit views.
@@ -422,6 +532,7 @@ async function ensureCategoryAdjustmentSchema() {
 
 module.exports = {
   ensureActivityLogSchema,
+  ensureRolesSchema,
   ensureUserRolesSchema,
   ensureArchiveSchema,
   ensureAdjustmentNotesSchema,

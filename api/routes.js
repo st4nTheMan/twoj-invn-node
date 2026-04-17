@@ -1,12 +1,12 @@
 const express = require("express");
 const pool = require("../database/pool");
-const { requireAdmin } = require("../middleware/auth");
+const { requirePermission } = require("../middleware/auth");
 
 // Defines JSON endpoints used by the dashboard UI.
 const router = express.Router();
 
 // Returns the line items for a selected transaction report.
-router.get("/reports/:id/items", requireAdmin, async (req, res) => {
+router.get("/reports/:id/items", requirePermission("reports.view"), async (req, res) => {
   const transactionId = Number(req.params.id);
 
   if (!transactionId) {

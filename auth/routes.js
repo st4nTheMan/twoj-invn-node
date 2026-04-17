@@ -39,7 +39,12 @@ router.post("/login", async (req, res) => {
 
   try {
     const [rows] = await pool.query(
-      "SELECT * FROM users WHERE username = ? LIMIT 1",
+      `SELECT a.*, b.display_name AS role_display_name
+       FROM users a
+       LEFT JOIN roles b
+         ON a.role COLLATE utf8mb4_unicode_ci = b.name COLLATE utf8mb4_unicode_ci
+       WHERE a.username = ?
+       LIMIT 1`,
       [username]
     );
     const user = rows[0];
@@ -62,16 +67,30 @@ router.post("/login", async (req, res) => {
       return res.redirect("/login");
     }
 
+    const normalizedRole = normalizeUserRole(user.role);
+    const [permissionRows] = await pool.query(
+      `SELECT b.permission_key
+       FROM roles a
+       LEFT JOIN role_permissions b ON a.id = b.role_id
+       WHERE a.name = ?
+       ORDER BY b.permission_key ASC`,
+      [normalizedRole]
+    );
+
     req.session.user = {
       id: user.id,
       username: user.username,
-      role: normalizeUserRole(user.role)
+      role: normalizedRole,
+      roleDisplayName: user.role_display_name || user.role || "Admin",
+      permissions: permissionRows
+        .map((row) => row.permission_key)
+        .filter(Boolean)
     };
 
     await logActivity({
       actorId: user.id,
       username: user.username,
-      role: normalizeUserRole(user.role),
+      role: normalizedRole,
       action: "login",
       entityType: "session",
       entityId: user.id,

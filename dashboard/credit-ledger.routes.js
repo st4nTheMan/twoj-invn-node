@@ -1,7 +1,7 @@
 const express = require("express");
 const pool = require("../database/pool");
 const { logActivity } = require("../database/activity-log");
-const { requireLogin } = require("../middleware/auth");
+const { requirePermission } = require("../middleware/auth");
 const {
   flash,
   normalizeText
@@ -38,7 +38,7 @@ function normalizePhilippinePhone(value) {
 }
 
 // Loads the ledger page with recent credit balances and linked invoice details.
-router.get("/credit-ledger", requireLogin, async (req, res) => {
+router.get("/credit-ledger", requirePermission("credit_ledger.view"), async (req, res) => {
   try {
     const [items] = await pool.query(
       `SELECT a.*, b.category_name
@@ -74,7 +74,7 @@ router.get("/credit-ledger", requireLogin, async (req, res) => {
 });
 
 // Saves a manual credit-ledger entry without requiring a checkout transaction.
-router.post("/credit-ledger", requireLogin, async (req, res) => {
+router.post("/credit-ledger", requirePermission("credit_ledger.create"), async (req, res) => {
   const createdByUserId = Number(req.session.user?.id) || null;
   const customerName = normalizeText(req.body.customer_name);
   const customerPhone = normalizePhilippinePhone(req.body.customer_phone);

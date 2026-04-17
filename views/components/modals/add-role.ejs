@@ -1,0 +1,66 @@
+<% /* Modal for creating a custom role and selecting its permissions. */ %>
+<section id="add-role-modal" data-modal class="hidden fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 sm:p-6">
+  <div class="my-8 w-full max-w-4xl rounded-3xl bg-white shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+      <div>
+        <h2 class="text-xl font-semibold text-slate-900">Add Role</h2>
+        <p class="text-sm text-slate-500">Create a custom role and choose exactly which parts of the app it can access.</p>
+      </div>
+      <button
+        type="button"
+        data-close-modal
+        class="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+      >
+        Close
+      </button>
+    </div>
+
+    <form action="/admin/roles" method="POST" class="p-6">
+      <div>
+        <label class="mb-2 block text-sm font-medium text-slate-700" for="admin-role-display-name">Role Name</label>
+        <input
+          id="admin-role-display-name"
+          type="text"
+          name="display_name"
+          data-required="true"
+          placeholder="Example: Inventory Clerk"
+          class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm"
+        >
+      </div>
+
+      <div class="mt-6 space-y-5">
+        <% permissionGroups.forEach((group) => { %>
+          <section class="rounded-3xl border border-slate-200 p-4">
+            <div class="mb-4">
+              <h3 class="text-base font-semibold text-slate-900"><%= group.label %></h3>
+            </div>
+            <div class="grid gap-3 md:grid-cols-2">
+              <% group.permissions.forEach((permission) => { %>
+                <label class="flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+                  <input type="checkbox" name="permissions" value="<%= permission.key %>" class="mt-1 rounded border-slate-300 text-sky-600 focus:ring-sky-500">
+                  <span>
+                    <span class="block font-semibold text-slate-900"><%= permission.label %></span>
+                    <span class="block text-slate-500"><%= permission.description %></span>
+                  </span>
+                </label>
+              <% }) %>
+            </div>
+          </section>
+        <% }) %>
+      </div>
+
+      <div class="mt-6 flex justify-end gap-3">
+        <button
+          type="button"
+          data-close-modal
+          class="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700"
+        >
+          Cancel
+        </button>
+        <button type="submit" class="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white">
+          Save Role
+        </button>
+      </div>
+    </form>
+  </div>
+</section>

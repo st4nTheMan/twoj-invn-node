@@ -1,5 +1,5 @@
 const pool = require("../database/pool");
-const { userHasRole } = require("./auth");
+const { hasAnyPermission, hasPermission } = require("./auth");
 const {
   formatCurrency,
   formatDateTime,
@@ -43,8 +43,18 @@ async function setViewLocals(req, res, next) {
   res.locals.title = "Inventory System";
   res.locals.currentPath = req.path;
   res.locals.user = req.session.user || null;
-  res.locals.isAdmin = userHasRole(req.session.user, "admin");
-  res.locals.isCashier = userHasRole(req.session.user, "cashier");
+  res.locals.permissions = req.session.user?.permissions || [];
+  res.locals.can = (permission) => hasPermission(req.session.user, permission);
+  res.locals.canAny = (requestedPermissions) => hasAnyPermission(req.session.user, requestedPermissions);
+  res.locals.isAdmin = hasAnyPermission(req.session.user, [
+    "admin.users.view",
+    "admin.roles.view",
+    "admin.users.create",
+    "admin.roles.create",
+    "activity_logs.view"
+  ]);
+  res.locals.isCashier = hasPermission(req.session.user, "transaction.create")
+    && !hasAnyPermission(req.session.user, ["inventory.view", "admin.users.view", "admin.roles.view"]);
   res.locals.flash = req.session.flash || null;
   res.locals.formatCurrency = formatCurrency;
   res.locals.formatDateTime = formatDateTime;

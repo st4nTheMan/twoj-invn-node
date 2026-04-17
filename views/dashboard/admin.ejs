@@ -6,15 +6,28 @@
     <div>
       <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-200">Admin Panel</p>
       <h1 class="mt-2 text-2xl font-semibold sm:text-3xl">Manage dashboard access</h1>
-      <p class="mt-2 max-w-2xl text-sm text-slate-200">Create admin and cashier accounts from one place, then control who can manage inventory and reports.</p>
+      <p class="mt-2 max-w-2xl text-sm text-slate-200">Create users, define custom roles, and choose exactly which pages and actions each role can access.</p>
     </div>
-    <button
-      type="button"
-      data-open-modal="add-user-modal"
-      class="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-sky-50"
-    >
-      Add User
-    </button>
+    <div class="flex flex-col gap-3 sm:flex-row">
+      <% if (can('admin.roles.create')) { %>
+        <button
+          type="button"
+          data-open-modal="add-role-modal"
+          class="rounded-2xl border border-white/30 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/20"
+        >
+          Add Role
+        </button>
+      <% } %>
+      <% if (can('admin.users.create')) { %>
+        <button
+          type="button"
+          data-open-modal="add-user-modal"
+          class="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-sky-50"
+        >
+          Add User
+        </button>
+      <% } %>
+    </div>
   </div>
 </section>
 
@@ -24,15 +37,16 @@
     <p class="mt-3 text-3xl font-semibold text-slate-950"><%= summary.totalUsers %></p>
   </article>
   <article class="rounded-3xl bg-white p-5 shadow-soft">
-    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Admins</p>
-    <p class="mt-3 text-3xl font-semibold text-sky-700"><%= summary.adminCount %></p>
+    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Total Roles</p>
+    <p class="mt-3 text-3xl font-semibold text-sky-700"><%= summary.totalRoles %></p>
   </article>
   <article class="rounded-3xl bg-white p-5 shadow-soft">
-    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Cashiers</p>
-    <p class="mt-3 text-3xl font-semibold text-emerald-700"><%= summary.cashierCount %></p>
+    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Custom Roles</p>
+    <p class="mt-3 text-3xl font-semibold text-emerald-700"><%= summary.customRoles %></p>
   </article>
 </section>
 
+<% if (can('activity_logs.view')) { %>
 <section class="mb-6 rounded-3xl bg-white p-5 shadow-soft sm:p-6">
   <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
     <div>
@@ -47,11 +61,56 @@
     </a>
   </div>
 </section>
+<% } %>
 
+<% if (can('admin.roles.view')) { %>
+<section class="mb-6 rounded-3xl bg-white shadow-soft">
+  <div class="border-b border-slate-200 px-5 py-4 sm:px-6">
+    <h2 class="text-lg font-semibold text-slate-950">Roles</h2>
+    <p class="mt-1 text-sm text-slate-500">Each role can be assigned to users and grants only the selected pages and actions.</p>
+  </div>
+
+  <div class="table-scroll overflow-x-auto">
+    <table class="responsive-table min-w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-600">
+        <tr>
+          <th class="px-4 py-3">Role</th>
+          <th class="px-4 py-3">Type</th>
+          <th class="px-4 py-3">Permissions</th>
+          <th class="px-4 py-3">Users</th>
+          <th class="px-4 py-3">Created</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-200">
+        <% if (roles.length) { roles.forEach((managedRole) => { %>
+          <tr class="hover:bg-slate-50">
+            <td data-label="Role" class="px-4 py-3 font-medium text-slate-900">
+              <div><%= managedRole.display_name %></div>
+              <div class="text-xs text-slate-500"><%= managedRole.name %></div>
+            </td>
+            <td data-label="Type" class="px-4 py-3">
+              <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold <%= Number(managedRole.is_system) ? 'bg-sky-100 text-sky-800' : 'bg-violet-100 text-violet-800' %>">
+                <%= Number(managedRole.is_system) ? "System" : "Custom" %>
+              </span>
+            </td>
+            <td data-label="Permissions" class="px-4 py-3 text-slate-500"><%= managedRole.permission_count %></td>
+            <td data-label="Users" class="px-4 py-3 text-slate-500"><%= managedRole.user_count %></td>
+            <td data-label="Created" class="px-4 py-3 text-slate-500"><%= formatDateTime(managedRole.created_at) %></td>
+          </tr>
+        <% }) } else { %>
+          <tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">No roles found.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+<% } %>
+
+<% if (can('admin.users.view')) { %>
 <section class="rounded-3xl bg-white shadow-soft">
   <div class="border-b border-slate-200 px-5 py-4 sm:px-6">
     <h2 class="text-lg font-semibold text-slate-950">User Accounts</h2>
-    <p class="mt-1 text-sm text-slate-500">Admins can access all dashboard areas. Cashiers can use daily selling tools without admin-only management pages.</p>
+    <p class="mt-1 text-sm text-slate-500">Assign each user to one role. Password reset stays available here for forgotten-password support.</p>
   </div>
 
   <div class="table-scroll overflow-x-auto">
@@ -75,13 +134,14 @@
               <% } %>
             </td>
             <td data-label="Role" class="px-4 py-3">
-              <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold <%= managedUser.role === 'cashier' ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800' %>">
-                <%= managedUser.role %>
+              <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold <%= managedUser.role === 'cashier' ? 'bg-emerald-100 text-emerald-800' : managedUser.role === 'admin' ? 'bg-sky-100 text-sky-800' : 'bg-violet-100 text-violet-800' %>">
+                <%= managedUser.role_display_name || managedUser.role %>
               </span>
             </td>
             <td data-label="Created" class="px-4 py-3 text-slate-500"><%= formatDateTime(managedUser.created_at) %></td>
             <td data-label="Status" class="px-4 py-3 text-slate-500">Active</td>
             <td data-label="Actions" class="px-4 py-3">
+              <% if (can('admin.users.reset_password')) { %>
               <button
                 type="button"
                 data-open-modal="reset-user-password-modal"
@@ -92,6 +152,9 @@
               >
                 Reset Password
               </button>
+              <% } else { %>
+                <span class="text-xs text-slate-400">No actions</span>
+              <% } %>
             </td>
           </tr>
         <% }) } else { %>
@@ -103,8 +166,16 @@
     </table>
   </div>
 </section>
+<% } %>
 
-<%- include("../components/modals/add-user") %>
-<%- include("../components/modals/reset-user-password") %>
+<% if (can('admin.users.create')) { %>
+  <%- include("../components/modals/add-user", { roles }) %>
+<% } %>
+<% if (can('admin.roles.create')) { %>
+  <%- include("../components/modals/add-role", { permissionGroups }) %>
+<% } %>
+<% if (can('admin.users.reset_password')) { %>
+  <%- include("../components/modals/reset-user-password") %>
+<% } %>
 
 <%- include("../includes/footer") %>
