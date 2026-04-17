@@ -1,0 +1,45 @@
+<% /* Modal for viewing the saved item summary of a credit-ledger entry. */ %>
+<section id="credit-ledger-items-modal" data-modal class="hidden fixed inset-0 z-50 bg-slate-950/60 p-4">
+  <div class="mx-auto mt-10 max-w-3xl rounded-3xl bg-white shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+      <div>
+        <h2 class="text-xl font-semibold text-slate-900">Ledger Items</h2>
+        <p id="credit-ledger-items-modal-subtitle" class="text-sm text-slate-500">View the saved item details for this ledger entry.</p>
+      </div>
+      <button type="button" data-close-modal class="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100">
+        Close
+      </button>
+    </div>
+
+    <div class="p-6">
+      <div class="mb-4 grid gap-4 rounded-2xl bg-slate-50 p-4 md:grid-cols-2">
+        <div>
+          <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Customer</p>
+          <p id="credit-ledger-items-modal-customer" class="mt-1 font-semibold text-slate-900">-</p>
+        </div>
+        <div>
+          <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Total</p>
+          <p class="mt-1 font-semibold text-slate-900">PHP <span id="credit-ledger-items-modal-total">0.00</span></p>
+        </div>
+      </div>
+
+      <div class="table-scroll overflow-x-auto">
+        <table class="responsive-table min-w-full text-left text-sm">
+          <thead class="bg-slate-50 text-slate-600">
+            <tr>
+              <th class="px-4 py-3">Item</th>
+              <th class="px-4 py-3">Qty</th>
+              <th class="px-4 py-3">Price</th>
+              <th class="px-4 py-3">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody id="credit-ledger-items-modal-body">
+            <tr>
+              <td colspan="4" class="px-4 py-6 text-center text-slate-500">No item summary available for this ledger entry.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>

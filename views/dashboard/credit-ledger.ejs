@@ -41,6 +41,9 @@
             <th class="px-4 py-3">Entries</th>
             <th class="px-4 py-3">Total Credit</th>
             <th class="px-4 py-3">Balance Due</th>
+            <% if (can("credit_ledger.create")) { %>
+              <th class="px-4 py-3">Action</th>
+            <% } %>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-200">
@@ -53,9 +56,26 @@
               <td data-label="Entries" class="px-4 py-3 text-slate-600"><%= customer.entry_count %></td>
               <td data-label="Total Credit" class="px-4 py-3 text-slate-600">PHP <%= formatCurrency(customer.total_credit_amount) %></td>
               <td data-label="Balance Due" class="px-4 py-3 font-semibold text-violet-700">PHP <%= formatCurrency(customer.total_balance_due) %></td>
+              <% if (can("credit_ledger.create")) { %>
+                <td data-label="Action" class="px-4 py-3 align-top">
+                  <% if (Number(customer.total_balance_due || 0) > 0) { %>
+                    <button
+                      type="button"
+                      class="open-settle-credit-modal-button rounded-xl border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                      data-customer-id="<%= customer.customer_id %>"
+                      data-customer-name="<%= customer.name %>"
+                      data-balance-due="<%= Number(customer.total_balance_due || 0).toFixed(2) %>"
+                    >
+                      Mark as Paid
+                    </button>
+                  <% } else { %>
+                    <span class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">Settled</span>
+                  <% } %>
+                </td>
+              <% } %>
             </tr>
           <% }) } else { %>
-            <tr><td colspan="4" class="px-4 py-8 text-center text-slate-500">No registered customers yet.</td></tr>
+            <tr><td colspan="<%= can('credit_ledger.create') ? 5 : 4 %>" class="px-4 py-8 text-center text-slate-500">No registered customers yet.</td></tr>
           <% } %>
         </tbody>
       </table>
@@ -93,9 +113,24 @@
             </td>
             <td data-label="Ledger Details" class="px-4 py-3 align-top">
               <div class="font-medium text-slate-800">Total: PHP <%= formatCurrency(entry.total_amount) %></div>
-              <div class="mt-1 text-xs text-slate-500"><%= entry.item_summary || "No item summary provided." %></div>
+              <button
+                type="button"
+                class="open-credit-ledger-items-modal-button mt-2 rounded-xl border border-sky-200 px-3 py-2 text-xs font-semibold text-sky-700 transition hover:bg-sky-50"
+                data-customer-name="<%= entry.customer_name %>"
+                data-total-amount="<%= Number(entry.total_amount || 0).toFixed(2) %>"
+                data-item-summary="<%= entry.item_summary || '' %>"
+              >
+                View Items
+              </button>
             </td>
-            <td data-label="Balance Due" class="px-4 py-3 align-top font-semibold text-violet-700">PHP <%= formatCurrency(entry.balance_due) %></td>
+            <td data-label="Balance Due" class="px-4 py-3 align-top">
+              <% if (Number(entry.balance_due || 0) > 0) { %>
+                <span class="font-semibold text-violet-700">PHP <%= formatCurrency(entry.balance_due) %></span>
+              <% } else { %>
+                <div class="font-semibold text-emerald-700">PHP <%= formatCurrency(entry.balance_due) %></div>
+                <div class="mt-1 text-xs text-slate-500">Paid / cleared</div>
+              <% } %>
+            </td>
             <td data-label="Source" class="px-4 py-3 align-top text-slate-600">
               <% if (entry.transaction_id) { %>
                 <div class="font-medium"><%= formatInvoice(entry.transaction_id) %></div>
@@ -118,5 +153,16 @@
 </section>
 
 <%- include("../components/modals/add-credit-ledger", { items, customers }) %>
+<%- include("../components/modals/settle-credit-balance") %>
+<%- include("../components/modals/credit-ledger-items") %>
+<script>
+  window.creditLedgerItemCatalog = <%- JSON.stringify(
+    items.map((item) => ({
+      barcode: String(item.barcode || ""),
+      name: String(item.name || ""),
+      price: Number(item.price || 0)
+    }))
+  ) %>;
+</script>
 
 <%- include("../includes/footer") %>
