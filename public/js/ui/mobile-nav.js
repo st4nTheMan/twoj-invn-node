@@ -1,4 +1,4 @@
-// Toggles the mobile navigation drawer in the shared dashboard header.
+// Toggles the shared navigation drawer in the dashboard header.
 (function initMobileNavUi() {
   const InventoryUi = window.InventoryUi || {};
 
@@ -14,7 +14,7 @@
     const closeButton = document.getElementById("mobile-nav-close");
     closeButton?.addEventListener("click", () => setMenuOpen(false));
 
-    // Opens or closes the mobile menu and syncs the toggle button state.
+    // Opens or closes the navigation drawer and syncs the toggle button state.
     function setMenuOpen(isOpen) {
       if (isOpen) {
         menu.classList.remove("hidden");
@@ -48,12 +48,6 @@
 
     menu.addEventListener("click", (event) => {
       if (event.target === menu) {
-        setMenuOpen(false);
-      }
-    });
-
-    window.addEventListener("resize", () => {
-      if (window.innerWidth >= 1024) {
         setMenuOpen(false);
       }
     });
