@@ -8,6 +8,7 @@ require("dotenv").config();
 
 const pool = require("./database/pool");
 const {
+  ensureUserRolesSchema,
   ensureArchiveSchema,
   ensureAdjustmentNotesSchema,
   ensureAdjustmentAuditSchema,
@@ -80,6 +81,7 @@ async function verifyDatabaseConnection() {
 // Starts the HTTPS server and prints local and LAN access URLs.
 async function startServer() {
   await verifyDatabaseConnection();
+  await ensureUserRolesSchema();
   await ensureArchiveSchema();
   await ensureAdjustmentNotesSchema();
   await ensureCreditLedgerSchema();

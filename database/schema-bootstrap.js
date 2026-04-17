@@ -15,6 +15,32 @@ async function getColumnType(tableName, columnName, fallback = "int") {
   return rows[0]?.COLUMN_TYPE || fallback;
 }
 
+// Adds role tracking to users so admin and cashier permissions can be enforced.
+async function ensureUserRolesSchema() {
+  const [rows] = await pool.query(
+    `SELECT COUNT(*) AS count
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'users'
+       AND COLUMN_NAME = 'role'`
+  );
+
+  if (Number(rows[0]?.count || 0) === 0) {
+    await pool.query(
+      `ALTER TABLE users
+       ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'admin' AFTER password`
+    );
+  }
+
+  await pool.query(
+    `UPDATE users
+     SET role = 'admin'
+     WHERE role IS NULL
+        OR TRIM(role) = ''
+        OR LOWER(role) NOT IN ('admin', 'cashier')`
+  );
+}
+
 // Ensures the archive column exists so archived items can be hidden from active flows.
 async function ensureArchiveSchema() {
   const [rows] = await pool.query(
@@ -355,6 +381,7 @@ async function ensureCategoryAdjustmentSchema() {
 }
 
 module.exports = {
+  ensureUserRolesSchema,
   ensureArchiveSchema,
   ensureAdjustmentNotesSchema,
   ensureAdjustmentAuditSchema,

@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const pool = require("../database/pool");
+const { normalizeUserRole } = require("../middleware/auth");
 const { flash, getDatabaseErrorMessage } = require("../includes/helpers");
 
 // Defines authentication-related page routes and session actions.
@@ -62,7 +63,8 @@ router.post("/login", async (req, res) => {
 
     req.session.user = {
       id: user.id,
-      username: user.username
+      username: user.username,
+      role: normalizeUserRole(user.role)
     };
 
     return res.redirect("/inventory");

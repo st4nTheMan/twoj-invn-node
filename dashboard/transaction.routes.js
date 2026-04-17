@@ -11,6 +11,33 @@ const {
 // Defines transaction pages and checkout actions.
 const router = express.Router();
 
+// Normalizes phone input into the +63XXXXXXXXXX format used by credit transactions.
+function normalizePhilippinePhone(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+
+  if (!digits) {
+    return "";
+  }
+
+  let localNumber = digits;
+
+  if (localNumber.startsWith("63")) {
+    localNumber = localNumber.slice(2);
+  }
+
+  if (localNumber.startsWith("0")) {
+    localNumber = localNumber.slice(1);
+  }
+
+  localNumber = localNumber.slice(0, 10);
+
+  if (localNumber.length !== 10) {
+    return "";
+  }
+
+  return `+63${localNumber}`;
+}
+
 // Detects whether the caller expects a JSON response instead of a redirect.
 function wantsJsonResponse(req) {
   return req.xhr || String(req.get("accept") || "").includes("application/json");
@@ -46,7 +73,7 @@ router.post("/transaction", requireLogin, async (req, res) => {
   const createdByUserId = Number(req.session.user?.id) || null;
   const paymentMethod = normalizeText(req.body.payment_method).toLowerCase() || "cash";
   const customerName = normalizeText(req.body.customer_name);
-  const customerPhone = normalizeText(req.body.customer_phone);
+  const customerPhone = normalizePhilippinePhone(req.body.customer_phone);
   const normalizedCashReceived = normalizeDecimalInput(req.body.cash_received);
   const jsonResponse = wantsJsonResponse(req);
   const itemIds = Array.isArray(req.body.item_id)

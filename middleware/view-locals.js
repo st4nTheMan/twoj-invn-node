@@ -1,4 +1,5 @@
 const pool = require("../database/pool");
+const { userHasRole } = require("./auth");
 const {
   formatCurrency,
   formatDateTime,
@@ -42,6 +43,8 @@ async function setViewLocals(req, res, next) {
   res.locals.title = "Inventory System";
   res.locals.currentPath = req.path;
   res.locals.user = req.session.user || null;
+  res.locals.isAdmin = userHasRole(req.session.user, "admin");
+  res.locals.isCashier = userHasRole(req.session.user, "cashier");
   res.locals.flash = req.session.flash || null;
   res.locals.formatCurrency = formatCurrency;
   res.locals.formatDateTime = formatDateTime;

@@ -8,37 +8,43 @@
 
 <section class="mb-6 rounded-3xl bg-white p-5 shadow-soft">
   <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-    <button
-      type="button"
-      data-open-modal="add-item-modal"
-      class="w-full rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white sm:w-auto"
-    >
-      Add Item
-    </button>
+    <% if (isAdmin) { %>
+      <button
+        type="button"
+        data-open-modal="add-item-modal"
+        class="w-full rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white sm:w-auto"
+      >
+        Add Item
+      </button>
 
-    <button
-      type="button"
-      data-open-modal="add-category-modal"
-      class="w-full rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white sm:w-auto"
-    >
-      Add Category
-    </button>
+      <button
+        type="button"
+        data-open-modal="add-category-modal"
+        class="w-full rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white sm:w-auto"
+      >
+        Add Category
+      </button>
 
-    <button
-      type="button"
-      data-open-modal="export-inventory-modal"
-      class="w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white sm:w-auto"
-    >
-      Export
-    </button>
+      <button
+        type="button"
+        data-open-modal="export-inventory-modal"
+        class="w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white sm:w-auto"
+      >
+        Export
+      </button>
 
-    <button
-      type="button"
-      data-open-modal="archived-items-modal"
-      class="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 sm:w-auto"
-    >
-      Archived Items
-    </button>
+      <button
+        type="button"
+        data-open-modal="archived-items-modal"
+        class="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 sm:w-auto"
+      >
+        Archived Items
+      </button>
+    <% } else { %>
+      <p class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        Cashier accounts can view stock here, while item management stays in the admin panel.
+      </p>
+    <% } %>
   </div>
 </section>
 
@@ -109,16 +115,18 @@
   <p id="inventory-empty-search" class="hidden p-6 text-center text-sm text-slate-500">No items found.</p>
 </section>
 
-<%- include("../components/modals/add-item", { categories }) %>
-<%- include("../components/modals/barcode-scanner", {
-  scannerMessage: "Point the camera at the barcode to fill the item number automatically.",
-  enableBarcodeUpload: true,
-  scannerHint: "You can scan with the camera or upload a clear barcode photo from your device."
-}) %>
-<%- include("../components/modals/add-category", { categories }) %>
 <%- include("../components/modals/view-item") %>
-<%- include("../components/modals/archive-item-confirm") %>
-<%- include("../components/modals/export-inventory") %>
-<%- include("../components/modals/archived-items", { archivedItems }) %>
+<% if (isAdmin) { %>
+  <%- include("../components/modals/add-item", { categories }) %>
+  <%- include("../components/modals/barcode-scanner", {
+    scannerMessage: "Point the camera at the barcode to fill the item number automatically.",
+    enableBarcodeUpload: true,
+    scannerHint: "You can scan with the camera or upload a clear barcode photo from your device."
+  }) %>
+  <%- include("../components/modals/add-category", { categories }) %>
+  <%- include("../components/modals/archive-item-confirm") %>
+  <%- include("../components/modals/export-inventory") %>
+  <%- include("../components/modals/archived-items", { archivedItems }) %>
+<% } %>
 
 <%- include("../includes/footer") %>

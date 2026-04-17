@@ -70,15 +70,17 @@
       </div>
 
       <div class="mt-6 flex flex-wrap gap-3">
-        <a href="/inventory/adjustments" class="rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950">Open Adjustments</a>
-        <button
-          id="view-item-archive-button"
-          type="button"
-          data-open-modal="archive-item-confirm-modal"
-          class="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white"
-        >
-          Archive Item
-        </button>
+        <% if (isAdmin) { %>
+          <a href="/inventory/adjustments" class="rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950">Open Adjustments</a>
+          <button
+            id="view-item-archive-button"
+            type="button"
+            data-open-modal="archive-item-confirm-modal"
+            class="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white"
+          >
+            Archive Item
+          </button>
+        <% } %>
         <button
           type="button"
           data-close-modal
