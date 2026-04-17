@@ -51,6 +51,7 @@ async function setViewLocals(req, res, next) {
     "admin.roles.view",
     "admin.users.create",
     "admin.roles.create",
+    "admin.data.manage",
     "activity_logs.view"
   ]);
   res.locals.isCashier = hasPermission(req.session.user, "transaction.create")

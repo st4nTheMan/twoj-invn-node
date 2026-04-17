@@ -38,8 +38,8 @@ app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
 // Registers request parsing, sessions, shared view locals, and route modules.
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.urlencoded({ extended: true, limit: "25mb" }));
+app.use(express.json({ limit: "25mb" }));
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "inventory-system-secret",

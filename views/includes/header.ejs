@@ -37,7 +37,7 @@
       <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         <div class="flex items-start justify-between gap-4 lg:items-center">
           <div class="max-w-xs sm:max-w-none">
-            <a href="<%= can('inventory.view') ? '/inventory' : can('transaction.create') ? '/transaction' : can('credit_ledger.view') ? '/credit-ledger' : can('price_lookup.view') ? '/price-lookup' : canAny(['admin.users.view', 'admin.roles.view']) ? '/admin' : can('activity_logs.view') ? '/admin/activity-logs' : '/login' %>" class="text-lg font-semibold tracking-wide text-white">Inventory System</a>
+            <a href="<%= can('inventory.view') ? '/inventory' : can('transaction.create') ? '/transaction' : can('credit_ledger.view') ? '/credit-ledger' : can('price_lookup.view') ? '/price-lookup' : canAny(['admin.users.view', 'admin.roles.view']) ? '/admin' : can('activity_logs.view') ? '/admin/activity-logs' : '/login' %>" class="text-lg font-semibold tracking-wide text-white">Retail Management System</a>
             <p class="text-xs text-slate-400">Stock control, checkout, and sales reporting</p>
             <p class="mt-1 text-xs uppercase tracking-[0.2em] text-sky-300"><%= user.roleDisplayName || user.role || "admin" %></p>
           </div>

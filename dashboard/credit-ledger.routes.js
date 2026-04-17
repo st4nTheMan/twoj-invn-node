@@ -207,4 +207,93 @@ router.post("/credit-ledger", requirePermission("credit_ledger.create"), async (
   }
 });
 
+// Marks all unpaid balances for a customer as settled while preserving ledger history.
+router.post("/credit-ledger/:customerId/settle", requirePermission("credit_ledger.create"), async (req, res) => {
+  const customerId = Number(req.params.customerId) || 0;
+  const updatedByUserId = Number(req.session.user?.id) || null;
+
+  if (!customerId) {
+    flash(req, { type: "error", message: "Choose a valid customer before marking balances as paid." });
+    return res.redirect("/credit-ledger");
+  }
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [customerRows] = await connection.query(
+      `SELECT b.id AS customer_id,
+              b.name,
+              b.phone,
+              COUNT(a.id) AS unpaid_entry_count,
+              COALESCE(SUM(a.balance_due), 0) AS total_balance_due
+       FROM customers b
+       LEFT JOIN credit_ledger a
+         ON a.customer_id = b.id
+        AND a.balance_due > 0
+       WHERE b.id = ?
+       GROUP BY b.id, b.name, b.phone
+       LIMIT 1`,
+      [customerId]
+    );
+
+    const customer = customerRows[0] || null;
+    const unpaidEntryCount = Number(customer?.unpaid_entry_count || 0);
+    const totalBalanceDue = Number(customer?.total_balance_due || 0);
+
+    if (!customer) {
+      await connection.rollback();
+      flash(req, { type: "error", message: "Customer record not found." });
+      return res.redirect("/credit-ledger");
+    }
+
+    if (unpaidEntryCount <= 0 || totalBalanceDue <= 0) {
+      await connection.rollback();
+      flash(req, { type: "error", message: `${customer.name} has no unpaid balance to clear.` });
+      return res.redirect("/credit-ledger");
+    }
+
+    await connection.query(
+      `UPDATE credit_ledger
+       SET balance_due = 0.00,
+           updated_by = ?
+       WHERE customer_id = ?
+         AND balance_due > 0`,
+      [updatedByUserId, customerId]
+    );
+
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "credit_balance_settled",
+      entityType: "customer",
+      entityId: customerId,
+      description: `${req.session.user?.username || "User"} marked ${customer.name}'s credit balance as paid.`,
+      metadata: {
+        customer_id: customerId,
+        customer_name: customer.name,
+        customer_phone: customer.phone,
+        cleared_balance_total: totalBalanceDue,
+        affected_entry_count: unpaidEntryCount
+      }
+    }, connection);
+
+    await connection.commit();
+    flash(req, {
+      type: "success",
+      message: `${customer.name}'s balance was marked as paid and reset to zero.`
+    });
+    return res.redirect("/credit-ledger");
+  } catch (error) {
+    await connection.rollback();
+    console.error("Failed to settle customer credit balance:", error);
+    flash(req, { type: "error", message: "Unable to mark the credit balance as paid right now." });
+    return res.redirect("/credit-ledger");
+  } finally {
+    connection.release();
+  }
+});
+
 module.exports = router;

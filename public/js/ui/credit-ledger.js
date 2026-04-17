@@ -11,9 +11,109 @@
     const customerNameInput = document.getElementById("credit-ledger-customer-name");
     const customerPhoneInput = document.getElementById("credit-ledger-customer-phone");
     const customerPhoneHiddenInput = document.getElementById("credit-ledger-customer-phone-hidden");
+    const settleBalanceModalId = "settle-credit-balance-modal";
+    const settleBalanceMessage = document.getElementById("settle-credit-balance-message");
+    const settleBalanceForm = document.getElementById("settle-credit-balance-form");
+    const itemsModalId = "credit-ledger-items-modal";
+    const itemsModalSubtitle = document.getElementById("credit-ledger-items-modal-subtitle");
+    const itemsModalCustomer = document.getElementById("credit-ledger-items-modal-customer");
+    const itemsModalTotal = document.getElementById("credit-ledger-items-modal-total");
+    const itemsModalBody = document.getElementById("credit-ledger-items-modal-body");
+    const itemCatalog = Array.isArray(window.creditLedgerItemCatalog) ? window.creditLedgerItemCatalog : [];
+    const priceByBarcode = new Map(
+      itemCatalog.map((item) => [String(item.barcode || "").trim(), Number(item.price || 0)])
+    );
 
     if (!form || !selectedItemsBody || !totalAmountInput) {
+      bindSettleBalanceModal();
+      bindLedgerItemsModal();
       return;
+    }
+
+    function bindSettleBalanceModal() {
+      document.querySelectorAll(".open-settle-credit-modal-button").forEach((button) => {
+        button.addEventListener("click", () => {
+          const customerId = String(button.dataset.customerId || "").trim();
+          const customerName = String(button.dataset.customerName || "").trim() || "this customer";
+          const balanceDue = Number(button.dataset.balanceDue || 0).toLocaleString("en-PH", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          });
+
+          if (!customerId || !settleBalanceForm || !settleBalanceMessage) {
+            return;
+          }
+
+          settleBalanceForm.action = `/credit-ledger/${encodeURIComponent(customerId)}/settle`;
+          settleBalanceMessage.textContent = `Proceed with marking ${customerName}'s remaining balance of PHP ${balanceDue} as paid? The ledger records will stay available for tracing.`;
+          InventoryUi.openModal?.(settleBalanceModalId);
+        });
+      });
+    }
+
+    function bindLedgerItemsModal() {
+      document.querySelectorAll(".open-credit-ledger-items-modal-button").forEach((button) => {
+        button.addEventListener("click", () => {
+          if (!itemsModalBody || !itemsModalCustomer || !itemsModalTotal) {
+            return;
+          }
+
+          const customerName = String(button.dataset.customerName || "").trim() || "Unknown customer";
+          const totalAmount = Number(button.dataset.totalAmount || 0).toLocaleString("en-PH", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          });
+          const rawSummary = String(button.dataset.itemSummary || "").trim();
+          const summaryParts = rawSummary
+            ? rawSummary.split(/\s*,\s*/).map((part) => part.trim()).filter(Boolean)
+            : [];
+
+          itemsModalCustomer.textContent = customerName;
+          itemsModalTotal.textContent = totalAmount;
+
+          if (itemsModalSubtitle) {
+            itemsModalSubtitle.textContent = `Saved item details for ${customerName}'s ledger entry.`;
+          }
+
+          itemsModalBody.innerHTML = "";
+
+          if (!summaryParts.length) {
+            itemsModalBody.innerHTML = `
+              <tr>
+                <td colspan="4" class="px-4 py-6 text-center text-slate-500">No item summary available for this ledger entry.</td>
+              </tr>
+            `;
+          } else {
+            const formatMoney = (value) => Number(value || 0).toLocaleString("en-PH", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            });
+
+            summaryParts.forEach((part) => {
+              const matched = part.match(/^(.*?)\s*-\s*(.*?)\s*x(\d+(?:\.\d+)?)$/);
+              const barcode = String(matched?.[1] || "").trim();
+              const itemLabel = String(matched?.[2] || part).trim();
+              const quantity = Math.max(1, Number(matched?.[3] || 1));
+              const unitPrice = barcode ? priceByBarcode.get(barcode) : null;
+              const subtotal = Number.isFinite(unitPrice) ? unitPrice * quantity : null;
+              const row = document.createElement("tr");
+              row.className = "border-b border-slate-200";
+              row.innerHTML = `
+                <td class="px-4 py-3 align-top text-slate-700">
+                  <div class="font-medium text-slate-900">${itemLabel}</div>
+                  <div class="text-xs text-slate-500">${barcode || "No barcode"}</div>
+                </td>
+                <td class="px-4 py-3 align-top text-slate-700">${quantity}</td>
+                <td class="px-4 py-3 align-top text-slate-700">${subtotal === null ? "-" : `PHP ${formatMoney(unitPrice)}`}</td>
+                <td class="px-4 py-3 align-top font-semibold text-slate-900">${subtotal === null ? "-" : `PHP ${formatMoney(subtotal)}`}</td>
+              `;
+              itemsModalBody.appendChild(row);
+            });
+          }
+
+          InventoryUi.openModal?.(itemsModalId);
+        });
+      });
     }
 
     function normalizePhoneDigits(value) {
@@ -216,5 +316,7 @@
     syncSelectedCustomerUi();
     syncCustomerPhone();
     updateItemSummary();
+    bindSettleBalanceModal();
+    bindLedgerItemsModal();
   });
 }());
