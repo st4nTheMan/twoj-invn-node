@@ -1,0 +1,81 @@
+<% /* Admin panel for managing dashboard users and roles. */ %>
+<%- include("../includes/header", { title }) %>
+
+<section class="mb-6 rounded-3xl bg-gradient-to-r from-slate-950 via-slate-800 to-sky-800 p-5 text-white shadow-soft sm:p-6">
+  <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-200">Admin Panel</p>
+      <h1 class="mt-2 text-2xl font-semibold sm:text-3xl">Manage dashboard access</h1>
+      <p class="mt-2 max-w-2xl text-sm text-slate-200">Create admin and cashier accounts from one place, then control who can manage inventory and reports.</p>
+    </div>
+    <button
+      type="button"
+      data-open-modal="add-user-modal"
+      class="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-sky-50"
+    >
+      Add User
+    </button>
+  </div>
+</section>
+
+<section class="mb-6 grid gap-4 md:grid-cols-3">
+  <article class="rounded-3xl bg-white p-5 shadow-soft">
+    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Total Users</p>
+    <p class="mt-3 text-3xl font-semibold text-slate-950"><%= summary.totalUsers %></p>
+  </article>
+  <article class="rounded-3xl bg-white p-5 shadow-soft">
+    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Admins</p>
+    <p class="mt-3 text-3xl font-semibold text-sky-700"><%= summary.adminCount %></p>
+  </article>
+  <article class="rounded-3xl bg-white p-5 shadow-soft">
+    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Cashiers</p>
+    <p class="mt-3 text-3xl font-semibold text-emerald-700"><%= summary.cashierCount %></p>
+  </article>
+</section>
+
+<section class="rounded-3xl bg-white shadow-soft">
+  <div class="border-b border-slate-200 px-5 py-4 sm:px-6">
+    <h2 class="text-lg font-semibold text-slate-950">User Accounts</h2>
+    <p class="mt-1 text-sm text-slate-500">Admins can access all dashboard areas. Cashiers can use daily selling tools without admin-only management pages.</p>
+  </div>
+
+  <div class="table-scroll overflow-x-auto">
+    <table class="responsive-table min-w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-600">
+        <tr>
+          <th class="px-4 py-3">Username</th>
+          <th class="px-4 py-3">Role</th>
+          <th class="px-4 py-3">Created</th>
+          <th class="px-4 py-3">Status</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-200">
+        <% if (users.length) { users.forEach((managedUser) => { %>
+          <tr class="hover:bg-slate-50">
+            <td data-label="Username" class="px-4 py-3 font-medium text-slate-900">
+              <div><%= managedUser.username %></div>
+              <% if (user && Number(user.id) === Number(managedUser.id)) { %>
+                <div class="mt-1 text-xs text-slate-500">Current session</div>
+              <% } %>
+            </td>
+            <td data-label="Role" class="px-4 py-3">
+              <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold <%= managedUser.role === 'cashier' ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800' %>">
+                <%= managedUser.role %>
+              </span>
+            </td>
+            <td data-label="Created" class="px-4 py-3 text-slate-500"><%= formatDateTime(managedUser.created_at) %></td>
+            <td data-label="Status" class="px-4 py-3 text-slate-500">Active</td>
+          </tr>
+        <% }) } else { %>
+          <tr>
+            <td colspan="4" class="px-4 py-8 text-center text-slate-500">No users found.</td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include("../components/modals/add-user") %>
+
+<%- include("../includes/footer") %>

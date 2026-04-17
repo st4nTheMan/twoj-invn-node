@@ -1,0 +1,87 @@
+<% /* Modal for creating a new dashboard user account. */ %>
+<section id="add-user-modal" data-modal class="hidden fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 sm:p-6">
+  <div class="my-8 w-full max-w-2xl rounded-3xl bg-white shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+      <div>
+        <h2 class="text-xl font-semibold text-slate-900">Add User</h2>
+        <p class="text-sm text-slate-500">Create an admin or cashier account for the dashboard.</p>
+      </div>
+      <button
+        type="button"
+        data-close-modal
+        class="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+      >
+        Close
+      </button>
+    </div>
+
+    <form action="/admin/users" method="POST" class="p-6">
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="md:col-span-2">
+          <label class="mb-2 block text-sm font-medium text-slate-700" for="admin-user-username">Username</label>
+          <input
+            id="admin-user-username"
+            type="text"
+            name="username"
+            data-required="true"
+            autocomplete="username"
+            class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm"
+          >
+        </div>
+
+        <div>
+          <label class="mb-2 block text-sm font-medium text-slate-700" for="admin-user-password">Password</label>
+          <input
+            id="admin-user-password"
+            type="password"
+            name="password"
+            data-required="true"
+            autocomplete="new-password"
+            class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm"
+          >
+        </div>
+
+        <div>
+          <label class="mb-2 block text-sm font-medium text-slate-700" for="admin-user-confirm-password">Confirm Password</label>
+          <input
+            id="admin-user-confirm-password"
+            type="password"
+            name="confirm_password"
+            data-required="true"
+            autocomplete="new-password"
+            class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm"
+          >
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="mb-2 block text-sm font-medium text-slate-700" for="admin-user-role">Role</label>
+          <select
+            id="admin-user-role"
+            name="role"
+            class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm"
+          >
+            <option value="cashier">Cashier</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        `cashier` can use selling pages. `admin` can also manage inventory, reports, and other admin tools.
+      </div>
+
+      <div class="mt-6 flex justify-end gap-3">
+        <button
+          type="button"
+          data-close-modal
+          class="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700"
+        >
+          Cancel
+        </button>
+        <button type="submit" class="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white">
+          Save User
+        </button>
+      </div>
+    </form>
+  </div>
+</section>
