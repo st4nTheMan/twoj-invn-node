@@ -13,6 +13,7 @@
     const paymentCashFields = document.getElementById("payment-cash-fields");
     const paymentCashInput = document.getElementById("payment-cash-input");
     const paymentCreditFields = document.getElementById("payment-credit-fields");
+    const paymentCustomerSelect = document.getElementById("payment-customer-select");
     const paymentCustomerNameInput = document.getElementById("payment-customer-name-input");
     const paymentCustomerPhoneInput = document.getElementById("payment-customer-phone-input");
     const paymentChangeCard = document.getElementById("payment-change-card");
@@ -20,6 +21,7 @@
     const paymentMessage = document.getElementById("payment-modal-message");
     const confirmTransactionButton = document.getElementById("confirm-transaction-button");
     const transactionPaymentMethodInput = document.getElementById("transaction-payment-method");
+    const transactionCustomerIdInput = document.getElementById("transaction-customer-id");
     const transactionCustomerNameInput = document.getElementById("transaction-customer-name");
     const transactionCustomerPhoneInput = document.getElementById("transaction-customer-phone");
     const transactionCashReceivedInput = document.getElementById("transaction-cash-received");
@@ -50,6 +52,41 @@
       return String(value || "").replace(/\D/g, "").slice(0, 10);
     }
 
+    function getSelectedCustomerOption() {
+      if (!paymentCustomerSelect) {
+        return null;
+      }
+
+      return paymentCustomerSelect.options[paymentCustomerSelect.selectedIndex] || null;
+    }
+
+    function syncSelectedCustomerUi() {
+      const selectedOption = getSelectedCustomerOption();
+      const selectedCustomerId = String(paymentCustomerSelect?.value || "").trim();
+      const selectedCustomerName = selectedOption?.dataset.name || "";
+      const selectedCustomerPhone = selectedOption?.dataset.phone || "";
+      const phoneDigits = normalizePhoneDigits(selectedCustomerPhone);
+      const hasSelectedCustomer = Boolean(selectedCustomerId);
+
+      if (paymentCustomerNameInput) {
+        paymentCustomerNameInput.readOnly = hasSelectedCustomer;
+        paymentCustomerNameInput.value = hasSelectedCustomer ? selectedCustomerName : normalizeText(paymentCustomerNameInput.value);
+        paymentCustomerNameInput.classList.toggle("bg-slate-100", hasSelectedCustomer);
+      }
+
+      if (paymentCustomerPhoneInput) {
+        paymentCustomerPhoneInput.readOnly = hasSelectedCustomer;
+        paymentCustomerPhoneInput.value = hasSelectedCustomer ? phoneDigits : normalizePhoneDigits(paymentCustomerPhoneInput.value);
+        paymentCustomerPhoneInput.classList.toggle("bg-slate-100", hasSelectedCustomer);
+      }
+
+      if (transactionCustomerIdInput) {
+        transactionCustomerIdInput.value = hasSelectedCustomer ? selectedCustomerId : "";
+      }
+
+      return hasSelectedCustomer;
+    }
+
     function syncCustomerPhoneField() {
       const digits = normalizePhoneDigits(paymentCustomerPhoneInput?.value);
 
@@ -66,6 +103,8 @@
 
     // Mirrors modal fields into the hidden transaction form inputs.
     function syncPaymentFields() {
+      syncSelectedCustomerUi();
+
       if (transactionPaymentMethodInput) {
         transactionPaymentMethodInput.value = getSelectedPaymentMethod();
       }
@@ -105,6 +144,7 @@
       const change = cash - total;
       const hasItems = selectedItemsBody.querySelectorAll(".selected-item-row").length > 0;
       const hasEnoughCash = cash >= total;
+      const hasSelectedCustomer = syncSelectedCustomerUi();
       const customerName = normalizeText(paymentCustomerNameInput?.value);
       const customerPhoneDigits = syncCustomerPhoneField();
       const hasCreditDetails = customerName && customerPhoneDigits.length === 10;
@@ -119,7 +159,7 @@
         paymentMessage.textContent = "Enter the cash received from the customer.";
       } else if (paymentMethod === "cash" && !hasEnoughCash) {
         paymentMessage.textContent = `Insufficient cash. Need PHP ${(total - cash).toFixed(2)} more.`;
-      } else if (paymentMethod === "credit" && !customerName) {
+      } else if (paymentMethod === "credit" && !hasSelectedCustomer && !customerName) {
         paymentMessage.textContent = "Enter the customer's name for the credit transaction.";
       } else if (paymentMethod === "credit" && customerPhoneDigits.length !== 10) {
         paymentMessage.textContent = "Enter a valid 10-digit phone number after +63.";
@@ -321,6 +361,9 @@
       if (paymentCashInput) {
         paymentCashInput.value = "";
       }
+      if (paymentCustomerSelect) {
+        paymentCustomerSelect.value = "";
+      }
       if (paymentCustomerNameInput) {
         paymentCustomerNameInput.value = "";
       }
@@ -331,6 +374,7 @@
       if (cashOption) {
         cashOption.checked = true;
       }
+      syncSelectedCustomerUi();
       updatePaymentSummary();
       paymentCashInput?.focus();
     });
@@ -339,7 +383,16 @@
       updatePaymentSummary();
     });
 
+    paymentCustomerSelect?.addEventListener("change", () => {
+      syncSelectedCustomerUi();
+      updatePaymentSummary();
+    });
+
     paymentCustomerNameInput?.addEventListener("input", () => {
+      if (paymentCustomerSelect?.value) {
+        paymentCustomerSelect.value = "";
+      }
+      syncSelectedCustomerUi();
       updatePaymentSummary();
     });
 

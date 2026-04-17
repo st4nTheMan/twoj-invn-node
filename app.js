@@ -17,7 +17,8 @@ const {
   ensureCreatedBySchema,
   ensureUpdatedBySchema,
   ensureCreditLedgerSchema,
-  ensureCategoryAdjustmentSchema
+  ensureCategoryAdjustmentSchema,
+  ensureCustomerRegistrySchema
 } = require("./database/schema-bootstrap");
 const authRoutes = require("./auth/routes");
 const dashboardRoutes = require("./dashboard/routes");
@@ -89,6 +90,8 @@ async function startServer() {
   await ensureArchiveSchema();
   await ensureAdjustmentNotesSchema();
   await ensureCreditLedgerSchema();
+  await ensureCustomerRegistrySchema();
+  await ensureCustomerRegistrySchema();
   await ensureCategoryAdjustmentSchema();
   await ensureAdjustmentAuditSchema();
   await ensureCreatedBySchema();

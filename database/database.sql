@@ -23,6 +23,7 @@ DROP TABLE IF EXISTS cost_adjustments;
 -- Drop the transaction item details table before recreating it.
 DROP TABLE IF EXISTS transaction_items;
 DROP TABLE IF EXISTS credit_ledger;
+DROP TABLE IF EXISTS customers;
 -- Drop the transactions table before recreating it.
 DROP TABLE IF EXISTS transactions;
 -- Drop the items table before recreating it.
@@ -127,18 +128,37 @@ CREATE TABLE items (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Store each completed sale transaction.
+CREATE TABLE customers (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(150) NOT NULL,
+  phone VARCHAR(50) NOT NULL,
+  address VARCHAR(255) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_customers_phone (phone),
+  KEY idx_customers_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Store each completed sale transaction.
 CREATE TABLE transactions (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   total_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
   payment_method VARCHAR(20) NOT NULL DEFAULT 'cash',
   customer_name VARCHAR(150) NULL,
   customer_phone VARCHAR(50) NULL,
+  customer_id INT UNSIGNED NULL,
   created_by INT UNSIGNED NULL,
   updated_by INT UNSIGNED NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
+  KEY idx_transactions_customer_id (customer_id),
   KEY idx_transactions_created_by (created_by),
   KEY idx_transactions_updated_by (updated_by),
+  CONSTRAINT fk_transactions_customer
+    FOREIGN KEY (customer_id) REFERENCES customers (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL,
   CONSTRAINT fk_transactions_created_by_user
     FOREIGN KEY (created_by) REFERENCES users (id)
     ON UPDATE CASCADE
@@ -155,6 +175,7 @@ CREATE TABLE credit_ledger (
   transaction_id INT UNSIGNED NULL,
   customer_name VARCHAR(150) NOT NULL,
   customer_phone VARCHAR(50) NOT NULL,
+  customer_id INT UNSIGNED NULL,
   item_summary TEXT NULL,
   total_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
   balance_due DECIMAL(12,2) NOT NULL DEFAULT 0.00,
@@ -163,12 +184,17 @@ CREATE TABLE credit_ledger (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_credit_ledger_transaction_id (transaction_id),
+  KEY idx_credit_ledger_customer_id (customer_id),
   KEY idx_credit_ledger_customer_name (customer_name),
   KEY idx_credit_ledger_created_by (created_by),
   KEY idx_credit_ledger_updated_by (updated_by),
   KEY idx_credit_ledger_created_at (created_at),
   CONSTRAINT fk_credit_ledger_transaction
     FOREIGN KEY (transaction_id) REFERENCES transactions (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL,
+  CONSTRAINT fk_credit_ledger_customer
+    FOREIGN KEY (customer_id) REFERENCES customers (id)
     ON UPDATE CASCADE
     ON DELETE SET NULL,
   CONSTRAINT fk_credit_ledger_created_by_user

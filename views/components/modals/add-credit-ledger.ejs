@@ -79,18 +79,37 @@
           </div>
         </div>
 
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-4">
           <div>
+            <label for="credit-ledger-customer-select" class="mb-2 block text-sm font-medium text-slate-700">Registered Customer</label>
+            <select id="credit-ledger-customer-select" name="customer_id" class="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+              <option value="">Register a new customer</option>
+              <% customers.forEach((customer) => { %>
+                <option
+                  value="<%= customer.id %>"
+                  data-name="<%= customer.name %>"
+                  data-phone="<%= customer.phone %>"
+                >
+                  <%= customer.name %> • <%= customer.phone %>
+                </option>
+              <% }) %>
+            </select>
+            <p class="mt-2 text-xs text-slate-500">Choose an existing customer for cleaner balance history, or leave this blank to add a new one.</p>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
             <label for="credit-ledger-customer-name" class="mb-2 block text-sm font-medium text-slate-700">Customer Name</label>
             <input id="credit-ledger-customer-name" name="customer_name" type="text" maxlength="150" required class="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm">
-          </div>
-          <div>
+            </div>
+            <div>
             <label for="credit-ledger-customer-phone" class="mb-2 block text-sm font-medium text-slate-700">Phone Number</label>
             <div class="flex overflow-hidden rounded-2xl border border-slate-300 bg-slate-50">
               <span class="inline-flex items-center border-r border-slate-300 bg-slate-100 px-4 text-sm font-semibold text-slate-600">+63</span>
               <input id="credit-ledger-customer-phone" type="text" inputmode="numeric" autocomplete="tel-national" maxlength="10" placeholder="9XXXXXXXXX" required class="w-full border-0 bg-transparent px-4 py-3 text-sm focus:outline-none focus:ring-0">
             </div>
             <input id="credit-ledger-customer-phone-hidden" name="customer_phone" type="hidden" value="">
+            </div>
           </div>
         </div>
 
