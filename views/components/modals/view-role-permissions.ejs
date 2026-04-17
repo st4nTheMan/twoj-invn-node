@@ -1,0 +1,35 @@
+<% /* Modal for viewing the granted permissions of a selected role. */ %>
+<section id="view-role-permissions-modal" data-modal class="hidden fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 sm:p-6">
+  <div class="my-8 w-full max-w-3xl rounded-3xl bg-white shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-600">Role Permissions</p>
+        <h2 id="view-role-permissions-title" class="mt-2 text-2xl font-semibold text-slate-900">Role</h2>
+        <p id="view-role-permissions-subtitle" class="text-sm text-slate-500">Granted permissions for this role.</p>
+      </div>
+      <button
+        type="button"
+        data-close-modal
+        class="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+      >
+        Close
+      </button>
+    </div>
+
+    <div class="p-6">
+      <div id="view-role-permissions-list" class="space-y-4">
+        <p class="text-sm text-slate-500">No permissions loaded.</p>
+      </div>
+
+      <div class="mt-6 flex justify-end">
+        <button
+          type="button"
+          data-close-modal
+          class="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</section>

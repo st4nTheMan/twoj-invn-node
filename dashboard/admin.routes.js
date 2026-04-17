@@ -38,7 +38,8 @@ router.get("/admin", requireAnyPermission(["admin.users.view", "admin.roles.view
               a.is_system,
               a.created_at,
               COUNT(DISTINCT b.id) AS user_count,
-              COUNT(DISTINCT c.id) AS permission_count
+              COUNT(DISTINCT c.id) AS permission_count,
+              GROUP_CONCAT(DISTINCT c.permission_key ORDER BY c.permission_key SEPARATOR '|') AS permission_keys
        FROM roles a
        LEFT JOIN users b
          ON a.name COLLATE utf8mb4_unicode_ci = b.role COLLATE utf8mb4_unicode_ci

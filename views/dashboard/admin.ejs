@@ -79,6 +79,7 @@
           <th class="px-4 py-3">Permissions</th>
           <th class="px-4 py-3">Users</th>
           <th class="px-4 py-3">Created</th>
+          <th class="px-4 py-3">Actions</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-200">
@@ -96,9 +97,22 @@
             <td data-label="Permissions" class="px-4 py-3 text-slate-500"><%= managedRole.permission_count %></td>
             <td data-label="Users" class="px-4 py-3 text-slate-500"><%= managedRole.user_count %></td>
             <td data-label="Created" class="px-4 py-3 text-slate-500"><%= formatDateTime(managedRole.created_at) %></td>
+            <td data-label="Actions" class="px-4 py-3">
+              <button
+                type="button"
+                data-open-modal="view-role-permissions-modal"
+                data-view-role-permissions-trigger
+                data-role-name="<%= managedRole.name %>"
+                data-role-display-name="<%= managedRole.display_name %>"
+                data-role-permissions="<%= managedRole.permission_keys || '' %>"
+                class="w-full rounded-xl border border-sky-300 px-3 py-2 text-xs font-semibold text-sky-700 sm:w-auto"
+              >
+                View Permissions
+              </button>
+            </td>
           </tr>
         <% }) } else { %>
-          <tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">No roles found.</td></tr>
+          <tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">No roles found.</td></tr>
         <% } %>
       </tbody>
     </table>
@@ -173,6 +187,10 @@
 <% } %>
 <% if (can('admin.roles.create')) { %>
   <%- include("../components/modals/add-role", { permissionGroups }) %>
+<% } %>
+<% if (can('admin.roles.view')) { %>
+  <%- include("../components/modals/view-role-permissions") %>
+  <script id="permission-catalog" type="application/json"><%- JSON.stringify(permissionGroups) %></script>
 <% } %>
 <% if (can('admin.users.reset_password')) { %>
   <%- include("../components/modals/reset-user-password") %>
