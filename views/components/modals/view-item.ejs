@@ -70,8 +70,10 @@
       </div>
 
       <div class="mt-6 flex flex-wrap gap-3">
-        <% if (isAdmin) { %>
+        <% if (can('inventory.adjust')) { %>
           <a href="/inventory/adjustments" class="rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950">Open Adjustments</a>
+        <% } %>
+        <% if (can('inventory.archive_restore')) { %>
           <button
             id="view-item-archive-button"
             type="button"

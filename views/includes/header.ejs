@@ -37,22 +37,34 @@
       <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         <div class="flex items-start justify-between gap-4 lg:items-center">
           <div class="max-w-xs sm:max-w-none">
-            <a href="/inventory" class="text-lg font-semibold tracking-wide text-white">Inventory System</a>
+            <a href="<%= can('inventory.view') ? '/inventory' : can('transaction.create') ? '/transaction' : can('credit_ledger.view') ? '/credit-ledger' : can('price_lookup.view') ? '/price-lookup' : canAny(['admin.users.view', 'admin.roles.view']) ? '/admin' : can('activity_logs.view') ? '/admin/activity-logs' : '/login' %>" class="text-lg font-semibold tracking-wide text-white">Inventory System</a>
             <p class="text-xs text-slate-400">Stock control, checkout, and sales reporting</p>
-            <p class="mt-1 text-xs uppercase tracking-[0.2em] text-sky-300"><%= (user.role || "admin") %></p>
+            <p class="mt-1 text-xs uppercase tracking-[0.2em] text-sky-300"><%= user.roleDisplayName || user.role || "admin" %></p>
           </div>
 
           <nav class="hidden items-center gap-2 text-sm font-medium lg:flex">
-            <a href="/inventory" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= (currentPath === '/inventory' || currentPath.startsWith('/inventory/items')) ? 'bg-sky-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Inventory</a>
-            <% if (isAdmin) { %>
+            <% if (can('inventory.view')) { %>
+              <a href="/inventory" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= (currentPath === '/inventory' || currentPath.startsWith('/inventory/items')) ? 'bg-sky-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Inventory</a>
+            <% } %>
+            <% if (can('inventory.adjust')) { %>
               <a href="/inventory/adjustments" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= currentPath === '/inventory/adjustments' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Adjustments</a>
+            <% } %>
+            <% if (can('history.view')) { %>
               <a href="/history" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= (currentPath === '/history' || currentPath.endsWith('/history')) ? 'bg-slate-200 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">History</a>
             <% } %>
-            <a href="/price-lookup" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= currentPath === '/price-lookup' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Price Lookup</a>
-            <a href="/transaction" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= currentPath === '/transaction' ? 'bg-emerald-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Transaction</a>
-            <a href="/credit-ledger" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= currentPath === '/credit-ledger' ? 'bg-violet-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Credit Ledger</a>
-            <% if (isAdmin) { %>
+            <% if (can('price_lookup.view')) { %>
+              <a href="/price-lookup" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= currentPath === '/price-lookup' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Price Lookup</a>
+            <% } %>
+            <% if (can('transaction.create')) { %>
+              <a href="/transaction" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= currentPath === '/transaction' ? 'bg-emerald-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Transaction</a>
+            <% } %>
+            <% if (can('credit_ledger.view')) { %>
+              <a href="/credit-ledger" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= currentPath === '/credit-ledger' ? 'bg-violet-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Credit Ledger</a>
+            <% } %>
+            <% if (can('reports.view')) { %>
               <a href="/reports" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= currentPath === '/reports' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Reports</a>
+            <% } %>
+            <% if (canAny(['admin.users.view', 'admin.roles.view', 'activity_logs.view'])) { %>
               <a href="/admin" class="rounded-full px-3 py-2 text-center transition xl:px-4 <%= currentPath === '/admin' ? 'bg-sky-200 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Admin</a>
             <% } %>
             <button type="button" data-open-modal="stock-notifications-modal" class="relative rounded-full border border-slate-700 p-2 text-slate-200 transition hover:border-sky-400 hover:text-white">
@@ -102,16 +114,28 @@
             </button>
           </div>
           <nav class="flex flex-col gap-2 text-sm font-medium">
-            <a href="/inventory" class="rounded-2xl px-4 py-3 text-left transition <%= (currentPath === '/inventory' || currentPath.startsWith('/inventory/items')) ? 'bg-sky-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Inventory</a>
-            <% if (isAdmin) { %>
+            <% if (can('inventory.view')) { %>
+              <a href="/inventory" class="rounded-2xl px-4 py-3 text-left transition <%= (currentPath === '/inventory' || currentPath.startsWith('/inventory/items')) ? 'bg-sky-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Inventory</a>
+            <% } %>
+            <% if (can('inventory.adjust')) { %>
               <a href="/inventory/adjustments" class="rounded-2xl px-4 py-3 text-left transition <%= currentPath === '/inventory/adjustments' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Adjustments</a>
+            <% } %>
+            <% if (can('history.view')) { %>
               <a href="/history" class="rounded-2xl px-4 py-3 text-left transition <%= (currentPath === '/history' || currentPath.endsWith('/history')) ? 'bg-slate-200 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">History</a>
             <% } %>
-            <a href="/price-lookup" class="rounded-2xl px-4 py-3 text-left transition <%= currentPath === '/price-lookup' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Price Lookup</a>
-            <a href="/transaction" class="rounded-2xl px-4 py-3 text-left transition <%= currentPath === '/transaction' ? 'bg-emerald-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Transaction</a>
-            <a href="/credit-ledger" class="rounded-2xl px-4 py-3 text-left transition <%= currentPath === '/credit-ledger' ? 'bg-violet-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Credit Ledger</a>
-            <% if (isAdmin) { %>
+            <% if (can('price_lookup.view')) { %>
+              <a href="/price-lookup" class="rounded-2xl px-4 py-3 text-left transition <%= currentPath === '/price-lookup' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Price Lookup</a>
+            <% } %>
+            <% if (can('transaction.create')) { %>
+              <a href="/transaction" class="rounded-2xl px-4 py-3 text-left transition <%= currentPath === '/transaction' ? 'bg-emerald-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Transaction</a>
+            <% } %>
+            <% if (can('credit_ledger.view')) { %>
+              <a href="/credit-ledger" class="rounded-2xl px-4 py-3 text-left transition <%= currentPath === '/credit-ledger' ? 'bg-violet-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Credit Ledger</a>
+            <% } %>
+            <% if (can('reports.view')) { %>
               <a href="/reports" class="rounded-2xl px-4 py-3 text-left transition <%= currentPath === '/reports' ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Reports</a>
+            <% } %>
+            <% if (canAny(['admin.users.view', 'admin.roles.view', 'activity_logs.view'])) { %>
               <a href="/admin" class="rounded-2xl px-4 py-3 text-left transition <%= currentPath === '/admin' ? 'bg-sky-200 text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %>">Admin</a>
             <% } %>
             <button type="button" data-open-modal="stock-notifications-modal" class="flex items-center justify-between rounded-2xl border border-slate-700 px-4 py-3 text-left text-slate-200 transition hover:border-sky-400 hover:text-white">

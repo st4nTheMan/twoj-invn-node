@@ -1,6 +1,7 @@
 const express = require("express");
 const pool = require("../database/pool");
-const { requireLogin } = require("../middleware/auth");
+const { logActivity } = require("../database/activity-log");
+const { requirePermission } = require("../middleware/auth");
 const {
   flash,
   formatInvoice,
@@ -44,7 +45,7 @@ function wantsJsonResponse(req) {
 }
 
 // Loads the checkout page with currently available inventory items.
-router.get("/transaction", requireLogin, async (req, res) => {
+router.get("/transaction", requirePermission("transaction.create"), async (req, res) => {
   try {
     const [items] = await pool.query(
       `SELECT items.*, categories.category_name
@@ -69,7 +70,7 @@ router.get("/transaction", requireLogin, async (req, res) => {
 });
 
 // Processes a checkout transaction and updates stock inside a database transaction.
-router.post("/transaction", requireLogin, async (req, res) => {
+router.post("/transaction", requirePermission("transaction.create"), async (req, res) => {
   const createdByUserId = Number(req.session.user?.id) || null;
   const paymentMethod = normalizeText(req.body.payment_method).toLowerCase() || "cash";
   const customerName = normalizeText(req.body.customer_name);
@@ -211,6 +212,22 @@ router.post("/transaction", requireLogin, async (req, res) => {
     }
 
     await connection.commit();
+
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "transaction_completed",
+      entityType: "transaction",
+      entityId: transactionId,
+      description: `${req.session.user?.username || "User"} completed ${paymentMethod} transaction ${formatInvoice(transactionId)}.`,
+      metadata: {
+        payment_method: paymentMethod,
+        total_amount: totalAmount,
+        item_count: lineItems.length,
+        customer_name: customerName || null
+      }
+    });
 
     const successMessage = paymentMethod === "credit"
       ? `Credit transaction ${formatInvoice(transactionId)} recorded for ${customerName}.`

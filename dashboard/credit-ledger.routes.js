@@ -1,6 +1,7 @@
 const express = require("express");
 const pool = require("../database/pool");
-const { requireLogin } = require("../middleware/auth");
+const { logActivity } = require("../database/activity-log");
+const { requirePermission } = require("../middleware/auth");
 const {
   flash,
   normalizeText
@@ -37,7 +38,7 @@ function normalizePhilippinePhone(value) {
 }
 
 // Loads the ledger page with recent credit balances and linked invoice details.
-router.get("/credit-ledger", requireLogin, async (req, res) => {
+router.get("/credit-ledger", requirePermission("credit_ledger.view"), async (req, res) => {
   try {
     const [items] = await pool.query(
       `SELECT a.*, b.category_name
@@ -73,7 +74,7 @@ router.get("/credit-ledger", requireLogin, async (req, res) => {
 });
 
 // Saves a manual credit-ledger entry without requiring a checkout transaction.
-router.post("/credit-ledger", requireLogin, async (req, res) => {
+router.post("/credit-ledger", requirePermission("credit_ledger.create"), async (req, res) => {
   const createdByUserId = Number(req.session.user?.id) || null;
   const customerName = normalizeText(req.body.customer_name);
   const customerPhone = normalizePhilippinePhone(req.body.customer_phone);
@@ -144,11 +145,26 @@ router.post("/credit-ledger", requireLogin, async (req, res) => {
       return res.redirect("/credit-ledger");
     }
 
-    await pool.query(
+    const [insertResult] = await pool.query(
       `INSERT INTO credit_ledger (customer_name, customer_phone, item_summary, total_amount, balance_due, created_by)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [customerName, customerPhone, itemSummaryParts.join(", "), totalAmount, totalAmount, createdByUserId]
     );
+
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "credit_entry_created",
+      entityType: "credit_ledger",
+      entityId: insertResult.insertId,
+      description: `${req.session.user?.username || "User"} added a credit entry for ${customerName}.`,
+      metadata: {
+        customer_name: customerName,
+        total_amount: totalAmount,
+        item_count: normalizedPairs.length
+      }
+    });
 
     flash(req, {
       type: "success",

@@ -4,7 +4,7 @@
     <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
       <div>
         <h2 class="text-xl font-semibold text-slate-900">Add User</h2>
-        <p class="text-sm text-slate-500">Create an admin or cashier account for the dashboard.</p>
+        <p class="text-sm text-slate-500">Create a dashboard user and assign one of the available roles.</p>
       </div>
       <button
         type="button"
@@ -60,14 +60,15 @@
             name="role"
             class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm"
           >
-            <option value="cashier">Cashier</option>
-            <option value="admin">Admin</option>
+            <% roles.forEach((role) => { %>
+              <option value="<%= role.name %>" <%= role.name === 'cashier' ? 'selected' : '' %>><%= role.display_name %></option>
+            <% }) %>
           </select>
         </div>
       </div>
 
       <div class="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-        `cashier` can use selling pages. `admin` can also manage inventory, reports, and other admin tools.
+        The selected role controls which pages and actions this user can access across the app.
       </div>
 
       <div class="mt-6 flex justify-end gap-3">

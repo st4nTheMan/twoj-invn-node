@@ -29,15 +29,41 @@ DROP TABLE IF EXISTS transactions;
 DROP TABLE IF EXISTS items;
 -- Drop the categories table before recreating it.
 DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS role_permissions;
+DROP TABLE IF EXISTS roles;
 -- Drop the users table before recreating it.
 DROP TABLE IF EXISTS users;
+
+CREATE TABLE roles (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(100) NOT NULL,
+  display_name VARCHAR(150) NOT NULL,
+  is_system TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_roles_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE role_permissions (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  role_id INT UNSIGNED NOT NULL,
+  permission_key VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_role_permissions_role_permission (role_id, permission_key),
+  KEY idx_role_permissions_permission_key (permission_key),
+  CONSTRAINT fk_role_permissions_role
+    FOREIGN KEY (role_id) REFERENCES roles (id)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Store application login accounts.
 CREATE TABLE users (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   username VARCHAR(50) NOT NULL,
   password VARCHAR(255) NOT NULL,
-  role VARCHAR(20) NOT NULL DEFAULT 'admin',
+  role VARCHAR(100) NOT NULL DEFAULT 'admin',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_users_username (username)
@@ -300,6 +326,33 @@ CREATE TABLE category_adjustments (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Add the default admin account for first-time login.
+INSERT INTO roles (name, display_name, is_system) VALUES
+  ('admin', 'Admin', 1),
+  ('cashier', 'Cashier', 1);
+
+INSERT INTO role_permissions (role_id, permission_key) VALUES
+  (1, 'inventory.view'),
+  (1, 'inventory.create'),
+  (1, 'inventory.archive_restore'),
+  (1, 'inventory.adjust'),
+  (1, 'inventory.export'),
+  (1, 'history.view'),
+  (1, 'price_lookup.view'),
+  (1, 'transaction.create'),
+  (1, 'credit_ledger.view'),
+  (1, 'credit_ledger.create'),
+  (1, 'reports.view'),
+  (1, 'admin.users.view'),
+  (1, 'admin.users.create'),
+  (1, 'admin.users.reset_password'),
+  (1, 'admin.roles.view'),
+  (1, 'admin.roles.create'),
+  (1, 'activity_logs.view'),
+  (2, 'price_lookup.view'),
+  (2, 'transaction.create'),
+  (2, 'credit_ledger.view'),
+  (2, 'credit_ledger.create');
+
 INSERT INTO users (username, password) VALUES
   ('admin', '0192023a7bbd73250516f069df18b500');
 

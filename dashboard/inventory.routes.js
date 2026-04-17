@@ -1,6 +1,7 @@
 const express = require("express");
 const pool = require("../database/pool");
-const { requireLogin, requireAdmin } = require("../middleware/auth");
+const { logActivity } = require("../database/activity-log");
+const { requirePermission, requireAnyPermission } = require("../middleware/auth");
 const {
   flash,
   normalizeBarcode,
@@ -239,7 +240,7 @@ function respondAdjustmentResult(req, res, type, message) {
 }
 
 // Loads the inventory dashboard with categories and the latest item list.
-router.get("/inventory", requireLogin, async (req, res) => {
+router.get("/inventory", requirePermission("inventory.view"), async (req, res) => {
   try {
     const [categories] = await pool.query(
       `SELECT a.*, b.username AS created_by_username
@@ -285,7 +286,7 @@ router.get("/inventory", requireLogin, async (req, res) => {
 });
 
 // Downloads the inventory list in CSV or Excel-compatible XLS format.
-router.get("/inventory/export", requireAdmin, async (req, res) => {
+router.get("/inventory/export", requirePermission("inventory.export"), async (req, res) => {
   const format = String(req.query.format || "csv").trim().toLowerCase();
 
   if (!["csv", "xls"].includes(format)) {
@@ -304,10 +305,38 @@ router.get("/inventory/export", requireAdmin, async (req, res) => {
     const timestamp = getExportTimestamp();
 
     if (format === "csv") {
+      await logActivity({
+        actorId: req.session.user?.id,
+        username: req.session.user?.username,
+        role: req.session.user?.role,
+        action: "inventory_exported",
+        entityType: "inventory_export",
+        entityId: format,
+        description: `${req.session.user?.username || "Admin"} exported inventory as ${format.toUpperCase()}.`,
+        metadata: {
+          format,
+          item_count: items.length
+        }
+      });
+
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename="inventory-${timestamp}.csv"`);
       return res.send(`\uFEFF${buildInventoryCsv(items)}`);
     }
+
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "inventory_exported",
+      entityType: "inventory_export",
+      entityId: format,
+      description: `${req.session.user?.username || "Admin"} exported inventory as ${format.toUpperCase()}.`,
+      metadata: {
+        format,
+        item_count: items.length
+      }
+    });
 
     res.setHeader("Content-Type", "application/vnd.ms-excel; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="inventory-${timestamp}.xls"`);
@@ -320,7 +349,7 @@ router.get("/inventory/export", requireAdmin, async (req, res) => {
 });
 
 // Checks whether an item number is already present before the add-item form is submitted.
-router.get("/inventory/items/verify", requireLogin, async (req, res) => {
+router.get("/inventory/items/verify", requirePermission("inventory.create"), async (req, res) => {
   const barcode = normalizeBarcode(req.query.barcode);
 
   if (!barcode) {
@@ -361,7 +390,7 @@ router.get("/inventory/items/verify", requireLogin, async (req, res) => {
 });
 
 // Loads a lightweight price lookup page with searchable item prices.
-router.get("/price-lookup", requireLogin, async (req, res) => {
+router.get("/price-lookup", requirePermission("price_lookup.view"), async (req, res) => {
   try {
     const [items] = await pool.query(
       `SELECT id, barcode, name, price
@@ -385,7 +414,7 @@ router.get("/price-lookup", requireLogin, async (req, res) => {
 });
 
 // Loads the bulk adjustments page where a single field can be updated for many items.
-router.get("/inventory/adjustments", requireAdmin, async (req, res) => {
+router.get("/inventory/adjustments", requirePermission("inventory.adjust"), async (req, res) => {
   try {
     const [categories] = await pool.query(
       "SELECT * FROM categories ORDER BY category_name ASC"
@@ -415,7 +444,7 @@ router.get("/inventory/adjustments", requireAdmin, async (req, res) => {
 });
 
 // Loads the global history page with items that can open their history hub.
-router.get("/history", requireAdmin, async (req, res) => {
+router.get("/history", requirePermission("history.view"), async (req, res) => {
   try {
     const [items] = await pool.query(
       `SELECT a.*, b.category_name
@@ -440,7 +469,7 @@ router.get("/history", requireAdmin, async (req, res) => {
 });
 
 // Creates a new inventory item and preserves form state on validation errors.
-router.post("/inventory/items", requireAdmin, async (req, res) => {
+router.post("/inventory/items", requirePermission("inventory.create"), async (req, res) => {
   const createdByUserId = Number(req.session.user?.id) || null;
   const barcode = normalizeBarcode(req.body.barcode);
   const name = toUppercaseText(req.body.name);
@@ -527,6 +556,22 @@ router.post("/inventory/items", requireAdmin, async (req, res) => {
       [barcode, name, parsedCost, parsedPrice, quantity, minQuantity, maxQuantity, categoryId, createdByUserId]
     );
 
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "item_created",
+      entityType: "item",
+      entityId: insertResult.insertId,
+      description: `${req.session.user?.username || "Admin"} added item ${name}.`,
+      metadata: {
+        barcode,
+        name,
+        quantity,
+        category_id: categoryId
+      }
+    });
+
     if (jsonResponse) {
       const [rows] = await pool.query(
         `SELECT a.*, b.category_name, c.username AS created_by_username, d.username AS updated_by_username
@@ -564,7 +609,7 @@ router.post("/inventory/items", requireAdmin, async (req, res) => {
 });
 
 // Updates an existing inventory item after validating the submitted values.
-router.post("/inventory/items/:id", requireAdmin, async (req, res) => {
+router.post("/inventory/items/:id", requirePermission("inventory.adjust"), async (req, res) => {
   flash(req, {
     type: "error",
     message: "Item details are read-only here. Use the Adjustments page to update inventory fields."
@@ -573,7 +618,7 @@ router.post("/inventory/items/:id", requireAdmin, async (req, res) => {
 });
 
 // Archives an item so it is hidden from active inventory screens without deleting history.
-router.post("/inventory/items/:id/archive", requireAdmin, async (req, res) => {
+router.post("/inventory/items/:id/archive", requirePermission("inventory.archive_restore"), async (req, res) => {
   const updatedByUserId = Number(req.session.user?.id) || null;
   const id = Number(req.params.id);
 
@@ -604,6 +649,19 @@ router.post("/inventory/items/:id/archive", requireAdmin, async (req, res) => {
       [updatedByUserId, id]
     );
 
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "item_archived",
+      entityType: "item",
+      entityId: id,
+      description: `${req.session.user?.username || "Admin"} archived item ${item.name}.`,
+      metadata: {
+        item_name: item.name
+      }
+    });
+
     flash(req, { type: "success", message: `Item ${item.name} archived successfully.` });
     return res.redirect("/inventory");
   } catch (error) {
@@ -614,7 +672,7 @@ router.post("/inventory/items/:id/archive", requireAdmin, async (req, res) => {
 });
 
 // Restores an archived item back into active inventory screens.
-router.post("/inventory/items/:id/restore", requireAdmin, async (req, res) => {
+router.post("/inventory/items/:id/restore", requirePermission("inventory.archive_restore"), async (req, res) => {
   const updatedByUserId = Number(req.session.user?.id) || null;
   const id = Number(req.params.id);
 
@@ -645,6 +703,19 @@ router.post("/inventory/items/:id/restore", requireAdmin, async (req, res) => {
       [updatedByUserId, id]
     );
 
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "item_restored",
+      entityType: "item",
+      entityId: id,
+      description: `${req.session.user?.username || "Admin"} restored item ${item.name}.`,
+      metadata: {
+        item_name: item.name
+      }
+    });
+
     flash(req, { type: "success", message: `Item ${item.name} restored successfully.` });
     return res.redirect("/inventory");
   } catch (error) {
@@ -655,7 +726,7 @@ router.post("/inventory/items/:id/restore", requireAdmin, async (req, res) => {
 });
 
 // Creates a new category directly from the inventory page modal.
-router.post("/inventory/categories", requireAdmin, async (req, res) => {
+router.post("/inventory/categories", requirePermission("inventory.create"), async (req, res) => {
   const createdByUserId = Number(req.session.user?.id) || null;
   const categoryName = toUppercaseText(req.body.category_name);
   const jsonResponse = wantsJsonResponse(req);
@@ -695,6 +766,19 @@ router.post("/inventory/categories", requireAdmin, async (req, res) => {
       [categoryName, createdByUserId]
     );
 
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "category_created",
+      entityType: "category",
+      entityId: insertResult.insertId,
+      description: `${req.session.user?.username || "Admin"} added category ${categoryName}.`,
+      metadata: {
+        category_name: categoryName
+      }
+    });
+
     if (jsonResponse) {
       return res.status(201).json({
         ok: true,
@@ -725,7 +809,7 @@ router.post("/inventory/categories", requireAdmin, async (req, res) => {
 });
 
 // Redirects the old standalone item details page to inventory where details now open in a modal.
-router.get("/inventory/items/:id", requireLogin, async (req, res) => {
+router.get("/inventory/items/:id", requirePermission("inventory.view"), async (req, res) => {
   const id = Number(req.params.id);
 
   if (!id) {
@@ -741,7 +825,7 @@ router.get("/inventory/items/:id", requireLogin, async (req, res) => {
 });
 
 // Loads the history hub page for a single inventory item.
-router.get("/inventory/items/:id/history", requireAdmin, async (req, res) => {
+router.get("/inventory/items/:id/history", requirePermission("history.view"), async (req, res) => {
   const id = Number(req.params.id);
 
   if (!id) {
@@ -777,7 +861,7 @@ router.get("/inventory/items/:id/history", requireAdmin, async (req, res) => {
 });
 
 // Loads the cost adjustment page and historical cost changes for one item.
-router.get("/inventory/items/:id/cost", requireAdmin, async (req, res) => {
+router.get("/inventory/items/:id/cost", requireAnyPermission(["history.view", "inventory.adjust"]), async (req, res) => {
   const id = Number(req.params.id);
 
   if (!id) {
@@ -816,7 +900,7 @@ router.get("/inventory/items/:id/cost", requireAdmin, async (req, res) => {
 });
 
 // Loads the quantity adjustment history page for one item.
-router.get("/inventory/items/:id/quantity", requireAdmin, async (req, res) => {
+router.get("/inventory/items/:id/quantity", requireAnyPermission(["history.view", "inventory.adjust"]), async (req, res) => {
   const id = Number(req.params.id);
 
   if (!id) {
@@ -855,7 +939,7 @@ router.get("/inventory/items/:id/quantity", requireAdmin, async (req, res) => {
 });
 
 // Loads the min/max quantity adjustment history page for one item.
-router.get("/inventory/items/:id/min-max", requireAdmin, async (req, res) => {
+router.get("/inventory/items/:id/min-max", requireAnyPermission(["history.view", "inventory.adjust"]), async (req, res) => {
   const id = Number(req.params.id);
 
   if (!id) {
@@ -894,7 +978,7 @@ router.get("/inventory/items/:id/min-max", requireAdmin, async (req, res) => {
 });
 
 // Loads the category adjustment history page for one item.
-router.get("/inventory/items/:id/category", requireAdmin, async (req, res) => {
+router.get("/inventory/items/:id/category", requireAnyPermission(["history.view", "inventory.adjust"]), async (req, res) => {
   const id = Number(req.params.id);
 
   if (!id) {
@@ -944,7 +1028,7 @@ router.get("/inventory/items/:id/category", requireAdmin, async (req, res) => {
 });
 
 // Saves a new item cost and records the cost change history.
-router.post("/inventory/items/:id/cost", requireAdmin, async (req, res) => {
+router.post("/inventory/items/:id/cost", requirePermission("inventory.adjust"), async (req, res) => {
   flash(req, {
     type: "error",
     message: "Cost history is read-only. Use the Adjustments page to update item cost."
@@ -953,7 +1037,7 @@ router.post("/inventory/items/:id/cost", requireAdmin, async (req, res) => {
 });
 
 // Loads the price adjustment page and historical price changes for one item.
-router.get("/inventory/items/:id/price", requireAdmin, async (req, res) => {
+router.get("/inventory/items/:id/price", requireAnyPermission(["history.view", "inventory.adjust"]), async (req, res) => {
   const id = Number(req.params.id);
 
   if (!id) {
@@ -992,7 +1076,7 @@ router.get("/inventory/items/:id/price", requireAdmin, async (req, res) => {
 });
 
 // Saves a new item price and records the price change history.
-router.post("/inventory/items/:id/price", requireAdmin, async (req, res) => {
+router.post("/inventory/items/:id/price", requirePermission("inventory.adjust"), async (req, res) => {
   flash(req, {
     type: "error",
     message: "Price history is read-only. Use the Adjustments page to update item price."
@@ -1001,7 +1085,7 @@ router.post("/inventory/items/:id/price", requireAdmin, async (req, res) => {
 });
 
 // Saves one type of adjustment for all checked items in a single transaction.
-router.post("/inventory/adjustments", requireAdmin, async (req, res) => {
+router.post("/inventory/adjustments", requirePermission("inventory.adjust"), async (req, res) => {
   const jsonRequest = isJsonRequest(req);
   const jsonResponse = jsonRequest || wantsJsonResponse(req);
   const adjustedByUserId = Number(req.session.user?.id) || null;
@@ -1240,6 +1324,22 @@ router.post("/inventory/adjustments", requireAdmin, async (req, res) => {
     }
 
     await connection.commit();
+
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "inventory_adjusted",
+      entityType: "adjustment",
+      entityId: adjustmentType,
+      description: `${req.session.user?.username || "Admin"} updated ${pluralize(uniqueIds.length, "item")} for ${getAdjustmentLabel(adjustmentType)}.`,
+      metadata: {
+        adjustment_type: adjustmentType,
+        item_ids: uniqueIds,
+        item_count: uniqueIds.length,
+        note: adjustmentNote || null
+      }
+    });
 
     if (jsonResponse) {
       const [updatedRows] = await pool.query(
