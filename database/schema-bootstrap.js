@@ -479,6 +479,192 @@ async function ensureCreditLedgerSchema() {
   }
 }
 
+// Adds the customer registry and links existing credit records to customer profiles.
+async function ensureCustomerRegistrySchema() {
+  const [customerTableRows] = await pool.query(
+    `SELECT COUNT(*) AS count
+     FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'customers'`
+  );
+
+  if (Number(customerTableRows[0]?.count || 0) === 0) {
+    await pool.query(
+      `CREATE TABLE customers (
+         id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+         name VARCHAR(150) NOT NULL,
+         phone VARCHAR(50) NOT NULL,
+         address VARCHAR(255) NULL,
+         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+         PRIMARY KEY (id),
+         UNIQUE KEY uq_customers_phone (phone),
+         KEY idx_customers_name (name)
+       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+    );
+  }
+
+  const customerTextTargets = [
+    {
+      table: "customers",
+      column: "name",
+      definition: `MODIFY COLUMN name VARCHAR(150)
+       CHARACTER SET utf8mb4
+       COLLATE utf8mb4_unicode_ci
+       NOT NULL`
+    },
+    {
+      table: "customers",
+      column: "phone",
+      definition: `MODIFY COLUMN phone VARCHAR(50)
+       CHARACTER SET utf8mb4
+       COLLATE utf8mb4_unicode_ci
+       NOT NULL`
+    },
+    {
+      table: "transactions",
+      column: "customer_name",
+      definition: `MODIFY COLUMN customer_name VARCHAR(150)
+       CHARACTER SET utf8mb4
+       COLLATE utf8mb4_unicode_ci
+       NULL`
+    },
+    {
+      table: "transactions",
+      column: "customer_phone",
+      definition: `MODIFY COLUMN customer_phone VARCHAR(50)
+       CHARACTER SET utf8mb4
+       COLLATE utf8mb4_unicode_ci
+       NULL`
+    },
+    {
+      table: "credit_ledger",
+      column: "customer_name",
+      definition: `MODIFY COLUMN customer_name VARCHAR(150)
+       CHARACTER SET utf8mb4
+       COLLATE utf8mb4_unicode_ci
+       NOT NULL`
+    },
+    {
+      table: "credit_ledger",
+      column: "customer_phone",
+      definition: `MODIFY COLUMN customer_phone VARCHAR(50)
+       CHARACTER SET utf8mb4
+       COLLATE utf8mb4_unicode_ci
+       NOT NULL`
+    }
+  ];
+
+  for (const target of customerTextTargets) {
+    const [rows] = await pool.query(
+      `SELECT COUNT(*) AS count
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = ?
+         AND COLUMN_NAME = ?`,
+      [target.table, target.column]
+    );
+
+    if (Number(rows[0]?.count || 0) > 0) {
+      await pool.query(`ALTER TABLE ${target.table} ${target.definition}`);
+    }
+  }
+
+  const customerIdType = await getColumnType("customers", "id", "int unsigned");
+  const registryTargets = [
+    {
+      table: "transactions",
+      column: "customer_id",
+      alter: `ADD COLUMN customer_id ${customerIdType} NULL AFTER customer_phone`
+    },
+    {
+      table: "credit_ledger",
+      column: "customer_id",
+      alter: `ADD COLUMN customer_id ${customerIdType} NULL AFTER customer_phone`
+    }
+  ];
+
+  for (const target of registryTargets) {
+    const [rows] = await pool.query(
+      `SELECT COUNT(*) AS count
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = ?
+         AND COLUMN_NAME = ?`,
+      [target.table, target.column]
+    );
+
+    if (Number(rows[0]?.count || 0) === 0) {
+      await pool.query(`ALTER TABLE ${target.table} ${target.alter}`);
+    }
+  }
+
+  const [sourceRows] = await pool.query(
+    `SELECT customer_name COLLATE utf8mb4_unicode_ci AS name,
+            customer_phone COLLATE utf8mb4_unicode_ci AS phone
+     FROM transactions
+     WHERE customer_phone IS NOT NULL
+       AND TRIM(customer_phone) <> ''
+       AND customer_name IS NOT NULL
+       AND TRIM(customer_name) <> ''
+     UNION
+     SELECT customer_name COLLATE utf8mb4_unicode_ci AS name,
+            customer_phone COLLATE utf8mb4_unicode_ci AS phone
+     FROM credit_ledger
+     WHERE customer_phone IS NOT NULL
+       AND TRIM(customer_phone) <> ''
+       AND customer_name IS NOT NULL
+       AND TRIM(customer_name) <> ''`
+  );
+
+  for (const row of sourceRows) {
+    const name = String(row.name || "").trim();
+    const phone = String(row.phone || "").trim();
+
+    if (!name || !phone) {
+      continue;
+    }
+
+    const [existingRows] = await pool.query(
+      "SELECT id, name FROM customers WHERE phone = ? LIMIT 1",
+      [phone]
+    );
+    const existingCustomer = existingRows[0];
+
+    if (!existingCustomer) {
+      await pool.query(
+        "INSERT INTO customers (name, phone) VALUES (?, ?)",
+        [row.name, phone]
+      );
+      continue;
+    }
+
+    if (!existingCustomer.name || existingCustomer.name !== row.name) {
+      await pool.query(
+        "UPDATE customers SET name = ? WHERE id = ?",
+        [row.name, existingCustomer.id]
+      );
+    }
+  }
+
+  await pool.query(
+    `UPDATE transactions a
+     INNER JOIN customers b ON a.customer_phone = b.phone
+     SET a.customer_id = b.id
+     WHERE a.customer_id IS NULL
+       AND a.customer_phone IS NOT NULL
+       AND TRIM(a.customer_phone) <> ''`
+  );
+  await pool.query(
+    `UPDATE credit_ledger a
+     INNER JOIN customers b ON a.customer_phone = b.phone
+     SET a.customer_id = b.id
+     WHERE a.customer_id IS NULL
+       AND a.customer_phone IS NOT NULL
+       AND TRIM(a.customer_phone) <> ''`
+  );
+}
+
 // Adds the category adjustment history table for older databases.
 async function ensureCategoryAdjustmentSchema() {
   const [tableRows] = await pool.query(
@@ -540,5 +726,6 @@ module.exports = {
   ensureCreatedBySchema,
   ensureUpdatedBySchema,
   ensureCreditLedgerSchema,
-  ensureCategoryAdjustmentSchema
+  ensureCategoryAdjustmentSchema,
+  ensureCustomerRegistrySchema
 };

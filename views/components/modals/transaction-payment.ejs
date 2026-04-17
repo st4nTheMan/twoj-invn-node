@@ -38,6 +38,22 @@
       <div id="payment-credit-fields" class="hidden grid gap-4 rounded-2xl border border-violet-200 bg-violet-50 p-4 sm:grid-cols-2">
         <div class="sm:col-span-2">
           <p class="text-xs font-semibold uppercase tracking-[0.2em] text-violet-700">Credit Details</p>
+          <p class="mt-1 text-sm text-violet-700/80">Select a registered customer first, or leave it blank and register a new customer for this credit sale.</p>
+        </div>
+        <div class="sm:col-span-2">
+          <label for="payment-customer-select" class="mb-2 block text-sm font-medium text-slate-700">Registered Customer</label>
+          <select id="payment-customer-select" class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm">
+            <option value="">Register a new customer</option>
+            <% customers.forEach((customer) => { %>
+              <option
+                value="<%= customer.id %>"
+                data-name="<%= customer.name %>"
+                data-phone="<%= customer.phone %>"
+              >
+                <%= customer.name %> • <%= customer.phone %>
+              </option>
+            <% }) %>
+          </select>
         </div>
         <div class="sm:col-span-1">
           <label for="payment-customer-name-input" class="mb-2 block text-sm font-medium text-slate-700">Customer Name</label>

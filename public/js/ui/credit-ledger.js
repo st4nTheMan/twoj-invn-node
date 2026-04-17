@@ -7,6 +7,8 @@
     const selectedItemsBody = document.getElementById("credit-ledger-selected-items-body");
     const noSelectedItemsRow = document.getElementById("credit-ledger-no-selected-items-row");
     const totalAmountInput = document.getElementById("credit-ledger-total-amount");
+    const customerSelect = document.getElementById("credit-ledger-customer-select");
+    const customerNameInput = document.getElementById("credit-ledger-customer-name");
     const customerPhoneInput = document.getElementById("credit-ledger-customer-phone");
     const customerPhoneHiddenInput = document.getElementById("credit-ledger-customer-phone-hidden");
 
@@ -16,6 +18,29 @@
 
     function normalizePhoneDigits(value) {
       return String(value || "").replace(/\D/g, "").slice(0, 10);
+    }
+
+    function syncSelectedCustomerUi() {
+      const selectedOption = customerSelect?.options[customerSelect.selectedIndex] || null;
+      const selectedCustomerId = String(customerSelect?.value || "").trim();
+      const selectedCustomerName = selectedOption?.dataset.name || "";
+      const selectedCustomerPhone = selectedOption?.dataset.phone || "";
+      const phoneDigits = normalizePhoneDigits(selectedCustomerPhone);
+      const hasSelectedCustomer = Boolean(selectedCustomerId);
+
+      if (customerNameInput) {
+        customerNameInput.readOnly = hasSelectedCustomer;
+        customerNameInput.value = hasSelectedCustomer ? selectedCustomerName : customerNameInput.value;
+        customerNameInput.classList.toggle("bg-slate-100", hasSelectedCustomer);
+      }
+
+      if (customerPhoneInput) {
+        customerPhoneInput.readOnly = hasSelectedCustomer;
+        customerPhoneInput.value = hasSelectedCustomer ? phoneDigits : normalizePhoneDigits(customerPhoneInput.value);
+        customerPhoneInput.classList.toggle("bg-slate-100", hasSelectedCustomer);
+      }
+
+      return hasSelectedCustomer;
     }
 
     function syncCustomerPhone() {
@@ -137,11 +162,18 @@
 
     form.addEventListener("submit", (event) => {
       updateItemSummary();
+      const hasSelectedCustomer = syncSelectedCustomerUi();
       const phoneDigits = syncCustomerPhone();
 
       if (!selectedItemsBody.querySelector(".credit-ledger-selected-item-row")) {
         event.preventDefault();
         InventoryUi.showFlashFeedback?.("error", "Select at least one inventory item before saving the credit entry.");
+        return;
+      }
+
+      if (!hasSelectedCustomer && !String(customerNameInput?.value || "").trim()) {
+        event.preventDefault();
+        InventoryUi.showFlashFeedback?.("error", "Choose a registered customer or enter a customer name.");
         return;
       }
 
@@ -151,19 +183,37 @@
       }
     });
 
+    customerSelect?.addEventListener("change", () => {
+      syncSelectedCustomerUi();
+      syncCustomerPhone();
+    });
+
+    customerNameInput?.addEventListener("input", () => {
+      if (customerSelect?.value) {
+        customerSelect.value = "";
+      }
+      syncSelectedCustomerUi();
+    });
+
     customerPhoneInput?.addEventListener("input", () => {
+      if (customerSelect?.value) {
+        customerSelect.value = "";
+      }
+      syncSelectedCustomerUi();
       syncCustomerPhone();
     });
 
     document.getElementById("add-credit-ledger-modal")?.addEventListener("modal:open", () => {
       selectedItemsBody.querySelectorAll(".credit-ledger-selected-item-row").forEach((row) => row.remove());
-      const customerName = document.getElementById("credit-ledger-customer-name");
-      if (customerName) customerName.value = "";
+      if (customerSelect) customerSelect.value = "";
+      if (customerNameInput) customerNameInput.value = "";
       if (customerPhoneInput) customerPhoneInput.value = "";
       if (customerPhoneHiddenInput) customerPhoneHiddenInput.value = "";
+      syncSelectedCustomerUi();
       updateItemSummary();
     });
 
+    syncSelectedCustomerUi();
     syncCustomerPhone();
     updateItemSummary();
   });

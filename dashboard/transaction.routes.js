@@ -1,6 +1,7 @@
 const express = require("express");
 const pool = require("../database/pool");
 const { logActivity } = require("../database/activity-log");
+const { normalizePhilippinePhone, resolveCustomerRecord } = require("../includes/customers");
 const { requirePermission } = require("../middleware/auth");
 const {
   flash,
@@ -11,33 +12,6 @@ const {
 
 // Defines transaction pages and checkout actions.
 const router = express.Router();
-
-// Normalizes phone input into the +63XXXXXXXXXX format used by credit transactions.
-function normalizePhilippinePhone(value) {
-  const digits = String(value || "").replace(/\D/g, "");
-
-  if (!digits) {
-    return "";
-  }
-
-  let localNumber = digits;
-
-  if (localNumber.startsWith("63")) {
-    localNumber = localNumber.slice(2);
-  }
-
-  if (localNumber.startsWith("0")) {
-    localNumber = localNumber.slice(1);
-  }
-
-  localNumber = localNumber.slice(0, 10);
-
-  if (localNumber.length !== 10) {
-    return "";
-  }
-
-  return `+63${localNumber}`;
-}
 
 // Detects whether the caller expects a JSON response instead of a redirect.
 function wantsJsonResponse(req) {
@@ -54,17 +28,24 @@ router.get("/transaction", requirePermission("transaction.create"), async (req, 
        WHERE items.archived_at IS NULL
        ORDER BY items.name ASC`
     );
+    const [customers] = await pool.query(
+      `SELECT id, name, phone
+       FROM customers
+       ORDER BY name ASC, id ASC`
+    );
 
     return res.render("dashboard/transaction", {
       title: "Transaction",
-      items
+      items,
+      customers
     });
   } catch (error) {
     console.error("Failed to load transaction page:", error);
     flash(req, { type: "error", message: "Unable to load transactions." });
     return res.render("dashboard/transaction", {
       title: "Transaction",
-      items: []
+      items: [],
+      customers: []
     });
   }
 });
@@ -73,6 +54,7 @@ router.get("/transaction", requirePermission("transaction.create"), async (req, 
 router.post("/transaction", requirePermission("transaction.create"), async (req, res) => {
   const createdByUserId = Number(req.session.user?.id) || null;
   const paymentMethod = normalizeText(req.body.payment_method).toLowerCase() || "cash";
+  const customerId = Number(req.body.customer_id) || null;
   const customerName = normalizeText(req.body.customer_name);
   const customerPhone = normalizePhilippinePhone(req.body.customer_phone);
   const normalizedCashReceived = normalizeDecimalInput(req.body.cash_received);
@@ -163,18 +145,37 @@ router.post("/transaction", requirePermission("transaction.create"), async (req,
       if (normalizedCashReceived === "" || !Number.isFinite(cashReceived) || cashReceived < totalAmount) {
         throw new Error("Cash received must cover the full transaction total.");
       }
-    } else if (!customerName || !customerPhone) {
-      throw new Error("Customer name and phone number are required for credit transactions.");
+    } else if (!customerId && (!customerName || !customerPhone)) {
+      throw new Error("Choose a registered customer or enter a new customer name and phone number.");
+    }
+
+    let selectedCustomer = null;
+    let createdCustomer = false;
+
+    if (paymentMethod === "credit") {
+      const resolvedCustomer = await resolveCustomerRecord(connection, {
+        customerId,
+        customerName,
+        customerPhone
+      });
+
+      selectedCustomer = resolvedCustomer.customer;
+      createdCustomer = resolvedCustomer.created;
+
+      if (!selectedCustomer) {
+        throw new Error("Choose a valid customer before saving a credit transaction.");
+      }
     }
 
     const [transactionResult] = await connection.query(
-      `INSERT INTO transactions (total_amount, payment_method, customer_name, customer_phone, created_by)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO transactions (total_amount, payment_method, customer_name, customer_phone, customer_id, created_by)
+       VALUES (?, ?, ?, ?, ?, ?)` ,
       [
         totalAmount,
         paymentMethod,
-        customerName || null,
-        customerPhone || null,
+        selectedCustomer?.name || customerName || null,
+        selectedCustomer?.phone || customerPhone || null,
+        selectedCustomer?.id || null,
         createdByUserId
       ]
     );
@@ -205,13 +206,29 @@ router.post("/transaction", requirePermission("transaction.create"), async (req,
         .join(", ");
 
       await connection.query(
-        `INSERT INTO credit_ledger (transaction_id, customer_name, customer_phone, item_summary, total_amount, balance_due, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [transactionId, customerName, customerPhone, itemSummary, totalAmount, totalAmount, createdByUserId]
+        `INSERT INTO credit_ledger (transaction_id, customer_id, customer_name, customer_phone, item_summary, total_amount, balance_due, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [transactionId, selectedCustomer.id, selectedCustomer.name, selectedCustomer.phone, itemSummary, totalAmount, totalAmount, createdByUserId]
       );
     }
 
     await connection.commit();
+
+    if (paymentMethod === "credit" && createdCustomer && selectedCustomer) {
+      await logActivity({
+        actorId: req.session.user?.id,
+        username: req.session.user?.username,
+        role: req.session.user?.role,
+        action: "customer_created",
+        entityType: "customer",
+        entityId: selectedCustomer.id,
+        description: `${req.session.user?.username || "User"} added customer ${selectedCustomer.name}.`,
+        metadata: {
+          customer_name: selectedCustomer.name,
+          customer_phone: selectedCustomer.phone
+        }
+      });
+    }
 
     await logActivity({
       actorId: req.session.user?.id,
@@ -225,12 +242,13 @@ router.post("/transaction", requirePermission("transaction.create"), async (req,
         payment_method: paymentMethod,
         total_amount: totalAmount,
         item_count: lineItems.length,
-        customer_name: customerName || null
+        customer_name: selectedCustomer?.name || customerName || null,
+        customer_id: selectedCustomer?.id || null
       }
     });
 
     const successMessage = paymentMethod === "credit"
-      ? `Credit transaction ${formatInvoice(transactionId)} recorded for ${customerName}.`
+      ? `Credit transaction ${formatInvoice(transactionId)} recorded for ${selectedCustomer?.name || customerName}.`
       : `Transaction ${formatInvoice(transactionId)} completed.`;
 
     if (jsonResponse) {

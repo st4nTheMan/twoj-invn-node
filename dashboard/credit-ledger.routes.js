@@ -1,6 +1,7 @@
 const express = require("express");
 const pool = require("../database/pool");
 const { logActivity } = require("../database/activity-log");
+const { normalizePhilippinePhone, resolveCustomerRecord } = require("../includes/customers");
 const { requirePermission } = require("../middleware/auth");
 const {
   flash,
@@ -9,33 +10,6 @@ const {
 
 // Defines the credit-ledger pages and manual entry actions.
 const router = express.Router();
-
-// Normalizes phone input into the +63XXXXXXXXXX format used by the credit ledger.
-function normalizePhilippinePhone(value) {
-  const digits = String(value || "").replace(/\D/g, "");
-
-  if (!digits) {
-    return "";
-  }
-
-  let localNumber = digits;
-
-  if (localNumber.startsWith("63")) {
-    localNumber = localNumber.slice(2);
-  }
-
-  if (localNumber.startsWith("0")) {
-    localNumber = localNumber.slice(1);
-  }
-
-  localNumber = localNumber.slice(0, 10);
-
-  if (localNumber.length !== 10) {
-    return "";
-  }
-
-  return `+63${localNumber}`;
-}
 
 // Loads the ledger page with recent credit balances and linked invoice details.
 router.get("/credit-ledger", requirePermission("credit_ledger.view"), async (req, res) => {
@@ -47,20 +21,43 @@ router.get("/credit-ledger", requirePermission("credit_ledger.view"), async (req
        WHERE a.archived_at IS NULL
        ORDER BY a.name ASC`
     );
+    const [customers] = await pool.query(
+      `SELECT id, name, phone, created_at, updated_at
+       FROM customers
+       ORDER BY name ASC, id ASC`
+    );
     const [entries] = await pool.query(
       `SELECT a.*,
               b.payment_method,
-              c.username AS created_by_username
+              c.username AS created_by_username,
+              COALESCE(d.name, a.customer_name) AS customer_name,
+              COALESCE(d.phone, a.customer_phone) AS customer_phone
        FROM credit_ledger a
        LEFT JOIN transactions b ON a.transaction_id = b.id
        LEFT JOIN users c ON a.created_by = c.id
+       LEFT JOIN customers d ON a.customer_id = d.id
        ORDER BY a.created_at DESC, a.id DESC`
+    );
+    const [customerSummaries] = await pool.query(
+      `SELECT b.id AS customer_id,
+              b.name,
+              b.phone,
+              COUNT(a.id) AS entry_count,
+              COALESCE(SUM(a.total_amount), 0) AS total_credit_amount,
+              COALESCE(SUM(a.balance_due), 0) AS total_balance_due,
+              MAX(a.created_at) AS last_credit_at
+       FROM customers b
+       LEFT JOIN credit_ledger a ON a.customer_id = b.id
+       GROUP BY b.id, b.name, b.phone
+       ORDER BY total_balance_due DESC, b.name ASC`
     );
 
     return res.render("dashboard/credit-ledger", {
       title: "Credit Ledger",
       entries,
-      items
+      items,
+      customers,
+      customerSummaries
     });
   } catch (error) {
     console.error("Failed to load credit ledger:", error);
@@ -68,7 +65,9 @@ router.get("/credit-ledger", requirePermission("credit_ledger.view"), async (req
     return res.render("dashboard/credit-ledger", {
       title: "Credit Ledger",
       entries: [],
-      items: []
+      items: [],
+      customers: [],
+      customerSummaries: []
     });
   }
 });
@@ -76,6 +75,7 @@ router.get("/credit-ledger", requirePermission("credit_ledger.view"), async (req
 // Saves a manual credit-ledger entry without requiring a checkout transaction.
 router.post("/credit-ledger", requirePermission("credit_ledger.create"), async (req, res) => {
   const createdByUserId = Number(req.session.user?.id) || null;
+  const customerId = Number(req.body.customer_id) || null;
   const customerName = normalizeText(req.body.customer_name);
   const customerPhone = normalizePhilippinePhone(req.body.customer_phone);
   const itemIds = Array.isArray(req.body.item_id)
@@ -89,8 +89,8 @@ router.post("/credit-ledger", requirePermission("credit_ledger.create"), async (
       ? [req.body.quantity]
       : [];
 
-  if (!customerName || !customerPhone || !itemIds.length) {
-    flash(req, { type: "error", message: "Customer name, phone number, and selected items are required." });
+  if ((!customerId && (!customerName || !customerPhone)) || !itemIds.length) {
+    flash(req, { type: "error", message: "Choose a registered customer or enter a new customer name and phone number." });
     return res.redirect("/credit-ledger");
   }
 
@@ -100,6 +100,18 @@ router.post("/credit-ledger", requirePermission("credit_ledger.create"), async (
   }
 
   try {
+    const resolvedCustomer = await resolveCustomerRecord(pool, {
+      customerId,
+      customerName,
+      customerPhone
+    });
+    const selectedCustomer = resolvedCustomer.customer;
+
+    if (!selectedCustomer) {
+      flash(req, { type: "error", message: "Choose a valid customer before saving the credit entry." });
+      return res.redirect("/credit-ledger");
+    }
+
     const normalizedPairs = itemIds.map((itemId, index) => ({
       itemId: Number(itemId),
       quantity: Number(quantities[index])
@@ -146,10 +158,26 @@ router.post("/credit-ledger", requirePermission("credit_ledger.create"), async (
     }
 
     const [insertResult] = await pool.query(
-      `INSERT INTO credit_ledger (customer_name, customer_phone, item_summary, total_amount, balance_due, created_by)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [customerName, customerPhone, itemSummaryParts.join(", "), totalAmount, totalAmount, createdByUserId]
+      `INSERT INTO credit_ledger (customer_id, customer_name, customer_phone, item_summary, total_amount, balance_due, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [selectedCustomer.id, selectedCustomer.name, selectedCustomer.phone, itemSummaryParts.join(", "), totalAmount, totalAmount, createdByUserId]
     );
+
+    if (resolvedCustomer.created) {
+      await logActivity({
+        actorId: req.session.user?.id,
+        username: req.session.user?.username,
+        role: req.session.user?.role,
+        action: "customer_created",
+        entityType: "customer",
+        entityId: selectedCustomer.id,
+        description: `${req.session.user?.username || "User"} added customer ${selectedCustomer.name}.`,
+        metadata: {
+          customer_name: selectedCustomer.name,
+          customer_phone: selectedCustomer.phone
+        }
+      });
+    }
 
     await logActivity({
       actorId: req.session.user?.id,
@@ -158,9 +186,10 @@ router.post("/credit-ledger", requirePermission("credit_ledger.create"), async (
       action: "credit_entry_created",
       entityType: "credit_ledger",
       entityId: insertResult.insertId,
-      description: `${req.session.user?.username || "User"} added a credit entry for ${customerName}.`,
+      description: `${req.session.user?.username || "User"} added a credit entry for ${selectedCustomer.name}.`,
       metadata: {
-        customer_name: customerName,
+        customer_name: selectedCustomer.name,
+        customer_id: selectedCustomer.id,
         total_amount: totalAmount,
         item_count: normalizedPairs.length
       }
@@ -168,7 +197,7 @@ router.post("/credit-ledger", requirePermission("credit_ledger.create"), async (
 
     flash(req, {
       type: "success",
-      message: `Credit entry for ${customerName} added successfully.`
+      message: `Credit entry for ${selectedCustomer.name} added successfully.`
     });
     return res.redirect("/credit-ledger");
   } catch (error) {

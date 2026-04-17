@@ -56,6 +56,7 @@
   <form id="transaction-form" action="/transaction" method="POST" class="order-1 rounded-3xl bg-white p-6 shadow-soft xl:order-2">
     <h2 class="text-xl font-semibold">Selected Items</h2>
     <input id="transaction-payment-method" type="hidden" name="payment_method" value="cash">
+    <input id="transaction-customer-id" type="hidden" name="customer_id" value="">
     <input id="transaction-customer-name" type="hidden" name="customer_name" value="">
     <input id="transaction-customer-phone" type="hidden" name="customer_phone" value="">
     <input id="transaction-cash-received" type="hidden" name="cash_received" value="">
@@ -75,6 +76,6 @@
 </section>
 
 <%- include("../components/modals/out-of-stock") %>
-<%- include("../components/modals/transaction-payment") %>
+<%- include("../components/modals/transaction-payment", { customers }) %>
 
 <%- include("../includes/footer") %>
