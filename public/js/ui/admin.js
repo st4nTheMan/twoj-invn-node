@@ -16,6 +16,11 @@
     const viewRolePermissionsTitle = document.getElementById("view-role-permissions-title");
     const viewRolePermissionsSubtitle = document.getElementById("view-role-permissions-subtitle");
     const viewRolePermissionsList = document.getElementById("view-role-permissions-list");
+    const appBackupForm = document.getElementById("manage-app-backup-form");
+    const appBackupFileInput = document.getElementById("app-backup-file");
+    const appBackupVisibleInput = document.getElementById("app-backup-json-visible");
+    const appBackupHiddenInput = document.getElementById("app-backup-json");
+    const appBackupFileStatus = document.getElementById("app-backup-file-status");
     const permissionCatalog = (() => {
       try {
         return JSON.parse(permissionCatalogNode?.textContent || "[]");
@@ -114,6 +119,52 @@
       });
     });
 
+    function syncBackupJsonValue() {
+      if (!appBackupHiddenInput || !appBackupVisibleInput) {
+        return;
+      }
+
+      appBackupHiddenInput.value = appBackupVisibleInput.value;
+    }
+
+    appBackupVisibleInput?.addEventListener("input", syncBackupJsonValue);
+
+    appBackupFileInput?.addEventListener("change", async () => {
+      const file = appBackupFileInput.files?.[0] || null;
+
+      if (!file || !appBackupVisibleInput || !appBackupHiddenInput) {
+        return;
+      }
+
+      try {
+        const text = await file.text();
+        appBackupVisibleInput.value = text;
+        appBackupHiddenInput.value = text;
+
+        if (appBackupFileStatus) {
+          appBackupFileStatus.textContent = `Loaded ${file.name}.`;
+        }
+      } catch (error) {
+        if (appBackupFileStatus) {
+          appBackupFileStatus.textContent = "Unable to read that backup file.";
+        }
+      }
+    });
+
+    appBackupForm?.addEventListener("submit", (event) => {
+      syncBackupJsonValue();
+
+      if (!String(appBackupHiddenInput?.value || "").trim()) {
+        event.preventDefault();
+        InventoryUi.showFlashFeedback?.("error", "Choose a backup file or paste backup JSON before importing.");
+        return;
+      }
+
+      if (!window.confirm("Import this full backup and replace all current app data?")) {
+        event.preventDefault();
+      }
+    });
+
     document.getElementById("reset-user-password-modal")?.addEventListener("modal:close", () => {
       resetPasswordForm?.reset();
       if (resetPasswordDescription) {
@@ -146,6 +197,19 @@
       }
       if (viewRolePermissionsList) {
         viewRolePermissionsList.innerHTML = '<p class="text-sm text-slate-500">No permissions loaded.</p>';
+      }
+    });
+
+    document.getElementById("manage-app-backup-modal")?.addEventListener("modal:close", () => {
+      appBackupForm?.reset();
+      if (appBackupVisibleInput) {
+        appBackupVisibleInput.value = "";
+      }
+      if (appBackupHiddenInput) {
+        appBackupHiddenInput.value = "";
+      }
+      if (appBackupFileStatus) {
+        appBackupFileStatus.textContent = "Choose a JSON backup file exported from the admin panel, or paste the backup text below.";
       }
     });
   });

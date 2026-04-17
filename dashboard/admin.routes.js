@@ -16,9 +16,94 @@ const { flash, normalizeText } = require("../includes/helpers");
 
 // Defines admin-only pages for managing dashboard users, roles, and audit history.
 const router = express.Router();
+const BACKUP_TABLES = [
+  { name: "roles", orderBy: "id ASC" },
+  { name: "role_permissions", orderBy: "id ASC" },
+  { name: "users", orderBy: "id ASC" },
+  { name: "categories", orderBy: "id ASC" },
+  { name: "items", orderBy: "id ASC" },
+  { name: "customers", orderBy: "id ASC" },
+  { name: "transactions", orderBy: "id ASC" },
+  { name: "credit_ledger", orderBy: "id ASC" },
+  { name: "transaction_items", orderBy: "id ASC" },
+  { name: "cost_adjustments", orderBy: "id ASC" },
+  { name: "qty_adjustments", orderBy: "id ASC" },
+  { name: "min_max_adjustments", orderBy: "id ASC" },
+  { name: "price_adjustments", orderBy: "id ASC" },
+  { name: "category_adjustments", orderBy: "id ASC" },
+  { name: "activity_logs", orderBy: "id ASC" }
+];
+
+function getBackupTimestamp() {
+  return new Date().toISOString().replace(/[:.]/g, "-");
+}
+
+async function buildBackupSnapshot(connection = pool) {
+  const tables = {};
+
+  for (const table of BACKUP_TABLES) {
+    const [rows] = await connection.query(
+      `SELECT *
+       FROM ${table.name}
+       ORDER BY ${table.orderBy}`
+    );
+    tables[table.name] = rows;
+  }
+
+  return {
+    app: "two-js-invn",
+    format: "full-app-backup",
+    version: 1,
+    exported_at: new Date().toISOString(),
+    tables
+  };
+}
+
+async function restoreBackupSnapshot(connection, payload) {
+  const tables = payload?.tables && typeof payload.tables === "object" ? payload.tables : null;
+
+  if (!tables) {
+    throw new Error("Backup file is missing the tables payload.");
+  }
+
+  for (const table of BACKUP_TABLES) {
+    if (!Array.isArray(tables[table.name])) {
+      throw new Error(`Backup file is missing the ${table.name} table data.`);
+    }
+  }
+
+  await connection.query("SET FOREIGN_KEY_CHECKS = 0");
+
+  try {
+    for (const table of [...BACKUP_TABLES].reverse()) {
+      await connection.query(`DELETE FROM ${table.name}`);
+    }
+
+    for (const table of BACKUP_TABLES) {
+      const rows = tables[table.name];
+
+      if (!rows.length) {
+        continue;
+      }
+
+      const columns = Object.keys(rows[0]);
+      const placeholders = columns.map(() => "?").join(", ");
+      const sql = `INSERT INTO ${table.name} (${columns.join(", ")}) VALUES (${placeholders})`;
+
+      for (const row of rows) {
+        await connection.query(
+          sql,
+          columns.map((column) => row[column] === undefined ? null : row[column])
+        );
+      }
+    }
+  } finally {
+    await connection.query("SET FOREIGN_KEY_CHECKS = 1");
+  }
+}
 
 // Loads the admin dashboard with user accounts, custom roles, and permission metadata.
-router.get("/admin", requireAnyPermission(["admin.users.view", "admin.roles.view", "activity_logs.view"]), async (req, res) => {
+router.get("/admin", requireAnyPermission(["admin.users.view", "admin.roles.view", "activity_logs.view", "admin.data.manage"]), async (req, res) => {
   try {
     const [users] = await pool.query(
       `SELECT a.id,
@@ -59,7 +144,11 @@ router.get("/admin", requireAnyPermission(["admin.users.view", "admin.roles.view
       users,
       roles,
       permissionGroups: PERMISSION_GROUPS,
-      summary
+      summary,
+      backupSummary: {
+        tableCount: BACKUP_TABLES.length,
+        tableNames: BACKUP_TABLES.map((table) => table.name)
+      }
     });
   } catch (error) {
     console.error("Failed to load admin panel:", error);
@@ -69,12 +158,110 @@ router.get("/admin", requireAnyPermission(["admin.users.view", "admin.roles.view
       users: [],
       roles: [],
       permissionGroups: PERMISSION_GROUPS,
+      backupSummary: {
+        tableCount: BACKUP_TABLES.length,
+        tableNames: BACKUP_TABLES.map((table) => table.name)
+      },
       summary: {
         totalUsers: 0,
         totalRoles: 0,
         customRoles: 0
       }
     });
+  }
+});
+
+// Downloads a full JSON backup that includes all application tables.
+router.get("/admin/data/export", requirePermission("admin.data.manage"), async (req, res) => {
+  try {
+    const backup = await buildBackupSnapshot();
+    const timestamp = getBackupTimestamp();
+    const totalRowCount = Object.values(backup.tables).reduce((sum, rows) => sum + rows.length, 0);
+
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "app_data_exported",
+      entityType: "admin_backup",
+      entityId: "full_export",
+      description: `${req.session.user?.username || "Admin"} exported a full application backup.`,
+      metadata: {
+        table_count: BACKUP_TABLES.length,
+        row_count: totalRowCount,
+        format: "json"
+      }
+    });
+
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="app-backup-${timestamp}.json"`);
+    return res.send(JSON.stringify(backup, null, 2));
+  } catch (error) {
+    console.error("Failed to export app backup:", error);
+    flash(req, { type: "error", message: "Unable to export the full app backup right now." });
+    return res.redirect("/admin");
+  }
+});
+
+// Restores the full application dataset from a JSON backup created by the admin panel.
+router.post("/admin/data/import", requirePermission("admin.data.manage"), async (req, res) => {
+  const rawBackupJson = String(req.body.backup_json || "").trim();
+
+  if (!rawBackupJson) {
+    flash(req, { type: "error", message: "Choose a backup file or paste a backup JSON before importing." });
+    return res.redirect("/admin");
+  }
+
+  let parsedBackup = null;
+
+  try {
+    parsedBackup = JSON.parse(rawBackupJson);
+  } catch (error) {
+    flash(req, { type: "error", message: "The backup file is not valid JSON." });
+    return res.redirect("/admin");
+  }
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+    await restoreBackupSnapshot(connection, parsedBackup);
+    await connection.commit();
+
+    const importedRowCount = Object.values(parsedBackup.tables || {}).reduce(
+      (sum, rows) => sum + (Array.isArray(rows) ? rows.length : 0),
+      0
+    );
+
+    await logActivity({
+      actorId: null,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "app_data_imported",
+      entityType: "admin_backup",
+      entityId: "full_import",
+      description: `${req.session.user?.username || "Admin"} imported a full application backup.`,
+      metadata: {
+        table_count: BACKUP_TABLES.length,
+        row_count: importedRowCount,
+        imported_from: parsedBackup.exported_at || null,
+        format: parsedBackup.format || null,
+        version: parsedBackup.version || null
+      }
+    });
+
+    flash(req, {
+      type: "success",
+      message: "Full application backup imported successfully."
+    });
+    return res.redirect("/admin");
+  } catch (error) {
+    await connection.rollback();
+    console.error("Failed to import app backup:", error);
+    flash(req, { type: "error", message: error.message || "Unable to import the full app backup right now." });
+    return res.redirect("/admin");
+  } finally {
+    connection.release();
   }
 });
 

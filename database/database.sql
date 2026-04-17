@@ -373,6 +373,7 @@ INSERT INTO role_permissions (role_id, permission_key) VALUES
   (1, 'admin.users.reset_password'),
   (1, 'admin.roles.view'),
   (1, 'admin.roles.create'),
+  (1, 'admin.data.manage'),
   (1, 'activity_logs.view'),
   (2, 'price_lookup.view'),
   (2, 'transaction.create'),

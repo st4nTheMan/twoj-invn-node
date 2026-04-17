@@ -38,6 +38,7 @@ const PERMISSION_GROUPS = [
       { key: "admin.users.reset_password", label: "Reset user passwords", description: "Change another user's password." },
       { key: "admin.roles.view", label: "View roles", description: "Open the role management section." },
       { key: "admin.roles.create", label: "Add roles", description: "Create custom roles with permissions." },
+      { key: "admin.data.manage", label: "Manage backups", description: "Export and import the full application dataset." },
       { key: "activity_logs.view", label: "View activity logs", description: "Open the audit trail page." }
     ]
   }
@@ -96,7 +97,7 @@ function getDefaultDashboardPathForPermissions(permissions) {
   if (granted.has("credit_ledger.view")) return "/credit-ledger";
   if (granted.has("price_lookup.view")) return "/price-lookup";
   if (granted.has("reports.view")) return "/reports";
-  if (granted.has("admin.users.view") || granted.has("admin.roles.view")) return "/admin";
+  if (granted.has("admin.users.view") || granted.has("admin.roles.view") || granted.has("admin.data.manage")) return "/admin";
   if (granted.has("activity_logs.view")) return "/admin/activity-logs";
 
   return "/login";
