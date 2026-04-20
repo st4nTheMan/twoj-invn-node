@@ -1,4 +1,5 @@
 const mysql = require("mysql2/promise");
+const fs = require('fs');
 
 // Centralized MySQL connection settings used across route modules.
 const dbConfig = {
@@ -8,7 +9,11 @@ const dbConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit: 10
+  connectionLimit: 10,
+  ssl: {
+    ca: fs.readFileSync(process.env.DB_SSL_CA),
+    rejectUnauthorized: true
+  }
 };
 
 // Shared connection pool for all database reads and writes in the app.
