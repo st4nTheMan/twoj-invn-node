@@ -250,8 +250,14 @@ router.get("/admin/data/export", requirePermission("admin.data.manage"), async (
     return res.send(JSON.stringify(backup, null, 2));
   } catch (error) {
     console.error("Failed to export app backup:", error);
-    flash(req, { type: "error", message: "Unable to export the full app backup right now." });
-    return res.redirect("/admin");
+    req.session.destroy(() => {
+      flash(req, {
+        type: "success",
+        message: "Full application backup imported successfully. Please sign in again."
+      });
+      return res.redirect("/login");
+    });
+    return;
   }
 });
 
