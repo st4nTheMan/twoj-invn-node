@@ -239,8 +239,12 @@ function respondAdjustmentResult(req, res, type, message) {
   return res.redirect("/inventory/adjustments");
 }
 
-// Loads the inventory dashboard with categories and the latest item list.
+// Loads the inventory dashboard with paginated items and category list.
 router.get("/inventory", requirePermission("inventory.view"), async (req, res) => {
+  const ITEMS_PER_PAGE = 25;
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const offset = (page - 1) * ITEMS_PER_PAGE;
+
   try {
     const [categories] = await pool.query(
       `SELECT a.*, b.username AS created_by_username
@@ -248,6 +252,11 @@ router.get("/inventory", requirePermission("inventory.view"), async (req, res) =
        LEFT JOIN users b ON a.created_by = b.id
        ORDER BY a.category_name ASC`
     );
+
+    const [[{ total }]] = await pool.query(
+      `SELECT COUNT(*) AS total FROM items WHERE archived_at IS NULL`
+    );
+
     const [items] = await pool.query(
       `SELECT a.*, b.category_name, c.username AS created_by_username, d.username AS updated_by_username
        FROM items a
@@ -255,8 +264,11 @@ router.get("/inventory", requirePermission("inventory.view"), async (req, res) =
        LEFT JOIN users c ON a.created_by = c.id
        LEFT JOIN users d ON a.updated_by = d.id
        WHERE a.archived_at IS NULL
-       ORDER BY a.id DESC`
+       ORDER BY a.id DESC
+       LIMIT ? OFFSET ?`,
+      [ITEMS_PER_PAGE, offset]
     );
+
     const [archivedItems] = await pool.query(
       `SELECT a.*, b.category_name, c.username AS created_by_username, d.username AS updated_by_username
        FROM items a
@@ -267,11 +279,21 @@ router.get("/inventory", requirePermission("inventory.view"), async (req, res) =
        ORDER BY a.archived_at DESC, a.id DESC`
     );
 
+    const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
+
     return res.render("dashboard/inventory", {
       title: "Inventory",
       categories,
       items,
-      archivedItems
+      archivedItems,
+      pagination: {
+        page,
+        totalPages,
+        total,
+        perPage: ITEMS_PER_PAGE,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
     });
   } catch (error) {
     console.error("Failed to load inventory:", error);
@@ -280,7 +302,8 @@ router.get("/inventory", requirePermission("inventory.view"), async (req, res) =
       title: "Inventory",
       categories: [],
       items: [],
-      archivedItems: []
+      archivedItems: [],
+      pagination: { page: 1, totalPages: 0, total: 0, perPage: 25, hasNext: false, hasPrev: false }
     });
   }
 });
