@@ -1,0 +1,46 @@
+<% /* Reusable pagination controls. Expects: pagination, baseUrl */ %>
+<% if (pagination.totalPages > 1) { %>
+<div class="flex items-center justify-between px-4 py-3 text-sm text-slate-600">
+  <p>
+    Showing
+    <span class="font-semibold"><%= ((pagination.page - 1) * pagination.perPage) + 1 %></span>–<span class="font-semibold"><%= Math.min(pagination.page * pagination.perPage, pagination.total) %></span>
+    of <span class="font-semibold"><%= pagination.total %></span> items
+  </p>
+  <div class="flex items-center gap-1">
+    <% if (pagination.hasPrev) { %>
+      <a href="<%= baseUrl %>?page=1" class="rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">«</a>
+      <a href="<%= baseUrl %>?page=<%= pagination.page - 1 %>" class="rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">‹</a>
+    <% } else { %>
+      <span class="rounded-xl border border-slate-200 px-3 py-2 font-medium text-slate-300 cursor-not-allowed">«</span>
+      <span class="rounded-xl border border-slate-200 px-3 py-2 font-medium text-slate-300 cursor-not-allowed">‹</span>
+    <% } %>
+
+    <%
+      const windowSize = 2;
+      const startPage = Math.max(1, pagination.page - windowSize);
+      const endPage = Math.min(pagination.totalPages, pagination.page + windowSize);
+    %>
+    <% if (startPage > 1) { %>
+      <span class="px-2 text-slate-400">…</span>
+    <% } %>
+    <% for (let p = startPage; p <= endPage; p++) { %>
+      <% if (p === pagination.page) { %>
+        <span class="rounded-xl bg-sky-600 px-3 py-2 font-semibold text-white"><%= p %></span>
+      <% } else { %>
+        <a href="<%= baseUrl %>?page=<%= p %>" class="rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50"><%= p %></a>
+      <% } %>
+    <% } %>
+    <% if (endPage < pagination.totalPages) { %>
+      <span class="px-2 text-slate-400">…</span>
+    <% } %>
+
+    <% if (pagination.hasNext) { %>
+      <a href="<%= baseUrl %>?page=<%= pagination.page + 1 %>" class="rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">›</a>
+      <a href="<%= baseUrl %>?page=<%= pagination.totalPages %>" class="rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">»</a>
+    <% } else { %>
+      <span class="rounded-xl border border-slate-200 px-3 py-2 font-medium text-slate-300 cursor-not-allowed">›</span>
+      <span class="rounded-xl border border-slate-200 px-3 py-2 font-medium text-slate-300 cursor-not-allowed">»</span>
+    <% } %>
+  </div>
+</div>
+<% } %>

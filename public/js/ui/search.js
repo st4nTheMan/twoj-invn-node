@@ -23,6 +23,32 @@
       return clone.textContent.toLowerCase().replace(/\s+/g, " ").trim();
     }
 
+    // Navigates to the same page with a server-side search query instead of hiding rows.
+    function bindServerSearch(inputId, baseUrl) {
+      const searchInput = document.getElementById(inputId);
+      if (!searchInput) return;
+
+      // Pre-fill the input from the current URL on page load.
+      const params = new URLSearchParams(window.location.search);
+      searchInput.value = params.get("search") || "";
+
+      let searchTimer = null;
+      searchInput.addEventListener("input", () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          const url = new URL(window.location.href);
+          const query = searchInput.value.trim();
+          if (query) {
+            url.searchParams.set("search", query);
+          } else {
+            url.searchParams.delete("search");
+          }
+          url.searchParams.set("page", "1");
+          window.location.href = url.toString();
+        }, 400);
+      });
+    }
+
     // Wires one search input to a table body and optional empty-state message.
     function bindSearch(inputId, tableId, emptyId) {
       const searchInput = document.getElementById(inputId);
@@ -83,7 +109,7 @@
       });
     });
 
-    bindSearch("inventory-search", "inventory-table", "inventory-empty-search");
+    bindServerSearch("inventory-search", "/inventory");
     bindSearch("adjustments-search", "adjustments-table", "adjustments-empty-search");
     bindSearch("history-search", "history-table", "history-empty-search");
     bindSearch("price-lookup-search", "price-lookup-table", "price-lookup-empty-search");

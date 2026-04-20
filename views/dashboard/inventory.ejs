@@ -68,6 +68,8 @@
 </section>
 
 <section class="table-scroll mb-6 overflow-x-auto rounded-3xl bg-white shadow-soft">
+  <%- include("../components/pagination", { pagination, baseUrl: "/inventory" }) %>
+
   <table id="inventory-table" class="responsive-table min-w-full text-left text-sm">
     <thead class="bg-slate-50 text-slate-600">
       <tr>
@@ -120,6 +122,8 @@
       <% } %>
     </tbody>
   </table>
+
+  <%- include("../components/pagination", { pagination, baseUrl: "/inventory" }) %>
   <p id="inventory-empty-search" class="hidden p-6 text-center text-sm text-slate-500">No items found.</p>
 </section>
 
