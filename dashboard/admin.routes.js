@@ -59,6 +59,45 @@ async function buildBackupSnapshot(connection = pool) {
   };
 }
 
+function normalizeMysqlDateTime(value) {
+  if (value === null || value === undefined || value === "") {
+    return value ?? null;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 19).replace("T", " ");
+  }
+
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toISOString().slice(0, 19).replace("T", " ");
+}
+
+async function getTableColumns(connection, tableName) {
+  const [rows] = await connection.query(
+    `SELECT COLUMN_NAME
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = ?
+     ORDER BY ORDINAL_POSITION`,
+    [tableName]
+  );
+
+  return new Set(rows.map((row) => row.COLUMN_NAME));
+}
+
 async function restoreBackupSnapshot(connection, payload) {
   const tables = payload?.tables && typeof payload.tables === "object" ? payload.tables : null;
 
@@ -86,14 +125,27 @@ async function restoreBackupSnapshot(connection, payload) {
         continue;
       }
 
-      const columns = Object.keys(rows[0]);
+      const tableColumns = await getTableColumns(connection, table.name);
+      const columns = Object.keys(rows[0]).filter((column) => tableColumns.has(column));
+
+      if (!columns.length) {
+        continue;
+      }
+
       const placeholders = columns.map(() => "?").join(", ");
       const sql = `INSERT INTO ${table.name} (${columns.join(", ")}) VALUES (${placeholders})`;
 
       for (const row of rows) {
         await connection.query(
           sql,
-          columns.map((column) => row[column] === undefined ? null : row[column])
+          columns.map((column) => {
+            const value = row[column] === undefined ? null : row[column];
+              if (/_at$/i.test(column)) {
+                return normalizeMysqlDateTime(value);
+              }
+
+              return value;
+            })
         );
       }
     }
