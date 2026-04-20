@@ -38,8 +38,8 @@ app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
 // Registers request parsing, sessions, shared view locals, and route modules.
-app.use(express.urlencoded({ extended: true, limit: "25mb" }));
-app.use(express.json({ limit: "25mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb", parameterLimit: 100000 }));
+app.use(express.json({ limit: "10mb" }));
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "inventory-system-secret",
@@ -90,7 +90,6 @@ async function startServer() {
   await ensureArchiveSchema();
   await ensureAdjustmentNotesSchema();
   await ensureCreditLedgerSchema();
-  await ensureCustomerRegistrySchema();
   await ensureCustomerRegistrySchema();
   await ensureCategoryAdjustmentSchema();
   await ensureAdjustmentAuditSchema();
