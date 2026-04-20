@@ -1,6 +1,9 @@
 # Environment Variables
 .env
 
+#SSL Key Certificates
+certs/*.pem
+
 # Only for study notes
 STUDY_NOTES.txt
 TWO-JS-INVN STUDY NOTES.pdf
