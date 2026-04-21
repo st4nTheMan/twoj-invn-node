@@ -75,9 +75,27 @@
   </div>
 </section>
 
+<%- include("../components/filter-sort-bar", {
+  selectedSort,
+  sortOptions: [
+    { value: "newest",      label: "Newest first" },
+    { value: "oldest",      label: "Oldest first" },
+    { value: "name_asc",    label: "Name A–Z" },
+    { value: "name_desc",   label: "Name Z–A" },
+    { value: "barcode_asc", label: "Item No. A–Z" },
+    { value: "barcode_desc",label: "Item No. Z–A" },
+    { value: "price_asc",   label: "Price low–high" },
+    { value: "price_desc",  label: "Price high–low" }
+  ],
+  filterName: "category",
+  filterLabel: "Category",
+  filterOptions: categories.map((c) => ({ value: c.id, label: c.category_name })),
+  selectedFilter: selectedCategory
+}) %>
+
 <section class="table-scroll mb-6 overflow-x-auto rounded-3xl bg-white shadow-soft">
   <div id="inventory-pagination-top">
-    <%- include("../components/pagination", { pagination, baseUrl: "/inventory", search: typeof search !== 'undefined' ? search : '' }) %>
+    <%- include("../components/pagination", { pagination, baseUrl: "/inventory", search, extras: { category: selectedCategory, sort: selectedSort } }) %>
   </div>
 
   <table id="inventory-table" class="responsive-table min-w-full text-left text-sm">

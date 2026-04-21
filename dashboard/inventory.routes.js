@@ -9,7 +9,8 @@ const {
   normalizeText,
   toUppercaseText,
   buildPagination,
-  buildPaginationHtml
+  buildPaginationHtml,
+  buildSortClause
 } = require("../includes/helpers");
 
 // Defines inventory pages and form actions for items and categories.
@@ -245,15 +246,42 @@ function respondAdjustmentResult(req, res, type, message) {
 router.get("/inventory", requirePermission("inventory.view"), async (req, res) => {
   const search = String(req.query.search || "").trim();
   const searchWildcard = search ? `%${search}%` : null;
+  const categoryFilter = req.query.category ? Number(req.query.category) : null;
+  const sort = String(req.query.sort || "newest");
   const isAjax = req.xhr || String(req.get("accept") || "").includes("application/json");
+
+  const validSorts = {
+    name_asc:       "a.name ASC",
+    name_desc:      "a.name DESC",
+    barcode_asc:    "a.barcode ASC",
+    barcode_desc:   "a.barcode DESC",
+    price_asc:      "a.price ASC",
+    price_desc:     "a.price DESC",
+    newest:         "a.id DESC",
+    oldest:         "a.id ASC"
+  };
+  const orderBy = buildSortClause(sort, validSorts, "a.id DESC");
+
+  const conditions = ["a.archived_at IS NULL"];
+  const params = [];
+
+  if (searchWildcard) {
+    conditions.push("(a.name LIKE ? OR a.barcode LIKE ? OR COALESCE(b.category_name, 'No Category') LIKE ?)");
+    params.push(searchWildcard, searchWildcard, searchWildcard);
+  }
+  if (categoryFilter) {
+    conditions.push("a.category_id = ?");
+    params.push(categoryFilter);
+  }
+
+  const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
   try {
     const [[{ total }]] = await pool.query(
       `SELECT COUNT(*) AS total FROM items a
        LEFT JOIN categories b ON a.category_id = b.id
-       WHERE a.archived_at IS NULL
-       ${searchWildcard ? "AND (a.name LIKE ? OR a.barcode LIKE ? OR COALESCE(b.category_name, 'No Category') LIKE ?)" : ""}`,
-      searchWildcard ? [searchWildcard, searchWildcard, searchWildcard] : []
+       ${whereClause}`,
+      params
     );
 
     const pagination = buildPagination(req.query, total);
@@ -264,13 +292,10 @@ router.get("/inventory", requirePermission("inventory.view"), async (req, res) =
        LEFT JOIN categories b ON a.category_id = b.id
        LEFT JOIN users c ON a.created_by = c.id
        LEFT JOIN users d ON a.updated_by = d.id
-       WHERE a.archived_at IS NULL
-       ${searchWildcard ? "AND (a.name LIKE ? OR a.barcode LIKE ? OR COALESCE(b.category_name, 'No Category') LIKE ?)" : ""}
-       ORDER BY a.id DESC
+       ${whereClause}
+       ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`,
-      searchWildcard
-        ? [searchWildcard, searchWildcard, searchWildcard, pagination.perPage, pagination.offset]
-        : [pagination.perPage, pagination.offset]
+      [...params, pagination.perPage, pagination.offset]
     );
 
     if (isAjax) {
@@ -278,7 +303,7 @@ router.get("/inventory", requirePermission("inventory.view"), async (req, res) =
         ok: true,
         items,
         pagination,
-        paginationHtml: buildPaginationHtml(pagination, "/inventory", search)
+        paginationHtml: buildPaginationHtml(pagination, "/inventory", search, { category: categoryFilter || "", sort })
       });
     }
 
@@ -304,7 +329,9 @@ router.get("/inventory", requirePermission("inventory.view"), async (req, res) =
       items,
       archivedItems,
       pagination,
-      search
+      search,
+      selectedCategory: categoryFilter || "",
+      selectedSort: sort
     });
   } catch (error) {
     console.error("Failed to load inventory:", error);
@@ -320,7 +347,9 @@ router.get("/inventory", requirePermission("inventory.view"), async (req, res) =
       items: [],
       archivedItems: [],
       pagination: buildPagination({}, 0),
-      search: ""
+      search: "",
+      selectedCategory: "",
+      selectedSort: "newest"
     });
   }
 });
@@ -522,15 +551,35 @@ router.get("/inventory/adjustments", requirePermission("inventory.adjust"), asyn
 router.get("/history", requirePermission("history.view"), async (req, res) => {
   const search = String(req.query.search || "").trim();
   const searchWildcard = search ? `%${search}%` : null;
+  const sort = String(req.query.sort || "newest");
   const isAjax = req.xhr || String(req.get("accept") || "").includes("application/json");
+
+  const validSorts = {
+    name_asc:     "a.name ASC",
+    name_desc:    "a.name DESC",
+    barcode_asc:  "a.barcode ASC",
+    barcode_desc: "a.barcode DESC",
+    newest:       "a.id DESC",
+    oldest:       "a.id ASC"
+  };
+  const orderBy = buildSortClause(sort, validSorts, "a.id DESC");
+
+  const conditions = ["a.archived_at IS NULL"];
+  const params = [];
+
+  if (searchWildcard) {
+    conditions.push("(a.name LIKE ? OR a.barcode LIKE ? OR COALESCE(b.category_name, 'No Category') LIKE ?)");
+    params.push(searchWildcard, searchWildcard, searchWildcard);
+  }
+
+  const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
   try {
     const [[{ total }]] = await pool.query(
       `SELECT COUNT(*) AS total FROM items a
        LEFT JOIN categories b ON a.category_id = b.id
-       WHERE a.archived_at IS NULL
-       ${searchWildcard ? "AND (a.name LIKE ? OR a.barcode LIKE ? OR COALESCE(b.category_name, 'No Category') LIKE ?)" : ""}`,
-      searchWildcard ? [searchWildcard, searchWildcard, searchWildcard] : []
+       ${whereClause}`,
+      params
     );
 
     const pagination = buildPagination(req.query, total);
@@ -539,13 +588,10 @@ router.get("/history", requirePermission("history.view"), async (req, res) => {
       `SELECT a.*, b.category_name
        FROM items a
        LEFT JOIN categories b ON a.category_id = b.id
-       WHERE a.archived_at IS NULL
-       ${searchWildcard ? "AND (a.name LIKE ? OR a.barcode LIKE ? OR COALESCE(b.category_name, 'No Category') LIKE ?)" : ""}
-       ORDER BY a.id DESC
+       ${whereClause}
+       ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`,
-      searchWildcard
-        ? [searchWildcard, searchWildcard, searchWildcard, pagination.perPage, pagination.offset]
-        : [pagination.perPage, pagination.offset]
+      [...params, pagination.perPage, pagination.offset]
     );
 
     if (isAjax) {
@@ -553,7 +599,7 @@ router.get("/history", requirePermission("history.view"), async (req, res) => {
         ok: true,
         items,
         pagination,
-        paginationHtml: buildPaginationHtml(pagination, "/history", search)
+        paginationHtml: buildPaginationHtml(pagination, "/history", search, { sort })
       });
     }
 
@@ -561,7 +607,8 @@ router.get("/history", requirePermission("history.view"), async (req, res) => {
       title: "History",
       items,
       pagination,
-      search
+      search,
+      selectedSort: sort
     });
   } catch (error) {
     console.error("Failed to load history page:", error);
@@ -575,7 +622,86 @@ router.get("/history", requirePermission("history.view"), async (req, res) => {
       title: "History",
       items: [],
       pagination: buildPagination({}, 0),
-      search: ""
+      search: "",
+      selectedSort: "newest"
+    });
+  }
+});
+
+router.get("/price-lookup", requirePermission("price_lookup.view"), async (req, res) => {
+  const search = String(req.query.search || "").trim();
+  const searchWildcard = search ? `%${search}%` : null;
+  const sort = String(req.query.sort || "newest");
+  const isAjax = req.xhr || String(req.get("accept") || "").includes("application/json");
+
+  const validSorts = {
+    name_asc:    "name ASC",
+    name_desc:   "name DESC",
+    barcode_asc: "barcode ASC",
+    barcode_desc:"barcode DESC",
+    price_asc:   "price ASC",
+    price_desc:  "price DESC",
+    newest:      "id DESC",
+    oldest:      "id ASC"
+  };
+  const orderBy = buildSortClause(sort, validSorts, "id DESC");
+
+  const conditions = ["archived_at IS NULL"];
+  const params = [];
+
+  if (searchWildcard) {
+    conditions.push("(name LIKE ? OR barcode LIKE ?)");
+    params.push(searchWildcard, searchWildcard);
+  }
+
+  const whereClause = `WHERE ${conditions.join(" AND ")}`;
+
+  try {
+    const [[{ total }]] = await pool.query(
+      `SELECT COUNT(*) AS total FROM items ${whereClause}`,
+      params
+    );
+
+    const pagination = buildPagination(req.query, total);
+
+    const [items] = await pool.query(
+      `SELECT id, barcode, name, price FROM items
+       ${whereClause}
+       ORDER BY ${orderBy}
+       LIMIT ? OFFSET ?`,
+      [...params, pagination.perPage, pagination.offset]
+    );
+
+    if (isAjax) {
+      return res.json({
+        ok: true,
+        items,
+        pagination,
+        paginationHtml: buildPaginationHtml(pagination, "/price-lookup", search, { sort })
+      });
+    }
+
+    return res.render("dashboard/price-lookup", {
+      title: "Price Lookup",
+      items,
+      pagination,
+      search,
+      selectedSort: sort
+    });
+  } catch (error) {
+    console.error("Failed to load price lookup page:", error);
+    flash(req, { type: "error", message: "Unable to load price lookup." });
+
+    if (isAjax) {
+      return res.status(500).json({ ok: false, message: "Unable to load price lookup." });
+    }
+
+    return res.render("dashboard/price-lookup", {
+      title: "Price Lookup",
+      items: [],
+      pagination: buildPagination({}, 0),
+      search: "",
+      selectedSort: "newest"
     });
   }
 });
