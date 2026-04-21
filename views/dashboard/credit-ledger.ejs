@@ -83,6 +83,23 @@
   </article>
 </section>
 
+<%- include("../components/filter-sort-bar", {
+  selectedSort,
+  sortOptions: [
+    { value: "newest",     label: "Newest first" },
+    { value: "oldest",     label: "Oldest first" },
+    { value: "total_asc",  label: "Total low–high" },
+    { value: "total_desc", label: "Total high–low" }
+  ],
+  filterName: "balance",
+  filterLabel: "Balance",
+  filterOptions: [
+    { value: "unpaid", label: "Unpaid" },
+    { value: "paid",   label: "Paid" }
+  ],
+  selectedFilter: selectedBalance
+  }) %>
+
 <section class="rounded-3xl bg-white shadow-soft">
   <div class="border-b border-slate-200 p-5 relative">
     <input id="credit-ledger-search" type="text" placeholder="Search by customer, phone number, invoice, or item summary..." value="<%= typeof search !== 'undefined' ? search : '' %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
@@ -93,7 +110,7 @@
     </button>
   </div>
   <div id="credit-ledger-pagination-top">
-    <%- include("../components/pagination", { pagination, baseUrl: "/credit-ledger", search: typeof search !== 'undefined' ? search : '' }) %>
+    <%- include("../components/pagination", { pagination, baseUrl: "/credit-ledger", search, extras: { balance: selectedBalance, sort: selectedSort } }) %>
   </div>
   <div class="table-scroll overflow-x-auto">
     <table id="credit-ledger-table" class="responsive-table min-w-full text-left text-sm">

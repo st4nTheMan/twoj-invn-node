@@ -18,9 +18,23 @@
   </div>
 </section>
 
+<%- include("../components/filter-sort-bar", {
+  selectedSort,
+  sortOptions: [
+    { value: "newest",      label: "Newest first" },
+    { value: "oldest",      label: "Oldest first" },
+    { value: "name_asc",    label: "Name A–Z" },
+    { value: "name_desc",   label: "Name Z–A" },
+    { value: "barcode_asc", label: "Item No. A–Z" },
+    { value: "barcode_desc",label: "Item No. Z–A" }
+  ],
+  filterOptions: [],
+  selectedFilter: ""
+}) %>
+
 <section class="table-scroll mb-6 overflow-x-auto rounded-3xl bg-white shadow-soft">
   <div id="history-pagination-top">
-    <%- include("../components/pagination", { pagination, baseUrl: "/history", search: typeof search !== 'undefined' ? search : '' }) %>
+    <%- include("../components/pagination", { pagination, baseUrl: "/history", search, extras: { sort: selectedSort } }) %>
   </div>
   <table id="history-table" class="responsive-table min-w-full text-left text-sm">
     <thead class="bg-slate-50 text-slate-600">

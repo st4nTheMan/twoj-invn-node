@@ -65,20 +65,36 @@ function getDatabaseErrorMessage(error) {
   return "";
 }
 
+// Builds a safe ORDER BY clause from a validated sort key map.
+function buildSortClause(sort, validSorts, defaultSort) {
+  return validSorts[sort] || defaultSort;
+}
+
 // Builds pagination HTML string for AJAX JSON responses.
-function buildPaginationHtml(pagination, baseUrl, search) {
+function buildPaginationHtml(pagination, baseUrl, search, extras = {}) {
   if (pagination.totalPages <= 1) return "";
 
-  const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
-  const windowSize = 2;
-  const startPage = Math.max(1, pagination.page - windowSize);
-  const endPage = Math.min(pagination.totalPages, pagination.page + windowSize);
+  const queryParams = new URLSearchParams();
+  if (search) queryParams.set("search", search);
+  Object.entries(extras).forEach(([key, value]) => {
+    if (value) queryParams.set(key, value);
+  });
+
+  function makeHref(page) {
+    const p = new URLSearchParams(queryParams);
+    p.set("page", page);
+    return `${baseUrl}?${p.toString()}`;
+  }
 
   const disabledSpan = (label) =>
     `<span class="rounded-xl border border-slate-200 px-3 py-2 font-medium text-slate-300 cursor-not-allowed">${label}</span>`;
 
   const pageLink = (page, label) =>
-    `<a href="${baseUrl}?page=${page}${searchParam}" data-page="${page}" class="pagination-link rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">${label}</a>`;
+    `<a href="${makeHref(page)}" data-page="${page}" class="pagination-link rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">${label}</a>`;
+
+  const windowSize = 2;
+  const startPage = Math.max(1, pagination.page - windowSize);
+  const endPage = Math.min(pagination.totalPages, pagination.page + windowSize);
 
   const prevFirst = pagination.hasPrev
     ? `${pageLink(1, "«")}${pageLink(pagination.page - 1, "‹")}`
@@ -128,6 +144,7 @@ function buildPagination(query, total, perPage = 25) {
 module.exports = {
   buildPagination,
   buildPaginationHtml,
+  buildSortClause,
   flash,
   formatCurrency,
   formatDateTime,

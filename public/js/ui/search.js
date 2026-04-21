@@ -61,6 +61,8 @@
     function bindAjaxTable({
       searchInputId,
       clearButtonId,
+      sortSelectId,
+      filterSelectId,
       tbodyId,
       paginationTopId,
       paginationBottomId,
@@ -76,6 +78,10 @@
       const paginationTop = document.getElementById(paginationTopId);
       const paginationBottom = document.getElementById(paginationBottomId);
       const emptyState = document.getElementById(emptyStateId);
+      const sortSelect = document.getElementById(sortSelectId)
+        || document.querySelector("[data-sort-select]");
+      const filterSelect = document.getElementById(filterSelectId)
+        || document.querySelector("[data-filter-select]");
 
       if (!searchInput || !tbody) return;
 
@@ -119,11 +125,13 @@
         onAfterRender?.(tbody);
       }
 
-      // Fetches a page from the server via AJAX.
+      // Replace fetchPage to include sort and filter:
       async function fetchPage(page, search) {
         const url = new URL(endpoint, window.location.origin);
         url.searchParams.set("page", page);
         if (search) url.searchParams.set("search", search);
+        if (sortSelect?.value) url.searchParams.set("sort", sortSelect.value);
+        if (filterSelect?.value) url.searchParams.set(filterSelect.dataset.param, filterSelect.value);
 
         try {
           const response = await fetch(url.toString(), {
@@ -159,6 +167,31 @@
         searchInput.value = "";
         currentSearch = "";
         currentPage = 1;
+        const payload = await fetchPage(1, "");
+        if (payload) renderResults(payload);
+      });
+
+      // Sort change — reset to page 1.
+      sortSelect?.addEventListener("change", async () => {
+        currentPage = 1;
+        const payload = await fetchPage(currentPage, currentSearch);
+        if (payload) renderResults(payload);
+      });
+
+      // Filter change — reset to page 1.
+      filterSelect?.addEventListener("change", async () => {
+        currentPage = 1;
+        const payload = await fetchPage(currentPage, currentSearch);
+        if (payload) renderResults(payload);
+      });
+
+      // Reset button — clears search, sort, and filter back to defaults.
+      document.querySelector("[data-filter-reset]")?.addEventListener("click", async () => {
+        searchInput.value = "";
+        currentSearch = "";
+        currentPage = 1;
+        if (sortSelect) sortSelect.value = sortSelect.options[0]?.value || "";
+        if (filterSelect) filterSelect.value = "";
         const payload = await fetchPage(1, "");
         if (payload) renderResults(payload);
       });

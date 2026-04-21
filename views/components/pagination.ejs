@@ -1,9 +1,14 @@
-<% /* Reusable pagination controls. Expects: pagination, baseUrl, search (optional) */ %>
+<% /* Reusable pagination controls. Expects: pagination, baseUrl, search (optional), extras (optional object) */ %>
 <% if (pagination.totalPages > 1) { %>
 <%
-  const searchParam = (typeof search !== 'undefined' && search)
-    ? `&search=${encodeURIComponent(search)}`
-    : '';
+  const _extras = typeof extras !== 'undefined' ? extras : {};
+  const _search = typeof search !== 'undefined' && search ? search : '';
+  function _makeHref(p) {
+    const parts = [`page=${p}`];
+    if (_search) parts.push(`search=${encodeURIComponent(_search)}`);
+    Object.entries(_extras).forEach(([k, v]) => { if (v) parts.push(`${k}=${encodeURIComponent(v)}`); });
+    return `${baseUrl}?${parts.join('&')}`;
+  }
 %>
 <div class="flex items-center justify-between px-4 py-3 text-sm text-slate-600">
   <p>
@@ -13,35 +18,29 @@
   </p>
   <div class="flex items-center gap-1">
     <% if (pagination.hasPrev) { %>
-      <a href="<%= baseUrl %>?page=1<%= searchParam %>" data-page="1" class="pagination-link rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">«</a>
-      <a href="<%= baseUrl %>?page=<%= pagination.page - 1 %><%= searchParam %>" data-page="<%= pagination.page - 1 %>" class="pagination-link rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">‹</a>
+      <a href="<%= _makeHref(1) %>" data-page="1" class="pagination-link rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">«</a>
+      <a href="<%= _makeHref(pagination.page - 1) %>" data-page="<%= pagination.page - 1 %>" class="pagination-link rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">‹</a>
     <% } else { %>
       <span class="rounded-xl border border-slate-200 px-3 py-2 font-medium text-slate-300 cursor-not-allowed">«</span>
       <span class="rounded-xl border border-slate-200 px-3 py-2 font-medium text-slate-300 cursor-not-allowed">‹</span>
     <% } %>
-
     <%
       const windowSize = 2;
       const startPage = Math.max(1, pagination.page - windowSize);
       const endPage = Math.min(pagination.totalPages, pagination.page + windowSize);
     %>
-    <% if (startPage > 1) { %>
-      <span class="px-2 text-slate-400">…</span>
-    <% } %>
+    <% if (startPage > 1) { %><span class="px-2 text-slate-400">…</span><% } %>
     <% for (let p = startPage; p <= endPage; p++) { %>
       <% if (p === pagination.page) { %>
         <span class="rounded-xl bg-sky-600 px-3 py-2 font-semibold text-white"><%= p %></span>
       <% } else { %>
-        <a href="<%= baseUrl %>?page=<%= p %><%= searchParam %>" data-page="<%= p %>" class="pagination-link rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50"><%= p %></a>
+        <a href="<%= _makeHref(p) %>" data-page="<%= p %>" class="pagination-link rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50"><%= p %></a>
       <% } %>
     <% } %>
-    <% if (endPage < pagination.totalPages) { %>
-      <span class="px-2 text-slate-400">…</span>
-    <% } %>
-
+    <% if (endPage < pagination.totalPages) { %><span class="px-2 text-slate-400">…</span><% } %>
     <% if (pagination.hasNext) { %>
-      <a href="<%= baseUrl %>?page=<%= pagination.page + 1 %><%= searchParam %>" data-page="<%= pagination.page + 1 %>" class="pagination-link rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">›</a>
-      <a href="<%= baseUrl %>?page=<%= pagination.totalPages %><%= searchParam %>" data-page="<%= pagination.totalPages %>" class="pagination-link rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">»</a>
+      <a href="<%= _makeHref(pagination.page + 1) %>" data-page="<%= pagination.page + 1 %>" class="pagination-link rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">›</a>
+      <a href="<%= _makeHref(pagination.totalPages) %>" data-page="<%= pagination.totalPages %>" class="pagination-link rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">»</a>
     <% } else { %>
       <span class="rounded-xl border border-slate-200 px-3 py-2 font-medium text-slate-300 cursor-not-allowed">›</span>
       <span class="rounded-xl border border-slate-200 px-3 py-2 font-medium text-slate-300 cursor-not-allowed">»</span>

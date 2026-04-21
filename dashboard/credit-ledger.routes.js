@@ -3,11 +3,12 @@ const pool = require("../database/pool");
 const { logActivity } = require("../database/activity-log");
 const { normalizePhilippinePhone, resolveCustomerRecord } = require("../includes/customers");
 const { requirePermission } = require("../middleware/auth");
-const {
+const { 
   flash,
   normalizeText,
   buildPagination,
-  buildPaginationHtml
+  buildPaginationHtml,
+  buildSortClause
 } = require("../includes/helpers");
 
 // Defines the credit-ledger pages and manual entry actions.
@@ -17,7 +18,32 @@ const router = express.Router();
 router.get("/credit-ledger", requirePermission("credit_ledger.view"), async (req, res) => {
   const search = String(req.query.search || "").trim();
   const searchWildcard = search ? `%${search}%` : null;
+  const balanceFilter = ["paid", "unpaid"].includes(req.query.balance) ? req.query.balance : "";
+  const sort = String(req.query.sort || "newest");
   const isAjax = req.xhr || String(req.get("accept") || "").includes("application/json");
+
+  const validSorts = {
+    newest:      "a.id DESC",
+    oldest:      "a.id ASC",
+    total_asc:   "a.total_amount ASC",
+    total_desc:  "a.total_amount DESC"
+  };
+  const orderBy = buildSortClause(sort, validSorts, "a.id DESC");
+
+  const conditions = ["1=1"];
+  const params = [];
+
+  if (searchWildcard) {
+    conditions.push("(COALESCE(d.name, a.customer_name) LIKE ? OR COALESCE(d.phone, a.customer_phone) LIKE ? OR a.item_summary LIKE ?)");
+    params.push(searchWildcard, searchWildcard, searchWildcard);
+  }
+  if (balanceFilter === "paid") {
+    conditions.push("a.balance_due = 0");
+  } else if (balanceFilter === "unpaid") {
+    conditions.push("a.balance_due > 0");
+  }
+
+  const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
   try {
     const [[{ total }]] = await pool.query(
@@ -25,9 +51,8 @@ router.get("/credit-ledger", requirePermission("credit_ledger.view"), async (req
        FROM credit_ledger a
        LEFT JOIN users c ON a.created_by = c.id
        LEFT JOIN customers d ON a.customer_id = d.id
-       WHERE 1=1
-       ${searchWildcard ? "AND (COALESCE(d.name, a.customer_name) LIKE ? OR COALESCE(d.phone, a.customer_phone) LIKE ? OR a.item_summary LIKE ?)" : ""}`,
-      searchWildcard ? [searchWildcard, searchWildcard, searchWildcard] : []
+       ${whereClause}`,
+      params
     );
 
     const pagination = buildPagination(req.query, total);
@@ -42,13 +67,10 @@ router.get("/credit-ledger", requirePermission("credit_ledger.view"), async (req
        LEFT JOIN transactions b ON a.transaction_id = b.id
        LEFT JOIN users c ON a.created_by = c.id
        LEFT JOIN customers d ON a.customer_id = d.id
-       WHERE 1=1
-       ${searchWildcard ? "AND (COALESCE(d.name, a.customer_name) LIKE ? OR COALESCE(d.phone, a.customer_phone) LIKE ? OR a.item_summary LIKE ?)" : ""}
-       ORDER BY a.created_at DESC, a.id DESC
+       ${whereClause}
+       ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`,
-      searchWildcard
-        ? [searchWildcard, searchWildcard, searchWildcard, pagination.perPage, pagination.offset]
-        : [pagination.perPage, pagination.offset]
+      [...params, pagination.perPage, pagination.offset]
     );
 
     if (isAjax) {
@@ -56,7 +78,7 @@ router.get("/credit-ledger", requirePermission("credit_ledger.view"), async (req
         ok: true,
         items: entries,
         pagination,
-        paginationHtml: buildPaginationHtml(pagination, "/credit-ledger", search)
+        paginationHtml: buildPaginationHtml(pagination, "/credit-ledger", search, { balance: balanceFilter, sort })
       });
     }
 
@@ -88,7 +110,9 @@ router.get("/credit-ledger", requirePermission("credit_ledger.view"), async (req
       customers,
       customerSummaries,
       pagination,
-      search
+      search,
+      selectedBalance: balanceFilter,
+      selectedSort: sort
     });
   } catch (error) {
     console.error("Failed to load credit ledger:", error);
@@ -105,7 +129,9 @@ router.get("/credit-ledger", requirePermission("credit_ledger.view"), async (req
       customers: [],
       customerSummaries: [],
       pagination: buildPagination({}, 0),
-      search: ""
+      search: "",
+      selectedBalance: "",
+      selectedSort: "newest"
     });
   }
 });
