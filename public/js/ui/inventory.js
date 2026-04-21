@@ -126,6 +126,8 @@
       });
     }
 
+    InventoryUi.bindViewItemTriggers = bindViewItemTriggers;
+
     // Disables a modal form submit button while an async save is in progress.
     function setSubmitDisabled(form, disabled) {
       const submitButton = form.querySelector('button[type="submit"]');
@@ -194,7 +196,6 @@
 
       inventoryTableBody.prepend(row);
       bindViewItemTriggers(row);
-      inventorySearch?.dispatchEvent(new Event("input"));
       inventoryEmptySearch?.classList.add("hidden");
     }
 

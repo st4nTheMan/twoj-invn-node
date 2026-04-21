@@ -13,6 +13,58 @@ const {
 // Defines inventory pages and form actions for items and categories.
 const router = express.Router();
 
+// Builds pagination HTML string to be returned in JSON responses for AJAX pagination.
+function buildPaginationHtml(pagination, baseUrl, search) {
+  if (pagination.totalPages <= 1) return "";
+
+  const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
+  const windowSize = 2;
+  const startPage = Math.max(1, pagination.page - windowSize);
+  const endPage = Math.min(pagination.totalPages, pagination.page + windowSize);
+
+  const prevFirst = pagination.hasPrev
+    ? `<a href="${baseUrl}?page=1${searchParam}" data-page="1" class="pagination-link rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">«</a>
+       <a href="${baseUrl}?page=${pagination.page - 1}${searchParam}" data-page="${pagination.page - 1}" class="pagination-link rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">‹</a>`
+    : `<span class="rounded-xl border border-slate-200 px-3 py-2 font-medium text-slate-300 cursor-not-allowed">«</span>
+       <span class="rounded-xl border border-slate-200 px-3 py-2 font-medium text-slate-300 cursor-not-allowed">‹</span>`;
+
+  const nextLast = pagination.hasNext
+    ? `<a href="${baseUrl}?page=${pagination.page + 1}${searchParam}" data-page="${pagination.page + 1}" class="pagination-link rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">›</a>
+       <a href="${baseUrl}?page=${pagination.totalPages}${searchParam}" data-page="${pagination.totalPages}" class="pagination-link rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">»</a>`
+    : `<span class="rounded-xl border border-slate-200 px-3 py-2 font-medium text-slate-300 cursor-not-allowed">›</span>
+       <span class="rounded-xl border border-slate-200 px-3 py-2 font-medium text-slate-300 cursor-not-allowed">»</span>`;
+
+  const startEllipsis = startPage > 1
+    ? `<span class="px-2 text-slate-400">…</span>`
+    : "";
+
+  const endEllipsis = endPage < pagination.totalPages
+    ? `<span class="px-2 text-slate-400">…</span>`
+    : "";
+
+  let pageButtons = "";
+  for (let p = startPage; p <= endPage; p++) {
+    pageButtons += p === pagination.page
+      ? `<span class="rounded-xl bg-sky-600 px-3 py-2 font-semibold text-white">${p}</span>`
+      : `<a href="${baseUrl}?page=${p}${searchParam}" data-page="${p}" class="pagination-link rounded-xl border border-slate-300 px-3 py-2 font-medium hover:bg-slate-50">${p}</a>`;
+  }
+
+  const from = (pagination.page - 1) * pagination.perPage + 1;
+  const to = Math.min(pagination.page * pagination.perPage, pagination.total);
+
+  return `
+    <div class="flex items-center justify-between px-4 py-3 text-sm text-slate-600">
+      <p>Showing <span class="font-semibold">${from}</span>–<span class="font-semibold">${to}</span> of <span class="font-semibold">${pagination.total}</span> items</p>
+      <div class="flex items-center gap-1">
+        ${prevFirst}
+        ${startEllipsis}
+        ${pageButtons}
+        ${endEllipsis}
+        ${nextLast}
+      </div>
+    </div>`;
+}
+
 // Parses a non-negative whole number and returns null for invalid values.
 function parseWholeNumber(value) {
   const normalized = normalizeDecimalInput(value);
@@ -244,17 +296,17 @@ router.get("/inventory", requirePermission("inventory.view"), async (req, res) =
   const ITEMS_PER_PAGE = 25;
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const offset = (page - 1) * ITEMS_PER_PAGE;
+  const search = String(req.query.search || "").trim();
+  const searchWildcard = search ? `%${search}%` : null;
+  const isAjax = req.xhr || String(req.get("accept") || "").includes("application/json");
 
   try {
-    const [categories] = await pool.query(
-      `SELECT a.*, b.username AS created_by_username
-       FROM categories a
-       LEFT JOIN users b ON a.created_by = b.id
-       ORDER BY a.category_name ASC`
-    );
-
     const [[{ total }]] = await pool.query(
-      `SELECT COUNT(*) AS total FROM items WHERE archived_at IS NULL`
+      `SELECT COUNT(*) AS total FROM items a
+       LEFT JOIN categories b ON a.category_id = b.id
+       WHERE a.archived_at IS NULL
+       ${searchWildcard ? "AND (a.name LIKE ? OR a.barcode LIKE ? OR COALESCE(b.category_name, 'No Category') LIKE ?)" : ""}`,
+      searchWildcard ? [searchWildcard, searchWildcard, searchWildcard] : []
     );
 
     const [items] = await pool.query(
@@ -264,11 +316,40 @@ router.get("/inventory", requirePermission("inventory.view"), async (req, res) =
        LEFT JOIN users c ON a.created_by = c.id
        LEFT JOIN users d ON a.updated_by = d.id
        WHERE a.archived_at IS NULL
+       ${searchWildcard ? "AND (a.name LIKE ? OR a.barcode LIKE ? OR COALESCE(b.category_name, 'No Category') LIKE ?)" : ""}
        ORDER BY a.id DESC
        LIMIT ? OFFSET ?`,
-      [ITEMS_PER_PAGE, offset]
+      searchWildcard
+        ? [searchWildcard, searchWildcard, searchWildcard, ITEMS_PER_PAGE, offset]
+        : [ITEMS_PER_PAGE, offset]
     );
 
+    const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
+    const pagination = {
+      page,
+      totalPages,
+      total,
+      perPage: ITEMS_PER_PAGE,
+      hasNext: page < totalPages,
+      hasPrev: page > 1
+    };
+
+    // Return JSON for AJAX requests (live search + pagination clicks).
+    if (isAjax) {
+      return res.json({
+        ok: true,
+        items,
+        pagination,
+        paginationHtml: buildPaginationHtml(pagination, "/inventory", search)
+      });
+    }
+
+    const [categories] = await pool.query(
+      `SELECT a.*, b.username AS created_by_username
+       FROM categories a
+       LEFT JOIN users b ON a.created_by = b.id
+       ORDER BY a.category_name ASC`
+    );
     const [archivedItems] = await pool.query(
       `SELECT a.*, b.category_name, c.username AS created_by_username, d.username AS updated_by_username
        FROM items a
@@ -279,31 +360,29 @@ router.get("/inventory", requirePermission("inventory.view"), async (req, res) =
        ORDER BY a.archived_at DESC, a.id DESC`
     );
 
-    const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
-
     return res.render("dashboard/inventory", {
       title: "Inventory",
       categories,
       items,
       archivedItems,
-      pagination: {
-        page,
-        totalPages,
-        total,
-        perPage: ITEMS_PER_PAGE,
-        hasNext: page < totalPages,
-        hasPrev: page > 1
-      }
+      pagination,
+      search
     });
   } catch (error) {
     console.error("Failed to load inventory:", error);
     flash(req, { type: "error", message: "Unable to load inventory." });
+
+    if (isAjax) {
+      return res.status(500).json({ ok: false, message: "Unable to load inventory." });
+    }
+
     return res.render("dashboard/inventory", {
       title: "Inventory",
       categories: [],
       items: [],
       archivedItems: [],
-      pagination: { page: 1, totalPages: 0, total: 0, perPage: 25, hasNext: false, hasPrev: false }
+      pagination: { page: 1, totalPages: 0, total: 0, perPage: 25, hasNext: false, hasPrev: false },
+      search: ""
     });
   }
 });
