@@ -462,23 +462,43 @@ router.get("/inventory/items/verify", requirePermission("inventory.create"), asy
 router.get("/price-lookup", requirePermission("price_lookup.view"), async (req, res) => {
   const search = String(req.query.search || "").trim();
   const searchWildcard = search ? `%${search}%` : null;
+  const sort = String(req.query.sort || "newest");
   const isAjax = req.xhr || String(req.get("accept") || "").includes("application/json");
+
+  const validSorts = {
+    name_asc:    "name ASC",
+    name_desc:   "name DESC",
+    barcode_asc: "barcode ASC",
+    barcode_desc:"barcode DESC",
+    price_asc:   "price ASC",
+    price_desc:  "price DESC",
+    newest:      "id DESC",
+    oldest:      "id ASC"
+  };
+  const orderBy = buildSortClause(sort, validSorts, "id DESC");
+
+  const conditions = ["archived_at IS NULL"];
+  const params = [];
+
+  if (searchWildcard) {
+    conditions.push("(name LIKE ? OR barcode LIKE ?)");
+    params.push(searchWildcard, searchWildcard);
+  }
+
+  const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
   try {
     const [[{ total }]] = await pool.query(
-      `SELECT COUNT(*) AS total FROM items
-       WHERE archived_at IS NULL
-       ${searchWildcard ? "AND (name LIKE ? OR barcode LIKE ?)" : ""}`,
-      searchWildcard ? [searchWildcard, searchWildcard] : []
+      `SELECT COUNT(*) AS total FROM items ${whereClause}`,
+      params
     );
 
     const pagination = buildPagination(req.query, total);
 
     const [items] = await pool.query(
       `SELECT id, barcode, name, price FROM items
-       WHERE archived_at IS NULL
-       ${searchWildcard ? "AND (name LIKE ? OR barcode LIKE ?)" : ""}
-       ORDER BY id DESC
+       ${whereClause}
+       ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`,
       searchWildcard
         ? [searchWildcard, searchWildcard, pagination.perPage, pagination.offset]
@@ -490,7 +510,7 @@ router.get("/price-lookup", requirePermission("price_lookup.view"), async (req, 
         ok: true,
         items,
         pagination,
-        paginationHtml: buildPaginationHtml(pagination, "/price-lookup", search)
+        paginationHtml: buildPaginationHtml(pagination, "/price-lookup", search, { sort })
       });
     }
 
@@ -498,7 +518,8 @@ router.get("/price-lookup", requirePermission("price_lookup.view"), async (req, 
       title: "Price Lookup",
       items,
       pagination,
-      search
+      search,
+      selectedSort: sort
     });
   } catch (error) {
     console.error("Failed to load price lookup page:", error);
@@ -512,7 +533,8 @@ router.get("/price-lookup", requirePermission("price_lookup.view"), async (req, 
       title: "Price Lookup",
       items: [],
       pagination: buildPagination({}, 0),
-      search: ""
+      search: "",
+      selectedSort: "newest"
     });
   }
 });

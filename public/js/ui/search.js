@@ -78,13 +78,20 @@
       const paginationTop = document.getElementById(paginationTopId);
       const paginationBottom = document.getElementById(paginationBottomId);
       const emptyState = document.getElementById(emptyStateId);
-      const sortSelect = document.getElementById(sortSelectId)
-        || document.querySelector("[data-sort-select]");
-      const filterSelect = document.getElementById(filterSelectId)
-        || document.querySelector("[data-filter-select]");
 
       if (!searchInput || !tbody) return;
 
+      // Scope sort/filter selects to the filter bar that belongs to this table.
+      const tableId = tbodyId.replace("-tbody", "-table");
+      const filterSortBar = document.querySelector(`[data-table="${tableId}"]`);
+
+      const sortSelect = (sortSelectId ? document.getElementById(sortSelectId) : null)
+        || filterSortBar?.querySelector("[data-sort-select]");
+      const filterSelect = (filterSelectId ? document.getElementById(filterSelectId) : null)
+        || filterSortBar?.querySelector("[data-filter-select]");
+      const resetButton = document.getElementById(`${tableId}-filter-reset`)
+        || filterSortBar?.querySelector("[data-filter-reset]");
+        
       // Intercepts pagination link clicks to load pages via AJAX.
       function bindPaginationLinks() {
         [paginationTop, paginationBottom].forEach((container) => {
@@ -125,16 +132,21 @@
         onAfterRender?.(tbody);
       }
 
-      // Replace fetchPage to include sort and filter:
+      // Fetches a page from the server via AJAX including sort and filter state.
       async function fetchPage(page, search) {
         const url = new URL(endpoint, window.location.origin);
-        url.searchParams.set("page", page);
+        url.searchParams.set("page", String(page));
+        url.searchParams.set("_", Date.now());
         if (search) url.searchParams.set("search", search);
         if (sortSelect?.value) url.searchParams.set("sort", sortSelect.value);
-        if (filterSelect?.value) url.searchParams.set(filterSelect.dataset.param, filterSelect.value);
+        if (filterSelect?.value) {
+          const paramName = filterSelect.dataset.param;
+          if (paramName) url.searchParams.set(paramName, filterSelect.value);
+        }
 
         try {
           const response = await fetch(url.toString(), {
+            cache: "no-store",
             headers: {
               Accept: "application/json",
               "X-Requested-With": "XMLHttpRequest"
@@ -151,7 +163,6 @@
       let currentPage = 1;
       let searchTimer = null;
 
-      // Debounced input — fetches from server as user types.
       searchInput.addEventListener("input", () => {
         clearTimeout(searchTimer);
         searchTimer = setTimeout(async () => {
@@ -162,7 +173,6 @@
         }, 300);
       });
 
-      // Clear button resets search and reloads page 1.
       clearButton?.addEventListener("click", async () => {
         searchInput.value = "";
         currentSearch = "";
@@ -171,22 +181,19 @@
         if (payload) renderResults(payload);
       });
 
-      // Sort change — reset to page 1.
       sortSelect?.addEventListener("change", async () => {
         currentPage = 1;
         const payload = await fetchPage(currentPage, currentSearch);
         if (payload) renderResults(payload);
       });
 
-      // Filter change — reset to page 1.
       filterSelect?.addEventListener("change", async () => {
         currentPage = 1;
         const payload = await fetchPage(currentPage, currentSearch);
         if (payload) renderResults(payload);
       });
 
-      // Reset button — clears search, sort, and filter back to defaults.
-      document.querySelector("[data-filter-reset]")?.addEventListener("click", async () => {
+      resetButton?.addEventListener("click", async () => {
         searchInput.value = "";
         currentSearch = "";
         currentPage = 1;
@@ -196,7 +203,6 @@
         if (payload) renderResults(payload);
       });
 
-      // Bind pagination links on initial page load.
       bindPaginationLinks();
     }
 
