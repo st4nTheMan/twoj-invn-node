@@ -462,6 +462,7 @@ router.get("/inventory/items/verify", requirePermission("inventory.create"), asy
 router.get("/price-lookup", requirePermission("price_lookup.view"), async (req, res) => {
   const search = String(req.query.search || "").trim();
   const searchWildcard = search ? `%${search}%` : null;
+  const sort = String(req.query.sort || "newest");
   const isAjax = req.xhr || String(req.get("accept") || "").includes("application/json");
 
   try {
@@ -498,7 +499,8 @@ router.get("/price-lookup", requirePermission("price_lookup.view"), async (req, 
       title: "Price Lookup",
       items,
       pagination,
-      search
+      search,
+      selectedSort: sort
     });
   } catch (error) {
     console.error("Failed to load price lookup page:", error);
@@ -512,7 +514,8 @@ router.get("/price-lookup", requirePermission("price_lookup.view"), async (req, 
       title: "Price Lookup",
       items: [],
       pagination: buildPagination({}, 0),
-      search: ""
+      search: "",
+      selectedSort: "newest"
     });
   }
 });

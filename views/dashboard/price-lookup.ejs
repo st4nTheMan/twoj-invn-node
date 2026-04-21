@@ -19,6 +19,7 @@
 </section>
 
 <%- include("../components/filter-sort-bar", {
+  tableId: "price-lookup-table",
   selectedSort,
   sortOptions: [
     { value: "newest",      label: "Newest first" },
@@ -59,7 +60,7 @@
     </tbody>
   </table>
   <div id="price-lookup-pagination-bottom">
-    <%- include("../components/pagination", { pagination, baseUrl: "/price-lookup", search: typeof search !== 'undefined' ? search : '' }) %>
+  <%- include("../components/pagination", { pagination, baseUrl: "/price-lookup", search: typeof search !== 'undefined' ? search : '', extras: { sort: selectedSort } }) %>
   </div>
   <p id="price-lookup-empty-search" class="hidden p-6 text-center text-sm text-slate-500">No items found.</p>
 </section>
