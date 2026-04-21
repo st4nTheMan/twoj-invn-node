@@ -92,8 +92,6 @@
       const resetButton = document.getElementById(`${tableId}-filter-reset`)
         || filterSortBar?.querySelector("[data-filter-reset]");
         
-      console.log(tbodyId, "→ tableId:", tableId, "→ bar:", filterSortBar, "→ sort:", sortSelect);
-
       // Intercepts pagination link clicks to load pages via AJAX.
       function bindPaginationLinks() {
         [paginationTop, paginationBottom].forEach((container) => {
@@ -138,6 +136,7 @@
       async function fetchPage(page, search) {
         const url = new URL(endpoint, window.location.origin);
         url.searchParams.set("page", String(page));
+        url.searchParams.set("_", Date.now());
         if (search) url.searchParams.set("search", search);
         if (sortSelect?.value) url.searchParams.set("sort", sortSelect.value);
         if (filterSelect?.value) {
@@ -147,10 +146,10 @@
 
         try {
           const response = await fetch(url.toString(), {
+            cache: "no-store",
             headers: {
               Accept: "application/json",
-              "X-Requested-With": "XMLHttpRequest",
-              "Cache-Control": "no-cache"  // ← add this
+              "X-Requested-With": "XMLHttpRequest"
             }
           });
           const payload = await response.json();
