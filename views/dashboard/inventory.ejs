@@ -57,18 +57,28 @@
 </section>
 
 <section class="mb-6 rounded-3xl bg-white p-5 shadow-soft">
-  <div class="relative">
-    <input id="inventory-search" type="text" placeholder="Search by name, number, or category..." data-initial-visible-count="5" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 pr-12 text-sm">
-    <button type="button" id="search-clear" class="absolute inset-y-0 right-5 flex items-center text-slate-400 hover:text-slate-600">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18" />
-      </svg>
-    </button>
+  <div class="flex gap-2">
+    <div class="relative flex-1">
+      <input
+        id="inventory-search"
+        type="text"
+        placeholder="Search by name, number, or category..."
+        value="<%= typeof search !== 'undefined' ? search : '' %>"
+        class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 pr-12 text-sm"
+      >
+      <button type="button" id="search-clear" class="absolute inset-y-0 right-5 flex items-center text-slate-400 hover:text-slate-600">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
+    </div>
   </div>
 </section>
 
 <section class="table-scroll mb-6 overflow-x-auto rounded-3xl bg-white shadow-soft">
-  <%- include("../components/pagination", { pagination, baseUrl: "/inventory" }) %>
+  <div id="inventory-pagination-top">
+    <%- include("../components/pagination", { pagination, baseUrl: "/inventory", search: typeof search !== 'undefined' ? search : '' }) %>
+  </div>
 
   <table id="inventory-table" class="responsive-table min-w-full text-left text-sm">
     <thead class="bg-slate-50 text-slate-600">
@@ -83,7 +93,7 @@
         <th class="px-4 py-3">Actions</th>
       </tr>
     </thead>
-    <tbody class="divide-y divide-slate-200">
+    <tbody id="inventory-tbody" class="divide-y divide-slate-200">
       <% if (items.length) { items.forEach((item) => { %>
         <tr data-row class="hover:bg-slate-50">
           <td data-label="Item Number" class="px-4 py-3 font-medium"><%= item.barcode %></td>
@@ -123,7 +133,9 @@
     </tbody>
   </table>
 
-  <%- include("../components/pagination", { pagination, baseUrl: "/inventory" }) %>
+  <div id="inventory-pagination-bottom">
+    <%- include("../components/pagination", { pagination, baseUrl: "/inventory", search: typeof search !== 'undefined' ? search : '' }) %>
+  </div>
   <p id="inventory-empty-search" class="hidden p-6 text-center text-sm text-slate-500">No items found.</p>
 </section>
 

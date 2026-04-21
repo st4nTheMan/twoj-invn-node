@@ -5,7 +5,9 @@ const { normalizePhilippinePhone, resolveCustomerRecord } = require("../includes
 const { requirePermission } = require("../middleware/auth");
 const {
   flash,
-  normalizeText
+  normalizeText,
+  buildPagination,
+  buildPaginationHtml
 } = require("../includes/helpers");
 
 // Defines the credit-ledger pages and manual entry actions.
@@ -13,19 +15,23 @@ const router = express.Router();
 
 // Loads the ledger page with recent credit balances and linked invoice details.
 router.get("/credit-ledger", requirePermission("credit_ledger.view"), async (req, res) => {
+  const search = String(req.query.search || "").trim();
+  const searchWildcard = search ? `%${search}%` : null;
+  const isAjax = req.xhr || String(req.get("accept") || "").includes("application/json");
+
   try {
-    const [items] = await pool.query(
-      `SELECT a.*, b.category_name
-       FROM items a
-       LEFT JOIN categories b ON a.category_id = b.id
-       WHERE a.archived_at IS NULL
-       ORDER BY a.name ASC`
+    const [[{ total }]] = await pool.query(
+      `SELECT COUNT(*) AS total
+       FROM credit_ledger a
+       LEFT JOIN users c ON a.created_by = c.id
+       LEFT JOIN customers d ON a.customer_id = d.id
+       WHERE 1=1
+       ${searchWildcard ? "AND (COALESCE(d.name, a.customer_name) LIKE ? OR COALESCE(d.phone, a.customer_phone) LIKE ? OR a.item_summary LIKE ?)" : ""}`,
+      searchWildcard ? [searchWildcard, searchWildcard, searchWildcard] : []
     );
-    const [customers] = await pool.query(
-      `SELECT id, name, phone, created_at, updated_at
-       FROM customers
-       ORDER BY name ASC, id ASC`
-    );
+
+    const pagination = buildPagination(req.query, total);
+
     const [entries] = await pool.query(
       `SELECT a.*,
               b.payment_method,
@@ -36,12 +42,35 @@ router.get("/credit-ledger", requirePermission("credit_ledger.view"), async (req
        LEFT JOIN transactions b ON a.transaction_id = b.id
        LEFT JOIN users c ON a.created_by = c.id
        LEFT JOIN customers d ON a.customer_id = d.id
-       ORDER BY a.created_at DESC, a.id DESC`
+       WHERE 1=1
+       ${searchWildcard ? "AND (COALESCE(d.name, a.customer_name) LIKE ? OR COALESCE(d.phone, a.customer_phone) LIKE ? OR a.item_summary LIKE ?)" : ""}
+       ORDER BY a.created_at DESC, a.id DESC
+       LIMIT ? OFFSET ?`,
+      searchWildcard
+        ? [searchWildcard, searchWildcard, searchWildcard, pagination.perPage, pagination.offset]
+        : [pagination.perPage, pagination.offset]
+    );
+
+    if (isAjax) {
+      return res.json({
+        ok: true,
+        items: entries,
+        pagination,
+        paginationHtml: buildPaginationHtml(pagination, "/credit-ledger", search)
+      });
+    }
+
+    const [items] = await pool.query(
+      `SELECT a.*, b.category_name FROM items a
+       LEFT JOIN categories b ON a.category_id = b.id
+       WHERE a.archived_at IS NULL ORDER BY a.name ASC`
+    );
+    const [customers] = await pool.query(
+      `SELECT id, name, phone, created_at, updated_at FROM customers ORDER BY name ASC, id ASC`
     );
     const [customerSummaries] = await pool.query(
       `SELECT b.id AS customer_id,
-              b.name,
-              b.phone,
+              b.name, b.phone,
               COUNT(a.id) AS entry_count,
               COALESCE(SUM(a.total_amount), 0) AS total_credit_amount,
               COALESCE(SUM(a.balance_due), 0) AS total_balance_due,
@@ -57,17 +86,26 @@ router.get("/credit-ledger", requirePermission("credit_ledger.view"), async (req
       entries,
       items,
       customers,
-      customerSummaries
+      customerSummaries,
+      pagination,
+      search
     });
   } catch (error) {
     console.error("Failed to load credit ledger:", error);
     flash(req, { type: "error", message: "Unable to load the credit ledger." });
+
+    if (isAjax) {
+      return res.status(500).json({ ok: false, message: "Unable to load the credit ledger." });
+    }
+
     return res.render("dashboard/credit-ledger", {
       title: "Credit Ledger",
       entries: [],
       items: [],
       customers: [],
-      customerSummaries: []
+      customerSummaries: [],
+      pagination: buildPagination({}, 0),
+      search: ""
     });
   }
 });

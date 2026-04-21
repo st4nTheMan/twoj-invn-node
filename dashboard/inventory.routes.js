@@ -7,7 +7,9 @@ const {
   normalizeBarcode,
   normalizeDecimalInput,
   normalizeText,
-  toUppercaseText
+  toUppercaseText,
+  buildPagination,
+  buildPaginationHtml
 } = require("../includes/helpers");
 
 // Defines inventory pages and form actions for items and categories.
@@ -241,21 +243,20 @@ function respondAdjustmentResult(req, res, type, message) {
 
 // Loads the inventory dashboard with paginated items and category list.
 router.get("/inventory", requirePermission("inventory.view"), async (req, res) => {
-  const ITEMS_PER_PAGE = 25;
-  const page = Math.max(1, parseInt(req.query.page) || 1);
-  const offset = (page - 1) * ITEMS_PER_PAGE;
+  const search = String(req.query.search || "").trim();
+  const searchWildcard = search ? `%${search}%` : null;
+  const isAjax = req.xhr || String(req.get("accept") || "").includes("application/json");
 
   try {
-    const [categories] = await pool.query(
-      `SELECT a.*, b.username AS created_by_username
-       FROM categories a
-       LEFT JOIN users b ON a.created_by = b.id
-       ORDER BY a.category_name ASC`
+    const [[{ total }]] = await pool.query(
+      `SELECT COUNT(*) AS total FROM items a
+       LEFT JOIN categories b ON a.category_id = b.id
+       WHERE a.archived_at IS NULL
+       ${searchWildcard ? "AND (a.name LIKE ? OR a.barcode LIKE ? OR COALESCE(b.category_name, 'No Category') LIKE ?)" : ""}`,
+      searchWildcard ? [searchWildcard, searchWildcard, searchWildcard] : []
     );
 
-    const [[{ total }]] = await pool.query(
-      `SELECT COUNT(*) AS total FROM items WHERE archived_at IS NULL`
-    );
+    const pagination = buildPagination(req.query, total);
 
     const [items] = await pool.query(
       `SELECT a.*, b.category_name, c.username AS created_by_username, d.username AS updated_by_username
@@ -264,11 +265,29 @@ router.get("/inventory", requirePermission("inventory.view"), async (req, res) =
        LEFT JOIN users c ON a.created_by = c.id
        LEFT JOIN users d ON a.updated_by = d.id
        WHERE a.archived_at IS NULL
+       ${searchWildcard ? "AND (a.name LIKE ? OR a.barcode LIKE ? OR COALESCE(b.category_name, 'No Category') LIKE ?)" : ""}
        ORDER BY a.id DESC
        LIMIT ? OFFSET ?`,
-      [ITEMS_PER_PAGE, offset]
+      searchWildcard
+        ? [searchWildcard, searchWildcard, searchWildcard, pagination.perPage, pagination.offset]
+        : [pagination.perPage, pagination.offset]
     );
 
+    if (isAjax) {
+      return res.json({
+        ok: true,
+        items,
+        pagination,
+        paginationHtml: buildPaginationHtml(pagination, "/inventory", search)
+      });
+    }
+
+    const [categories] = await pool.query(
+      `SELECT a.*, b.username AS created_by_username
+       FROM categories a
+       LEFT JOIN users b ON a.created_by = b.id
+       ORDER BY a.category_name ASC`
+    );
     const [archivedItems] = await pool.query(
       `SELECT a.*, b.category_name, c.username AS created_by_username, d.username AS updated_by_username
        FROM items a
@@ -279,31 +298,29 @@ router.get("/inventory", requirePermission("inventory.view"), async (req, res) =
        ORDER BY a.archived_at DESC, a.id DESC`
     );
 
-    const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
-
     return res.render("dashboard/inventory", {
       title: "Inventory",
       categories,
       items,
       archivedItems,
-      pagination: {
-        page,
-        totalPages,
-        total,
-        perPage: ITEMS_PER_PAGE,
-        hasNext: page < totalPages,
-        hasPrev: page > 1
-      }
+      pagination,
+      search
     });
   } catch (error) {
     console.error("Failed to load inventory:", error);
     flash(req, { type: "error", message: "Unable to load inventory." });
+
+    if (isAjax) {
+      return res.status(500).json({ ok: false, message: "Unable to load inventory." });
+    }
+
     return res.render("dashboard/inventory", {
       title: "Inventory",
       categories: [],
       items: [],
       archivedItems: [],
-      pagination: { page: 1, totalPages: 0, total: 0, perPage: 25, hasNext: false, hasPrev: false }
+      pagination: buildPagination({}, 0),
+      search: ""
     });
   }
 });
@@ -412,26 +429,61 @@ router.get("/inventory/items/verify", requirePermission("inventory.create"), asy
   }
 });
 
-// Loads a lightweight price lookup page with searchable item prices.
+// Loads the price lookup page with paginated items.
 router.get("/price-lookup", requirePermission("price_lookup.view"), async (req, res) => {
+  const search = String(req.query.search || "").trim();
+  const searchWildcard = search ? `%${search}%` : null;
+  const isAjax = req.xhr || String(req.get("accept") || "").includes("application/json");
+
   try {
-    const [items] = await pool.query(
-      `SELECT id, barcode, name, price
-       FROM items
+    const [[{ total }]] = await pool.query(
+      `SELECT COUNT(*) AS total FROM items
        WHERE archived_at IS NULL
-       ORDER BY id DESC`
+       ${searchWildcard ? "AND (name LIKE ? OR barcode LIKE ?)" : ""}`,
+      searchWildcard ? [searchWildcard, searchWildcard] : []
     );
+
+    const pagination = buildPagination(req.query, total);
+
+    const [items] = await pool.query(
+      `SELECT id, barcode, name, price FROM items
+       WHERE archived_at IS NULL
+       ${searchWildcard ? "AND (name LIKE ? OR barcode LIKE ?)" : ""}
+       ORDER BY id DESC
+       LIMIT ? OFFSET ?`,
+      searchWildcard
+        ? [searchWildcard, searchWildcard, pagination.perPage, pagination.offset]
+        : [pagination.perPage, pagination.offset]
+    );
+
+    if (isAjax) {
+      return res.json({
+        ok: true,
+        items,
+        pagination,
+        paginationHtml: buildPaginationHtml(pagination, "/price-lookup", search)
+      });
+    }
 
     return res.render("dashboard/price-lookup", {
       title: "Price Lookup",
-      items
+      items,
+      pagination,
+      search
     });
   } catch (error) {
     console.error("Failed to load price lookup page:", error);
     flash(req, { type: "error", message: "Unable to load price lookup." });
+
+    if (isAjax) {
+      return res.status(500).json({ ok: false, message: "Unable to load price lookup." });
+    }
+
     return res.render("dashboard/price-lookup", {
       title: "Price Lookup",
-      items: []
+      items: [],
+      pagination: buildPagination({}, 0),
+      search: ""
     });
   }
 });
@@ -466,27 +518,64 @@ router.get("/inventory/adjustments", requirePermission("inventory.adjust"), asyn
   }
 });
 
-// Loads the global history page with items that can open their history hub.
+// Loads the global history page with paginated items.
 router.get("/history", requirePermission("history.view"), async (req, res) => {
+  const search = String(req.query.search || "").trim();
+  const searchWildcard = search ? `%${search}%` : null;
+  const isAjax = req.xhr || String(req.get("accept") || "").includes("application/json");
+
   try {
+    const [[{ total }]] = await pool.query(
+      `SELECT COUNT(*) AS total FROM items a
+       LEFT JOIN categories b ON a.category_id = b.id
+       WHERE a.archived_at IS NULL
+       ${searchWildcard ? "AND (a.name LIKE ? OR a.barcode LIKE ? OR COALESCE(b.category_name, 'No Category') LIKE ?)" : ""}`,
+      searchWildcard ? [searchWildcard, searchWildcard, searchWildcard] : []
+    );
+
+    const pagination = buildPagination(req.query, total);
+
     const [items] = await pool.query(
       `SELECT a.*, b.category_name
        FROM items a
        LEFT JOIN categories b ON a.category_id = b.id
        WHERE a.archived_at IS NULL
-       ORDER BY a.id DESC`
+       ${searchWildcard ? "AND (a.name LIKE ? OR a.barcode LIKE ? OR COALESCE(b.category_name, 'No Category') LIKE ?)" : ""}
+       ORDER BY a.id DESC
+       LIMIT ? OFFSET ?`,
+      searchWildcard
+        ? [searchWildcard, searchWildcard, searchWildcard, pagination.perPage, pagination.offset]
+        : [pagination.perPage, pagination.offset]
     );
+
+    if (isAjax) {
+      return res.json({
+        ok: true,
+        items,
+        pagination,
+        paginationHtml: buildPaginationHtml(pagination, "/history", search)
+      });
+    }
 
     return res.render("dashboard/history", {
       title: "History",
-      items
+      items,
+      pagination,
+      search
     });
   } catch (error) {
     console.error("Failed to load history page:", error);
     flash(req, { type: "error", message: "Unable to load history." });
+
+    if (isAjax) {
+      return res.status(500).json({ ok: false, message: "Unable to load history." });
+    }
+
     return res.render("dashboard/history", {
       title: "History",
-      items: []
+      items: [],
+      pagination: buildPagination({}, 0),
+      search: ""
     });
   }
 });

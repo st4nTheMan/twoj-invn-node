@@ -85,12 +85,15 @@
 
 <section class="rounded-3xl bg-white shadow-soft">
   <div class="border-b border-slate-200 p-5 relative">
-    <input id="credit-ledger-search" type="text" placeholder="Search by customer, phone number, invoice, or item summary..." class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+    <input id="credit-ledger-search" type="text" placeholder="Search by customer, phone number, invoice, or item summary..." value="<%= typeof search !== 'undefined' ? search : '' %>" class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 text-sm">
     <button type="button" id="credit-ledger-search-clear" class="absolute inset-y-0 right-10 flex items-center text-slate-400 hover:text-slate-600">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
         <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18" />
       </svg>
     </button>
+  </div>
+  <div id="credit-ledger-pagination-top">
+    <%- include("../components/pagination", { pagination, baseUrl: "/credit-ledger", search: typeof search !== 'undefined' ? search : '' }) %>
   </div>
   <div class="table-scroll overflow-x-auto">
     <table id="credit-ledger-table" class="responsive-table min-w-full text-left text-sm">
@@ -104,7 +107,7 @@
           <th class="px-4 py-3">Date</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-slate-200">
+      <tbody id="credit-ledger-tbody" class="divide-y divide-slate-200">
         <% if (entries.length) { entries.forEach((entry) => { %>
           <tr data-row class="hover:bg-slate-50">
             <td data-label="Customer" class="px-4 py-3 align-top">
@@ -148,6 +151,9 @@
         <% } %>
       </tbody>
     </table>
+  </div>
+  <div id="credit-ledger-pagination-bottom">
+    <%- include("../components/pagination", { pagination, baseUrl: "/credit-ledger", search: typeof search !== 'undefined' ? search : '' }) %>
   </div>
   <p id="credit-ledger-empty-search" class="hidden p-6 text-center text-sm text-slate-500">No credit ledger entries found.</p>
 </section>
