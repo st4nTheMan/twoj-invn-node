@@ -357,41 +357,53 @@ router.get("/inventory", requirePermission("inventory.view"), async (req, res) =
 // Downloads the inventory list in CSV or Excel-compatible XLS format.
 router.get("/inventory/export", requirePermission("inventory.export"), async (req, res) => {
   const format = String(req.query.format || "csv").trim().toLowerCase();
+  const search = String(req.query.search || "").trim();
+  const searchWildcard = search ? `%${search}%` : null;
+  const categoryFilter = req.query.category ? Number(req.query.category) : null;
+  const sort = String(req.query.sort || "newest");
 
   if (!["csv", "xls"].includes(format)) {
     flash(req, { type: "error", message: "Choose CSV or XLS for export." });
     return res.redirect("/inventory");
   }
 
+  const validSorts = {
+    name_asc:       "a.name ASC",
+    name_desc:      "a.name DESC",
+    barcode_asc:    "a.barcode ASC",
+    barcode_desc:   "a.barcode DESC",
+    price_asc:      "a.price ASC",
+    price_desc:     "a.price DESC",
+    newest:         "a.id DESC",
+    oldest:         "a.id ASC"
+  };
+  const orderBy = buildSortClause(sort, validSorts, "a.id DESC");
+
+  const conditions = ["a.archived_at IS NULL"];
+  const params = [];
+
+  if (searchWildcard) {
+    conditions.push("(a.name LIKE ? OR a.barcode LIKE ? OR COALESCE(b.category_name, 'No Category') LIKE ?)");
+    params.push(searchWildcard, searchWildcard, searchWildcard);
+  }
+  if (categoryFilter) {
+    conditions.push("a.category_id = ?");
+    params.push(categoryFilter);
+  }
+
+  const whereClause = `WHERE ${conditions.join(" AND ")}`;
+
   try {
     const [items] = await pool.query(
       `SELECT a.id, a.barcode, a.name, a.cost, a.price, a.quantity, a.min_quantity, a.max_quantity, a.created_at, b.category_name
        FROM items a
        LEFT JOIN categories b ON a.category_id = b.id
-       WHERE a.archived_at IS NULL
-       ORDER BY a.id DESC`
+       ${whereClause}
+       ORDER BY ${orderBy}`,
+      params
     );
+
     const timestamp = getExportTimestamp();
-
-    if (format === "csv") {
-      await logActivity({
-        actorId: req.session.user?.id,
-        username: req.session.user?.username,
-        role: req.session.user?.role,
-        action: "inventory_exported",
-        entityType: "inventory_export",
-        entityId: format,
-        description: `${req.session.user?.username || "Admin"} exported inventory as ${format.toUpperCase()}.`,
-        metadata: {
-          format,
-          item_count: items.length
-        }
-      });
-
-      res.setHeader("Content-Type", "text/csv; charset=utf-8");
-      res.setHeader("Content-Disposition", `attachment; filename="inventory-${timestamp}.csv"`);
-      return res.send(`\uFEFF${buildInventoryCsv(items)}`);
-    }
 
     await logActivity({
       actorId: req.session.user?.id,
@@ -403,9 +415,18 @@ router.get("/inventory/export", requirePermission("inventory.export"), async (re
       description: `${req.session.user?.username || "Admin"} exported inventory as ${format.toUpperCase()}.`,
       metadata: {
         format,
-        item_count: items.length
+        item_count: items.length,
+        search: search || null,
+        category: categoryFilter || null,
+        sort
       }
     });
+
+    if (format === "csv") {
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="inventory-${timestamp}.csv"`);
+      return res.send(`\uFEFF${buildInventoryCsv(items)}`);
+    }
 
     res.setHeader("Content-Type", "application/vnd.ms-excel; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="inventory-${timestamp}.xls"`);

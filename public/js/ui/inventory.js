@@ -128,6 +128,33 @@
 
     InventoryUi.bindViewItemTriggers = bindViewItemTriggers;
 
+    // Syncs current search/filter/sort state into the export form hidden inputs.
+    function syncExportParams() {
+      const params = new URLSearchParams(window.location.search);
+
+      const searchParam = document.getElementById("export-search-param");
+      const categoryParam = document.getElementById("export-category-param");
+      const sortParam = document.getElementById("export-sort-param");
+
+      // Read search from URL (search navigates via URL so this is correct).
+      if (searchParam) searchParam.value = params.get("search") || "";
+
+      // Read sort and category from the live DOM dropdowns, not the URL,
+      // because AJAX sort/filter changes don't update the URL.
+      const sortSelect = document.querySelector("[data-sort-select]");
+      const filterSelect = document.querySelector("[data-filter-select]");
+
+      if (sortParam) sortParam.value = sortSelect?.value || params.get("sort") || "";
+      if (categoryParam) categoryParam.value = filterSelect?.value || params.get("category") || "";
+    }
+
+    // Sync export params whenever the export modal opens.
+    document.querySelector("[data-open-modal='export-inventory-modal']")
+      ?.addEventListener("click", syncExportParams);
+
+    // Also sync on page load in case the page was loaded with params already set.
+    syncExportParams();
+
     // Disables a modal form submit button while an async save is in progress.
     function setSubmitDisabled(form, disabled) {
       const submitButton = form.querySelector('button[type="submit"]');
