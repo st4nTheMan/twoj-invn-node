@@ -16,6 +16,10 @@
     </div>
 
     <form action="/inventory/export" method="GET" class="space-y-5 p-6">
+      <input type="hidden" name="search" id="export-search-param" value="">
+      <input type="hidden" name="category" id="export-category-param" value="">
+      <input type="hidden" name="sort" id="export-sort-param" value="">
+      
       <fieldset>
         <legend class="mb-3 text-sm font-medium text-slate-700">Format</legend>
         <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 px-4 py-4 transition hover:border-sky-300 hover:bg-sky-50/50">
