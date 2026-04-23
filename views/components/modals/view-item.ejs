@@ -20,12 +20,26 @@
       <div class="grid gap-4 md:grid-cols-2">
         <div>
           <p class="mb-2 text-sm font-medium text-slate-700">Item Number</p>
-          <div id="view-item-modal-barcode" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"></div>
+          <% if (can('inventory.edit')) { %>
+            <div class="flex items-center gap-2">
+              <div id="view-item-modal-barcode-display" class="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"></div>
+              <input id="view-item-modal-barcode" type="text" class="hidden flex-1 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm focus:border-sky-400 focus:ring-sky-400">
+            </div>
+          <% } else { %>
+            <div id="view-item-modal-barcode" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"></div>
+          <% } %>
         </div>
 
         <div>
           <p class="mb-2 text-sm font-medium text-slate-700">Item Name</p>
-          <div id="view-item-modal-item-name" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"></div>
+          <% if (can('inventory.edit')) { %>
+            <div class="flex items-center gap-2">
+              <div id="view-item-modal-item-name-display" class="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"></div>
+              <input id="view-item-modal-item-name" type="text" class="hidden flex-1 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm focus:border-sky-400 focus:ring-sky-400">
+            </div>
+          <% } else { %>
+            <div id="view-item-modal-item-name" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"></div>
+          <% } %>
         </div>
 
         <div>
@@ -69,7 +83,34 @@
         </div>
       </div>
 
+      <% if (can('inventory.edit')) { %>
+        <p id="view-item-edit-status" class="mt-4 hidden rounded-2xl border px-4 py-3 text-sm"></p>
+      <% } %>
+
       <div class="mt-6 flex flex-wrap gap-3">
+        <% if (can('inventory.edit')) { %>
+          <button
+            id="view-item-edit-button"
+            type="button"
+            class="rounded-2xl border border-sky-300 px-4 py-3 text-sm font-semibold text-sky-700"
+          >
+            Edit
+          </button>
+          <button
+            id="view-item-save-button"
+            type="button"
+            class="hidden rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white"
+          >
+            Save Changes
+          </button>
+          <button
+            id="view-item-cancel-edit-button"
+            type="button"
+            class="hidden rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700"
+          >
+            Cancel
+          </button>
+        <% } %>
         <% if (can('inventory.adjust')) { %>
           <a href="/inventory/adjustments" class="rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950">Open Adjustments</a>
         <% } %>

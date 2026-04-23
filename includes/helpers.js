@@ -10,7 +10,21 @@ function formatCurrency(value) {
 function formatDateTime(value) {
   if (!value) return "";
 
-  return new Date(value).toLocaleString("en-PH", {
+  let date;
+
+  if (value instanceof Date) {
+    // MySQL2 already parsed it as a Date object — use directly.
+    date = value;
+  } else {
+    // String from MySQL — normalize to ISO UTC.
+    const normalized = String(value).trim().replace(" ", "T");
+    const iso = normalized.endsWith("Z") || normalized.includes("+") ? normalized : `${normalized}Z`;
+    date = new Date(iso);
+  }
+
+  if (isNaN(date.getTime())) return "";
+
+  return date.toLocaleString("en-PH", {
     weekday: "short",
     year: "numeric",
     month: "short",
@@ -18,7 +32,8 @@ function formatDateTime(value) {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-    hour12: true
+    hour12: true,
+    timeZone: "Asia/Manila"
   });
 }
 

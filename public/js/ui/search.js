@@ -32,7 +32,8 @@
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
-      hour12: true
+      hour12: true,
+      timeZone: "Asia/Manila"
     });
 
     function formatCurrency(value) {
@@ -41,7 +42,11 @@
 
     function formatDateTime(value) {
       if (!value) return "";
-      return dateTimeFormatter.format(new Date(value));
+      const normalized = String(value).trim().replace(" ", "T");
+      const iso = normalized.endsWith("Z") || normalized.includes("+") ? normalized : `${normalized}Z`;
+      const date = new Date(iso);
+      if (isNaN(date.getTime())) return "";
+      return dateTimeFormatter.format(date);
     }
 
     function formatInvoice(id) {
@@ -258,16 +263,6 @@
     document.querySelectorAll("[id$='search-clear']").forEach((clearBtn) => {
       const input = clearBtn.closest("section, div")?.querySelector("input[type='text']");
       if (!input) return;
-
-      // Skip inputs managed by bindAjaxTable — they handle their own clear.
-      const ajaxManaged = [
-        "inventory-search",
-        "history-search",
-        "price-lookup-search",
-        "reports-search",
-        "credit-ledger-search"
-      ];
-      if (ajaxManaged.includes(input.id)) return;
 
       clearBtn.addEventListener("click", () => {
         input.value = "";
