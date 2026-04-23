@@ -80,8 +80,6 @@
 
       const modalFields = {
         name: document.getElementById("view-item-modal-name"),
-        barcode: document.getElementById("view-item-modal-barcode"),
-        itemName: document.getElementById("view-item-modal-item-name"),
         cost: document.getElementById("view-item-modal-cost"),
         price: document.getElementById("view-item-modal-price"),
         quantity: document.getElementById("view-item-modal-quantity"),
@@ -94,9 +92,47 @@
 
       if (!modalFields.name) return;
 
-      modalFields.name.textContent = trigger.dataset.itemName || "Item Details";
-      modalFields.barcode.textContent = trigger.dataset.itemBarcode || "";
-      modalFields.itemName.textContent = trigger.dataset.itemName || "";
+      const barcodeValue = trigger.dataset.itemBarcode || "";
+      const nameValue = trigger.dataset.itemName || "";
+
+      // Handle barcode field — editable mode has both a display div and an input.
+      const barcodeDisplay = document.getElementById("view-item-modal-barcode-display");
+      const barcodeInput = document.getElementById("view-item-modal-barcode");
+      if (barcodeDisplay) {
+        barcodeDisplay.textContent = barcodeValue;
+      } else if (barcodeInput) {
+        // Read-only fallback (no inventory.edit permission — just a div with this id).
+        barcodeInput.textContent = barcodeValue;
+      }
+      if (barcodeInput?.tagName === "INPUT") barcodeInput.value = barcodeValue;
+
+      // Handle item name field — same pattern.
+      const itemNameDisplay = document.getElementById("view-item-modal-item-name-display");
+      const itemNameInput = document.getElementById("view-item-modal-item-name");
+      if (itemNameDisplay) {
+        itemNameDisplay.textContent = nameValue;
+      } else if (itemNameInput) {
+        itemNameInput.textContent = nameValue;
+      }
+      if (itemNameInput?.tagName === "INPUT") itemNameInput.value = nameValue;
+
+      // Reset to read-only mode every time the modal opens.
+      const editButton = document.getElementById("view-item-edit-button");
+      const saveButton = document.getElementById("view-item-save-button");
+      const cancelEditButton = document.getElementById("view-item-cancel-edit-button");
+      const editStatus = document.getElementById("view-item-edit-status");
+
+      if (barcodeDisplay) barcodeDisplay.classList.remove("hidden");
+      if (itemNameDisplay) itemNameDisplay.classList.remove("hidden");
+      if (barcodeInput?.tagName === "INPUT") barcodeInput.classList.add("hidden");
+      if (itemNameInput?.tagName === "INPUT") itemNameInput.classList.add("hidden");
+      if (editButton) editButton.classList.remove("hidden");
+      if (saveButton) saveButton.classList.add("hidden");
+      if (cancelEditButton) cancelEditButton.classList.add("hidden");
+      if (editStatus) editStatus.className = "mt-4 hidden rounded-2xl border px-4 py-3 text-sm";
+
+      // Populate remaining read-only fields.
+      modalFields.name.textContent = nameValue || "Item Details";
       modalFields.cost.textContent = `PHP ${formatCurrency(trigger.dataset.itemCost)}`;
       modalFields.price.textContent = `PHP ${formatCurrency(trigger.dataset.itemPrice)}`;
       modalFields.quantity.textContent = String(trigger.dataset.itemQuantity || "0");
@@ -108,13 +144,13 @@
 
       if (archiveItemButton) {
         archiveItemButton.dataset.itemId = trigger.dataset.itemId || "";
-        archiveItemButton.dataset.itemName = trigger.dataset.itemName || "this item";
+        archiveItemButton.dataset.itemName = nameValue || "this item";
       }
       if (archiveItemConfirmForm) {
         archiveItemConfirmForm.action = `/inventory/items/${encodeURIComponent(trigger.dataset.itemId || "0")}/archive`;
       }
       if (archiveItemConfirmMessage) {
-        archiveItemConfirmMessage.textContent = `Archive ${trigger.dataset.itemName || "this item"}?`;
+        archiveItemConfirmMessage.textContent = `Archive ${nameValue || "this item"}?`;
       }
     }
 
@@ -460,5 +496,155 @@
     });
 
     bindViewItemTriggers();
+
+    const viewItemSaveButton = document.getElementById("view-item-save-button");
+    const viewItemEditButton = document.getElementById("view-item-edit-button");
+    const viewItemCancelEditButton = document.getElementById("view-item-cancel-edit-button");
+    const viewItemEditStatus = document.getElementById("view-item-edit-status");
+
+    function setEditStatus(type, message) {
+      if (!viewItemEditStatus) return;
+      if (!message) {
+        viewItemEditStatus.className = "mt-4 hidden rounded-2xl border px-4 py-3 text-sm";
+        return;
+      }
+      viewItemEditStatus.textContent = message;
+      viewItemEditStatus.className = [
+        "mt-4 rounded-2xl border px-4 py-3 text-sm",
+        type === "success"
+          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+          : "border-rose-200 bg-rose-50 text-rose-800"
+      ].join(" ");
+    }
+
+    function enterEditMode() {
+      const barcodeDisplay = document.getElementById("view-item-modal-barcode-display");
+      const itemNameDisplay = document.getElementById("view-item-modal-item-name-display");
+      const barcodeInput = document.getElementById("view-item-modal-barcode");
+      const itemNameInput = document.getElementById("view-item-modal-item-name");
+
+      if (barcodeDisplay) barcodeDisplay.classList.add("hidden");
+      if (itemNameDisplay) itemNameDisplay.classList.add("hidden");
+      if (barcodeInput) barcodeInput.classList.remove("hidden");
+      if (itemNameInput) itemNameInput.classList.remove("hidden");
+
+      if (viewItemEditButton) viewItemEditButton.classList.add("hidden");
+      if (viewItemSaveButton) viewItemSaveButton.classList.remove("hidden");
+      if (viewItemCancelEditButton) viewItemCancelEditButton.classList.remove("hidden");
+
+      setEditStatus("", "");
+      barcodeInput?.focus();
+    }
+
+    function exitEditMode() {
+      const barcodeDisplay = document.getElementById("view-item-modal-barcode-display");
+      const itemNameDisplay = document.getElementById("view-item-modal-item-name-display");
+      const barcodeInput = document.getElementById("view-item-modal-barcode");
+      const itemNameInput = document.getElementById("view-item-modal-item-name");
+
+      if (barcodeDisplay) barcodeDisplay.classList.remove("hidden");
+      if (itemNameDisplay) itemNameDisplay.classList.remove("hidden");
+      if (barcodeInput) barcodeInput.classList.add("hidden");
+      if (itemNameInput) itemNameInput.classList.add("hidden");
+
+      if (viewItemEditButton) viewItemEditButton.classList.remove("hidden");
+      if (viewItemSaveButton) viewItemSaveButton.classList.add("hidden");
+      if (viewItemCancelEditButton) viewItemCancelEditButton.classList.add("hidden");
+
+      setEditStatus("", "");
+    }
+
+    viewItemEditButton?.addEventListener("click", enterEditMode);
+
+    viewItemCancelEditButton?.addEventListener("click", () => {
+      // Restore original values on cancel.
+      const barcodeDisplay = document.getElementById("view-item-modal-barcode-display");
+      const itemNameDisplay = document.getElementById("view-item-modal-item-name-display");
+      const barcodeInput = document.getElementById("view-item-modal-barcode");
+      const itemNameInput = document.getElementById("view-item-modal-item-name");
+
+      if (barcodeInput && barcodeDisplay) barcodeInput.value = barcodeDisplay.textContent;
+      if (itemNameInput && itemNameDisplay) itemNameInput.value = itemNameDisplay.textContent;
+
+      exitEditMode();
+    });
+
+    if (viewItemSaveButton) {
+      viewItemSaveButton.addEventListener("click", async () => {
+        const barcodeInput = document.getElementById("view-item-modal-barcode");
+        const itemNameInput = document.getElementById("view-item-modal-item-name");
+        const barcodeDisplay = document.getElementById("view-item-modal-barcode-display");
+        const itemNameDisplay = document.getElementById("view-item-modal-item-name-display");
+        const itemId = archiveItemButton?.dataset.itemId;
+
+        if (!itemId) {
+          setEditStatus("error", "Unable to identify item. Please close and reopen the modal.");
+          return;
+        }
+
+        const barcode = normalizeText(barcodeInput?.value || "");
+        const name = normalizeText(itemNameInput?.value || "");
+
+        if (!barcode || !name) {
+          setEditStatus("error", "Item number and name are required.");
+          return;
+        }
+
+        setButtonDisabled(viewItemSaveButton, true);
+        setEditStatus("", "");
+
+        try {
+          const body = new URLSearchParams({ barcode, name });
+          const response = await fetch(`/inventory/items/${encodeURIComponent(itemId)}`, {
+            method: "POST",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+              "X-Requested-With": "XMLHttpRequest"
+            },
+            body: body.toString()
+          });
+          const payload = await response.json();
+
+          if (!payload.ok) {
+            setEditStatus("error", payload.message || "Unable to save changes.");
+            return;
+          }
+
+          // Update display divs with new values.
+          if (barcodeDisplay) barcodeDisplay.textContent = barcode;
+          if (itemNameDisplay) itemNameDisplay.textContent = name;
+
+          // Update modal title.
+          const modalName = document.getElementById("view-item-modal-name");
+          if (modalName) modalName.textContent = name;
+
+          // Update the table row without a page reload.
+          const tableRow = inventoryTableBody?.querySelector(
+            `[data-item-id="${CSS.escape(itemId)}"]`
+          )?.closest("tr");
+
+          if (tableRow) {
+            const barcodeCell = tableRow.querySelector("td[data-label='Item Number']");
+            const nameCell = tableRow.querySelector("td[data-label='Name']");
+            if (barcodeCell) barcodeCell.textContent = barcode;
+            if (nameCell) nameCell.textContent = name;
+
+            const trigger = tableRow.querySelector("[data-view-item-trigger]");
+            if (trigger) {
+              trigger.dataset.itemBarcode = barcode;
+              trigger.dataset.itemName = name;
+            }
+          }
+
+          exitEditMode();
+          InventoryUi.showFlashFeedback("success", payload.message || "Item updated successfully.");
+        } catch (error) {
+          setEditStatus("error", "Unable to save changes right now.");
+        } finally {
+          setButtonDisabled(viewItemSaveButton, false);
+        }
+      });
+    }
   });
 }());

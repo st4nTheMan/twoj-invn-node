@@ -6,6 +6,7 @@ const PERMISSION_GROUPS = [
     permissions: [
       { key: "inventory.view", label: "View inventory", description: "Open the inventory page and item details." },
       { key: "inventory.create", label: "Add items and categories", description: "Create inventory items and categories." },
+      { key: "inventory.edit", label: "Edit item number and name", description: "Update the item number and name from the view item modal." }, // ← add this line
       { key: "inventory.archive_restore", label: "Archive and restore items", description: "Hide and restore inventory records." },
       { key: "inventory.adjust", label: "Adjust inventory", description: "Update quantity, cost, price, and category adjustments." },
       { key: "inventory.export", label: "Export inventory", description: "Download CSV or XLS inventory exports." }
