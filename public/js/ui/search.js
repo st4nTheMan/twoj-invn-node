@@ -264,16 +264,6 @@
       const input = clearBtn.closest("section, div")?.querySelector("input[type='text']");
       if (!input) return;
 
-      // Skip inputs managed by bindAjaxTable — they handle their own clear.
-      const ajaxManaged = [
-        "inventory-search",
-        "history-search",
-        "price-lookup-search",
-        "reports-search",
-        "credit-ledger-search"
-      ];
-      if (ajaxManaged.includes(input.id)) return;
-
       clearBtn.addEventListener("click", () => {
         input.value = "";
         input.dispatchEvent(new Event("input"));

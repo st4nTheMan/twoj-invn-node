@@ -6,8 +6,6 @@
     const addItemForm = document.getElementById("add-item-form");
     const addCategoryForm = document.getElementById("add-category-form");
     const inventoryTableBody = document.querySelector("#inventory-table tbody");
-    const inventorySearch = document.getElementById("inventory-search");
-    const inventoryEmptySearch = document.getElementById("inventory-empty-search");
     const addItemCategorySelect = addItemForm?.querySelector('select[name="category_id"]');
     const barcodeInput = addItemForm?.querySelector('input[name="barcode"]');
     const verifyBarcodeButton = document.getElementById("verify-barcode-button");
