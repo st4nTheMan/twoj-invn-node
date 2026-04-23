@@ -3,7 +3,10 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const pool = require("../database/pool");
 const { logActivity } = require("../database/activity-log");
-const { getDefaultDashboardPath, normalizeUserRole } = require("../middleware/auth");
+const {
+  getDefaultDashboardPath,
+  normalizeUserRole
+} = require("../middleware/auth");
 const { flash, getDatabaseErrorMessage } = require("../includes/helpers");
 
 // Defines authentication-related page routes and session actions.
@@ -33,7 +36,10 @@ router.post("/login", async (req, res) => {
   const password = String(req.body.password || "");
 
   if (!username || !password) {
-    flash(req, { type: "error", message: "Username and password are required." });
+    flash(req, {
+      type: "error",
+      message: "Username and password are required."
+    });
     return res.redirect("/login");
   }
 
@@ -140,7 +146,7 @@ router.get("/logout", (req, res) => {
 
   req.session.destroy(() => {
     finalizeLogout().finally(() => {
-    res.redirect("/login");
+      res.redirect("/login");
     });
   });
 });

@@ -1,7 +1,7 @@
 const express = require("express");
 const pool = require("../database/pool");
 const { requirePermission } = require("../middleware/auth");
-const { 
+const {
   flash,
   buildPagination,
   buildPaginationHtml,
@@ -13,15 +13,18 @@ const router = express.Router();
 router.get("/reports", requirePermission("reports.view"), async (req, res) => {
   const search = String(req.query.search || "").trim();
   const searchWildcard = search ? `%${search}%` : null;
-  const paymentFilter = ["cash", "credit"].includes(req.query.payment) ? req.query.payment : "";
+  const paymentFilter = ["cash", "credit"].includes(req.query.payment)
+    ? req.query.payment
+    : "";
   const sort = String(req.query.sort || "newest");
-  const isAjax = req.xhr || String(req.get("accept") || "").includes("application/json");
+  const isAjax =
+    req.xhr || String(req.get("accept") || "").includes("application/json");
 
   const validSorts = {
-    newest:      "a.id DESC",
-    oldest:      "a.id ASC",
-    total_asc:   "a.total_amount ASC",
-    total_desc:  "a.total_amount DESC"
+    newest: "a.id DESC",
+    oldest: "a.id ASC",
+    total_asc: "a.total_amount ASC",
+    total_desc: "a.total_amount DESC"
   };
   const orderBy = buildSortClause(sort, validSorts, "a.id DESC");
 
@@ -64,7 +67,10 @@ router.get("/reports", requirePermission("reports.view"), async (req, res) => {
         ok: true,
         items: transactions,
         pagination,
-        paginationHtml: buildPaginationHtml(pagination, "/reports", search, { payment: paymentFilter, sort })
+        paginationHtml: buildPaginationHtml(pagination, "/reports", search, {
+          payment: paymentFilter,
+          sort
+        })
       });
     }
 
@@ -81,7 +87,9 @@ router.get("/reports", requirePermission("reports.view"), async (req, res) => {
     flash(req, { type: "error", message: "Unable to load reports." });
 
     if (isAjax) {
-      return res.status(500).json({ ok: false, message: "Unable to load reports." });
+      return res
+        .status(500)
+        .json({ ok: false, message: "Unable to load reports." });
     }
 
     return res.render("dashboard/reports", {
