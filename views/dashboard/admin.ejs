@@ -184,20 +184,19 @@
             <td data-label="Created" class="px-4 py-3 text-slate-500"><%= formatDateTime(managedUser.created_at) %></td>
             <td data-label="Status" class="px-4 py-3 text-slate-500">Active</td>
             <td data-label="Actions" class="px-4 py-3">
-              <% if (can('admin.users.reset_password')) { %>
               <button
                 type="button"
-                data-open-modal="reset-user-password-modal"
-                data-reset-password-trigger
+                data-open-modal="view-user-modal"
+                data-view-user-trigger
                 data-user-id="<%= managedUser.id %>"
                 data-username="<%= managedUser.username %>"
-                class="w-full rounded-xl border border-amber-300 px-3 py-2 text-xs font-semibold text-amber-700 sm:w-auto"
+                data-role-name="<%= managedUser.role %>"
+                data-role-display="<%= managedUser.role_display_name || managedUser.role %>"
+                data-created-at="<%= managedUser.created_at %>"
+                class="w-full rounded-xl border border-sky-300 px-3 py-2 text-xs font-semibold text-sky-700 sm:w-auto"
               >
-                Reset Password
+                View User
               </button>
-              <% } else { %>
-                <span class="text-xs text-slate-400">No actions</span>
-              <% } %>
             </td>
           </tr>
         <% }) } else { %>
@@ -211,6 +210,9 @@
 </section>
 <% } %>
 
+<% if (can('admin.users.view')) { %>
+  <%- include("../components/modals/view-user", { roles }) %>
+<% } %>
 <% if (can('admin.users.create')) { %>
   <%- include("../components/modals/add-user", { roles }) %>
 <% } %>
@@ -220,9 +222,6 @@
 <% if (can('admin.roles.view')) { %>
   <%- include("../components/modals/view-role-permissions") %>
   <script id="permission-catalog" type="application/json"><%- JSON.stringify(permissionGroups) %></script>
-<% } %>
-<% if (can('admin.users.reset_password')) { %>
-  <%- include("../components/modals/reset-user-password") %>
 <% } %>
 <% if (can('admin.data.manage')) { %>
   <%- include("../components/modals/manage-app-backup") %>

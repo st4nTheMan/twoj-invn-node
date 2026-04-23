@@ -711,4 +711,86 @@ router.post("/admin/users/:id/password", requirePermission("admin.users.reset_pa
   }
 });
 
+// Updates the role for an existing user.
+router.post("/admin/users/:id/role", requirePermission("admin.users.create"), async (req, res) => {
+  const userId = Number(req.params.id);
+  const role = normalizeUserRole(req.body.role);
+  const jsonResponse = req.xhr || String(req.get("accept") || "").includes("application/json");
+
+  if (!userId) {
+    if (jsonResponse) return res.status(400).json({ ok: false, message: "User not found." });
+    flash(req, { type: "error", message: "User not found." });
+    return res.redirect("/admin");
+  }
+
+  if (!role) {
+    if (jsonResponse) return res.status(400).json({ ok: false, message: "Choose a valid role." });
+    flash(req, { type: "error", message: "Choose a valid role." });
+    return res.redirect("/admin");
+  }
+
+  try {
+    const [rows] = await pool.query(
+      "SELECT id, username, role FROM users WHERE id = ? LIMIT 1",
+      [userId]
+    );
+    const managedUser = rows[0];
+
+    if (!managedUser) {
+      if (jsonResponse) return res.status(404).json({ ok: false, message: "User not found." });
+      flash(req, { type: "error", message: "User not found." });
+      return res.redirect("/admin");
+    }
+
+    const [roleRows] = await pool.query(
+      "SELECT name, display_name FROM roles WHERE name = ? LIMIT 1",
+      [role]
+    );
+    const selectedRole = roleRows[0];
+
+    if (!selectedRole) {
+      if (jsonResponse) return res.status(400).json({ ok: false, message: "Choose a valid role." });
+      flash(req, { type: "error", message: "Choose a valid role." });
+      return res.redirect("/admin");
+    }
+
+    await pool.query(
+      "UPDATE users SET role = ? WHERE id = ?",
+      [role, userId]
+    );
+
+    await logActivity({
+      actorId: req.session.user?.id,
+      username: req.session.user?.username,
+      role: req.session.user?.role,
+      action: "user_role_updated",
+      entityType: "user",
+      entityId: managedUser.id,
+      description: `${req.session.user?.username || "Admin"} changed ${managedUser.username}'s role to ${selectedRole.display_name}.`,
+      metadata: {
+        username: managedUser.username,
+        old_role: managedUser.role,
+        new_role: role
+      }
+    });
+
+    if (jsonResponse) {
+      return res.json({
+        ok: true,
+        message: `${managedUser.username}'s role updated to ${selectedRole.display_name}.`,
+        role,
+        roleDisplayName: selectedRole.display_name
+      });
+    }
+
+    flash(req, { type: "success", message: `${managedUser.username}'s role updated to ${selectedRole.display_name}.` });
+    return res.redirect("/admin");
+  } catch (error) {
+    console.error("Failed to update user role:", error);
+    if (jsonResponse) return res.status(500).json({ ok: false, message: "Unable to update role right now." });
+    flash(req, { type: "error", message: "Unable to update role right now." });
+    return res.redirect("/admin");
+  }
+});
+
 module.exports = router;

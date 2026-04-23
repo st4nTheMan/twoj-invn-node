@@ -1,0 +1,157 @@
+<% /* Modal for viewing a single user's details and managing their account. */ %>
+<section id="view-user-modal" data-modal class="hidden fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 sm:p-6">
+  <div class="my-8 w-full max-w-2xl rounded-3xl bg-white shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-600">User Details</p>
+        <h2 id="view-user-modal-username" class="mt-2 text-2xl font-semibold text-slate-900">User</h2>
+        <p id="view-user-modal-role" class="text-sm text-slate-500">—</p>
+      </div>
+      <button
+        type="button"
+        data-close-modal
+        class="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+      >
+        Close
+      </button>
+    </div>
+
+    <div class="p-6">
+
+      <!-- User details -->
+      <div class="grid gap-4 md:grid-cols-2">
+        <div>
+          <p class="mb-2 text-sm font-medium text-slate-700">Username</p>
+          <div id="view-user-modal-username-display" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"></div>
+        </div>
+
+        <div>
+          <p class="mb-2 text-sm font-medium text-slate-700">Role</p>
+          <% if (can('admin.users.create')) { %>
+            <div id="view-user-modal-role-display" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"></div>
+            <select id="view-user-modal-role-select" class="hidden w-full rounded-2xl border-slate-300 bg-white px-4 py-3 text-sm">
+              <% roles.forEach((r) => { %>
+                <option value="<%= r.name %>"><%= r.display_name %></option>
+              <% }) %>
+            </select>
+          <% } else { %>
+            <div id="view-user-modal-role-display" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"></div>
+          <% } %>
+        </div>
+
+        <div>
+          <p class="mb-2 text-sm font-medium text-slate-700">Status</p>
+          <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">Active</div>
+        </div>
+
+        <div>
+          <p class="mb-2 text-sm font-medium text-slate-700">Created</p>
+          <div id="view-user-modal-created-at" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"></div>
+        </div>
+      </div>
+
+      <p id="view-user-edit-status" class="mt-4 hidden rounded-2xl border px-4 py-3 text-sm"></p>
+
+      <!-- Role edit buttons -->
+      <% if (can('admin.users.create')) { %>
+        <div class="mt-4 flex flex-wrap gap-3">
+          <button id="view-user-edit-button" type="button" class="rounded-2xl border border-sky-300 px-4 py-3 text-sm font-semibold text-sky-700">
+            Edit Role
+          </button>
+          <button id="view-user-save-role-button" type="button" class="hidden rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white">
+            Save Role
+          </button>
+          <button id="view-user-cancel-edit-button" type="button" class="hidden rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700">
+            Cancel
+          </button>
+        </div>
+      <% } %>
+
+      <!-- Reset password section -->
+      <% if (can('admin.users.reset_password')) { %>
+        <div class="mt-6 border-t border-slate-200 pt-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-semibold text-slate-900">Reset Password</h3>
+              <p class="mt-1 text-sm text-slate-500">The old password will stop working immediately.</p>
+            </div>
+            <button id="view-user-show-password-button" type="button" class="rounded-2xl border border-amber-300 px-4 py-3 text-sm font-semibold text-amber-700">
+              Reset Password
+            </button>
+          </div>
+
+          <form id="view-user-reset-password-form" action="/admin/users/0/password" method="POST" class="mt-4 hidden">
+            <div class="grid gap-4 md:grid-cols-2">
+              <div>
+                <label class="mb-2 block text-sm font-medium text-slate-700" for="view-user-new-password">New Password</label>
+                <div class="relative">
+                  <input
+                    id="view-user-new-password"
+                    type="password"
+                    name="password"
+                    autocomplete="new-password"
+                    class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 pr-12 text-sm"
+                  >
+                  <button type="button" data-password-toggle data-target="view-user-new-password"
+                    class="absolute inset-y-0 right-3 inline-flex items-center justify-center text-slate-400 transition hover:text-slate-700"
+                    aria-label="Show password" aria-pressed="false">
+                    <svg data-eye-open xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <svg data-eye-closed xmlns="http://www.w3.org/2000/svg" class="hidden h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M10.585 10.587A2 2 0 0013.414 13.414" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9.88 5.09A9.77 9.77 0 0112 4.875c5.25 0 9.246 3.438 10.5 7.125a11.667 11.667 0 01-4.228 5.302M6.61 6.61C4.621 7.873 3.175 9.76 2.5 12c1.254 3.687 5.25 7.125 10.5 7.125 1.706 0 3.318-.363 4.772-1.015" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label class="mb-2 block text-sm font-medium text-slate-700" for="view-user-confirm-password">Confirm Password</label>
+                <div class="relative">
+                  <input
+                    id="view-user-confirm-password"
+                    type="password"
+                    name="confirm_password"
+                    autocomplete="new-password"
+                    class="w-full rounded-2xl border-slate-300 bg-slate-50 px-4 py-3 pr-12 text-sm"
+                  >
+                  <button type="button" data-password-toggle data-target="view-user-confirm-password"
+                    class="absolute inset-y-0 right-3 inline-flex items-center justify-center text-slate-400 transition hover:text-slate-700"
+                    aria-label="Show password confirmation" aria-pressed="false">
+                    <svg data-eye-open xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <svg data-eye-closed xmlns="http://www.w3.org/2000/svg" class="hidden h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M10.585 10.587A2 2 0 0013.414 13.414" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9.88 5.09A9.77 9.77 0 0112 4.875c5.25 0 9.246 3.438 10.5 7.125a11.667 11.667 0 01-4.228 5.302M6.61 6.61C4.621 7.873 3.175 9.76 2.5 12c1.254 3.687 5.25 7.125 10.5 7.125 1.706 0 3.318-.363 4.772-1.015" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 flex gap-3 justify-end">
+              <button type="button" id="view-user-cancel-password-button" class="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700">
+                Cancel
+              </button>
+              <button type="submit" class="rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950">
+                Update Password
+              </button>
+            </div>
+          </form>
+        </div>
+      <% } %>
+
+      <div class="mt-6 flex justify-end border-t border-slate-200 pt-6">
+        <button type="button" data-close-modal class="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
