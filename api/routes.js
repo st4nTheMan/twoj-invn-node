@@ -6,28 +6,32 @@ const { requirePermission } = require("../middleware/auth");
 const router = express.Router();
 
 // Returns the line items for a selected transaction report.
-router.get("/reports/:id/items", requirePermission("reports.view"), async (req, res) => {
-  const transactionId = Number(req.params.id);
+router.get(
+  "/reports/:id/items",
+  requirePermission("reports.view"),
+  async (req, res) => {
+    const transactionId = Number(req.params.id);
 
-  if (!transactionId) {
-    return res.json([]);
+    if (!transactionId) {
+      return res.json([]);
+    }
+
+    try {
+      const [items] = await pool.query(
+        `SELECT a.*, b.barcode, b.name
+       FROM transaction_items a
+       INNER JOIN items b ON a.item_id = b.id
+       WHERE a.transaction_id = ?
+       ORDER BY b.id ASC`,
+        [transactionId]
+      );
+
+      return res.json(items);
+    } catch (error) {
+      console.error("Failed to load report details:", error);
+      return res.status(500).json([]);
+    }
   }
-
-  try {
-    const [items] = await pool.query(
-      `SELECT transaction_items.*, items.barcode, items.name
-       FROM transaction_items
-       INNER JOIN items ON transaction_items.item_id = items.id
-       WHERE transaction_items.transaction_id = ?
-       ORDER BY transaction_items.id ASC`,
-      [transactionId]
-    );
-
-    return res.json(items);
-  } catch (error) {
-    console.error("Failed to load report details:", error);
-    return res.status(500).json([]);
-  }
-});
+);
 
 module.exports = router;
