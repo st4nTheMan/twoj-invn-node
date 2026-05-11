@@ -30,15 +30,20 @@ const { setViewLocals } = require("./middleware/view-locals");
 const app = express();
 const PORT = Number(process.env.PORT || 4000);
 const HOST = process.env.HOST || "0.0.0.0";
-const SSL_KEY_PATH = process.env.SSL_KEY_PATH || path.join(__dirname, "certs", "localhost-key.pem");
-const SSL_CERT_PATH = process.env.SSL_CERT_PATH || path.join(__dirname, "certs", "localhost.pem");
+const SSL_KEY_PATH =
+  process.env.SSL_KEY_PATH ||
+  path.join(__dirname, "certs", "localhost-key.pem");
+const SSL_CERT_PATH =
+  process.env.SSL_CERT_PATH || path.join(__dirname, "certs", "localhost.pem");
 
 // Configures the EJS view engine and static asset location.
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
 // Registers request parsing, sessions, shared view locals, and route modules.
-app.use(express.urlencoded({ extended: true, limit: "10mb", parameterLimit: 100000 }));
+app.use(
+  express.urlencoded({ extended: true, limit: "10mb", parameterLimit: 100000 })
+);
 app.use(express.json({ limit: "10mb" }));
 app.use(
   session({
