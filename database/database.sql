@@ -22,6 +22,7 @@ DROP TABLE IF EXISTS quantity_adjustments;
 DROP TABLE IF EXISTS cost_adjustments;
 -- Drop the transaction item details table before recreating it.
 DROP TABLE IF EXISTS transaction_items;
+DROP TABLE IF EXISTS cash_drawer_readings;
 DROP TABLE IF EXISTS credit_ledger;
 DROP TABLE IF EXISTS customers;
 -- Drop the transactions table before recreating it.
@@ -145,6 +146,8 @@ CREATE TABLE transactions (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   total_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
   payment_method VARCHAR(20) NOT NULL DEFAULT 'cash',
+  cash_received DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  change_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
   customer_name VARCHAR(150) NULL,
   customer_phone VARCHAR(50) NULL,
   customer_id INT UNSIGNED NULL,
@@ -164,6 +167,23 @@ CREATE TABLE transactions (
     ON UPDATE CASCADE
     ON DELETE SET NULL,
   CONSTRAINT fk_transactions_updated_by_user
+    FOREIGN KEY (updated_by) REFERENCES users (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Store the starting cash entered for each daily drawer reading.
+CREATE TABLE cash_drawer_readings (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  reading_date DATE NOT NULL,
+  opening_cash DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  updated_by INT UNSIGNED NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_cash_drawer_readings_date (reading_date),
+  KEY idx_cash_drawer_readings_updated_by (updated_by),
+  CONSTRAINT fk_cash_drawer_readings_updated_by
     FOREIGN KEY (updated_by) REFERENCES users (id)
     ON UPDATE CASCADE
     ON DELETE SET NULL

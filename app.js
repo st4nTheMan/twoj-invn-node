@@ -17,6 +17,7 @@ const {
   ensureCreatedBySchema,
   ensureUpdatedBySchema,
   ensureCreditLedgerSchema,
+  ensureCashDrawerSchema,
   ensureCategoryAdjustmentSchema,
   ensureCustomerRegistrySchema
 } = require("./database/schema-bootstrap");
@@ -95,6 +96,7 @@ async function startServer() {
   await ensureArchiveSchema();
   await ensureAdjustmentNotesSchema();
   await ensureCreditLedgerSchema();
+  await ensureCashDrawerSchema();
   await ensureCustomerRegistrySchema();
   await ensureCategoryAdjustmentSchema();
   await ensureAdjustmentAuditSchema();
