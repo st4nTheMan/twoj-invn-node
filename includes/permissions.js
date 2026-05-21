@@ -93,15 +93,9 @@ function normalizePermissionList(values) {
 function getDefaultDashboardPathForPermissions(permissions) {
   const granted = new Set(normalizePermissionList(permissions));
 
-  if (granted.has("inventory.view")) return "/inventory";
-  if (granted.has("transaction.create")) return "/transaction";
-  if (granted.has("credit_ledger.view")) return "/credit-ledger";
-  if (granted.has("price_lookup.view")) return "/price-lookup";
-  if (granted.has("reports.view")) return "/reports";
-  if (granted.has("admin.users.view") || granted.has("admin.roles.view") || granted.has("admin.data.manage")) return "/admin";
-  if (granted.has("activity_logs.view")) return "/admin/activity-logs";
+  if (granted.size > 0) return "/dashboard";
 
-  return "/login";
+  return "/dashboard";
 }
 
 module.exports = {
