@@ -1,6 +1,6 @@
 const express = require("express");
 const pool = require("../database/pool");
-const { requireLogin } = require("../middleware/auth");
+const { requirePermission } = require("../middleware/auth");
 const { flash } = require("../includes/helpers");
 
 const router = express.Router();
@@ -14,7 +14,7 @@ function getTodayDate() {
   }).format(new Date());
 }
 
-router.get("/dashboard", requireLogin, async (req, res) => {
+router.get("/dashboard", requirePermission("dashboard.view"), async (req, res) => {
   const todayDate = getTodayDate();
 
   try {

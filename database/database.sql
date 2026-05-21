@@ -377,6 +377,7 @@ INSERT INTO roles (name, display_name, is_system) VALUES
   ('cashier', 'Cashier', 1);
 
 INSERT INTO role_permissions (role_id, permission_key) VALUES
+  (1, 'dashboard.view'),
   (1, 'inventory.view'),
   (1, 'inventory.create'),
   (1, 'inventory.archive_restore'),
