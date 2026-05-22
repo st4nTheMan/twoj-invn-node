@@ -178,6 +178,11 @@ router.post(
         );
       }
 
+      const cashReceived =
+        paymentMethod === "cash" ? Number(normalizedCashReceived) : 0;
+      const changeAmount =
+        paymentMethod === "cash" ? Math.max(cashReceived - totalAmount, 0) : 0;
+
       let selectedCustomer = null;
       let createdCustomer = false;
 
@@ -199,11 +204,13 @@ router.post(
       }
 
       const [transactionResult] = await connection.query(
-        `INSERT INTO transactions (total_amount, payment_method, customer_name, customer_phone, customer_id, created_by)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO transactions (total_amount, payment_method, cash_received, change_amount, customer_name, customer_phone, customer_id, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           totalAmount,
           paymentMethod,
+          cashReceived,
+          changeAmount,
           selectedCustomer?.name || customerName || null,
           selectedCustomer?.phone || customerPhone || null,
           selectedCustomer?.id || null,

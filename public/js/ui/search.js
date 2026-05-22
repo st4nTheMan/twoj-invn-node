@@ -125,6 +125,7 @@
           if (paginationTop) paginationTop.innerHTML = "";
           if (paginationBottom) paginationBottom.innerHTML = "";
           emptyState?.classList.add("hidden");
+          onAfterRender?.(tbody, payload);
           return;
         }
 
@@ -134,15 +135,19 @@
         emptyState?.classList.add("hidden");
 
         bindPaginationLinks();
-        onAfterRender?.(tbody);
+        onAfterRender?.(tbody, payload);
       }
 
       // Fetches a page from the server via AJAX including sort and filter state.
       async function fetchPage(page, search) {
         const url = new URL(endpoint, window.location.origin);
+        const currentUrl = new URL(window.location.href);
         url.searchParams.set("page", String(page));
         url.searchParams.set("_", Date.now());
         if (search) url.searchParams.set("search", search);
+        if (currentUrl.searchParams.get("reading_date")) {
+          url.searchParams.set("reading_date", currentUrl.searchParams.get("reading_date"));
+        }
         if (sortSelect?.value) url.searchParams.set("sort", sortSelect.value);
         if (filterSelect?.value) {
           const paramName = filterSelect.dataset.param;
@@ -374,8 +379,9 @@
       emptyStateId: "reports-empty-search",
       endpoint: "/reports",
       colSpan: 5,
-      onAfterRender: (tbody) => {
+      onAfterRender: (tbody, payload) => {
         window.ReportsUi?.bindReportDetailTriggers?.(tbody);
+        window.ReportsUi?.renderDailySales?.(payload.dailySales || []);
       },
       renderRow: (item) => `
         <tr data-row class="hover:bg-slate-50">
@@ -390,7 +396,9 @@
               data-invoice="${escapeHtml(formatInvoice(item.id))}"
               data-total="${escapeHtml(formatCurrency(item.total_amount))}"
               data-date="${escapeHtml(formatDateTime(item.created_at))}"
-              data-created-by="${escapeHtml(item.created_by_username || "-")}">
+              data-created-by="${escapeHtml(item.created_by_username || "-")}"
+              data-cash-received="${escapeHtml(formatCurrency(item.cash_received || 0))}"
+              data-change-amount="${escapeHtml(formatCurrency(item.change_amount || 0))}">
               View Details
             </button>
           </td>

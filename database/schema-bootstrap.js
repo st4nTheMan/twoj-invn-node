@@ -479,6 +479,75 @@ async function ensureCreditLedgerSchema() {
   }
 }
 
+// Adds daily cash drawer readings and cash payment fields used by reports.
+async function ensureCashDrawerSchema() {
+  const transactionColumns = [
+    {
+      name: "cash_received",
+      alter: "ADD COLUMN cash_received DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER payment_method"
+    },
+    {
+      name: "change_amount",
+      alter: "ADD COLUMN change_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER cash_received"
+    }
+  ];
+
+  for (const column of transactionColumns) {
+    const [rows] = await pool.query(
+      `SELECT COUNT(*) AS count
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'transactions'
+         AND COLUMN_NAME = ?`,
+      [column.name]
+    );
+
+    if (Number(rows[0]?.count || 0) > 0) {
+      continue;
+    }
+
+    await pool.query(`ALTER TABLE transactions ${column.alter}`);
+  }
+
+  await pool.query(
+    `UPDATE transactions
+     SET cash_received = total_amount
+     WHERE payment_method = 'cash'
+       AND COALESCE(cash_received, 0) = 0`
+  );
+
+  const [tableRows] = await pool.query(
+    `SELECT COUNT(*) AS count
+     FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'cash_drawer_readings'`
+  );
+
+  if (Number(tableRows[0]?.count || 0) > 0) {
+    return;
+  }
+
+  const userIdType = await getColumnType("users", "id");
+
+  await pool.query(
+    `CREATE TABLE cash_drawer_readings (
+       id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+       reading_date DATE NOT NULL,
+       opening_cash DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+       updated_by ${userIdType} NULL,
+       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+       PRIMARY KEY (id),
+       UNIQUE KEY uq_cash_drawer_readings_date (reading_date),
+       KEY idx_cash_drawer_readings_updated_by (updated_by),
+       CONSTRAINT fk_cash_drawer_readings_updated_by
+         FOREIGN KEY (updated_by) REFERENCES users (id)
+         ON UPDATE CASCADE
+         ON DELETE SET NULL
+     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  );
+}
+
 // Adds the customer registry and links existing credit records to customer profiles.
 async function ensureCustomerRegistrySchema() {
   const [customerTableRows] = await pool.query(
@@ -726,6 +795,7 @@ module.exports = {
   ensureCreatedBySchema,
   ensureUpdatedBySchema,
   ensureCreditLedgerSchema,
+  ensureCashDrawerSchema,
   ensureCategoryAdjustmentSchema,
   ensureCustomerRegistrySchema
 };

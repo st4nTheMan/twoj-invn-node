@@ -5,11 +5,13 @@
       <h2 class="text-xl font-semibold">Transaction Details</h2>
       <button type="button" data-close-modal class="rounded-full border px-3 py-1 text-sm">Close</button>
     </div>
-    <div class="mb-4 grid gap-4 rounded-2xl bg-slate-50 p-4 md:grid-cols-4">
+    <div class="mb-4 grid gap-4 rounded-2xl bg-slate-50 p-4 md:grid-cols-3">
       <div><p class="text-xs uppercase tracking-[0.2em] text-slate-400">Invoice</p><p id="report_invoice_no" class="mt-1 font-semibold"></p></div>
       <div><p class="text-xs uppercase tracking-[0.2em] text-slate-400">Date</p><p id="report_date" class="mt-1 font-semibold"></p></div>
       <div><p class="text-xs uppercase tracking-[0.2em] text-slate-400">Total</p><p class="mt-1 font-semibold">PHP <span id="report_total_amount"></span></p></div>
       <div><p class="text-xs uppercase tracking-[0.2em] text-slate-400">Created By</p><p id="report_created_by" class="mt-1 font-semibold"></p></div>
+      <div><p class="text-xs uppercase tracking-[0.2em] text-slate-400">Cash Received</p><p class="mt-1 font-semibold">PHP <span id="report_cash_received"></span></p></div>
+      <div><p class="text-xs uppercase tracking-[0.2em] text-slate-400">Change</p><p class="mt-1 font-semibold">PHP <span id="report_change_amount"></span></p></div>
     </div>
     <div class="table-scroll overflow-x-auto">
       <table class="responsive-table min-w-full text-left text-sm">

@@ -1,4 +1,5 @@
 const express = require("express");
+const overviewRoutes = require("./overview.routes");
 const inventoryRoutes = require("./inventory.routes");
 const transactionRoutes = require("./transaction.routes");
 const creditLedgerRoutes = require("./credit-ledger.routes");
@@ -8,6 +9,7 @@ const adminRoutes = require("./admin.routes");
 // Combines feature-specific dashboard route modules behind one import.
 const router = express.Router();
 
+router.use(overviewRoutes);
 router.use(inventoryRoutes);
 router.use(transactionRoutes);
 router.use(creditLedgerRoutes);

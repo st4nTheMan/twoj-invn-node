@@ -1,6 +1,13 @@
 // Defines every permission key that can be granted to a custom role.
 const PERMISSION_GROUPS = [
   {
+    key: "dashboard",
+    label: "Dashboard",
+    permissions: [
+      { key: "dashboard.view", label: "View dashboard", description: "Open the post-login summary dashboard." }
+    ]
+  },
+  {
     key: "inventory",
     label: "Inventory",
     permissions: [
@@ -93,6 +100,7 @@ function normalizePermissionList(values) {
 function getDefaultDashboardPathForPermissions(permissions) {
   const granted = new Set(normalizePermissionList(permissions));
 
+  if (granted.has("dashboard.view")) return "/dashboard";
   if (granted.has("inventory.view")) return "/inventory";
   if (granted.has("transaction.create")) return "/transaction";
   if (granted.has("credit_ledger.view")) return "/credit-ledger";

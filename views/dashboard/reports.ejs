@@ -6,6 +6,88 @@
   <h1 class="mt-2 text-2xl font-semibold sm:text-3xl">Completed transactions</h1>
 </section>
 
+<section class="mb-6 rounded-3xl bg-white p-5 shadow-soft sm:p-6">
+  <div class="grid gap-5 lg:grid-cols-[0.9fr_1.4fr]">
+    <form action="/reports/cash-drawer" method="POST" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Cash drawer</p>
+      <h2 class="mt-1 text-xl font-semibold text-slate-950">Daily reading</h2>
+      <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+        <div>
+          <label for="cash-drawer-reading-date" class="mb-2 block text-sm font-medium text-slate-700">Date</label>
+          <input id="cash-drawer-reading-date" type="date" name="reading_date" value="<%= readingDate %>" class="w-full rounded-2xl border-slate-300 bg-white px-4 py-3 text-sm">
+        </div>
+        <div>
+          <label for="cash-drawer-opening-cash" class="mb-2 block text-sm font-medium text-slate-700">Opening Cash</label>
+          <input id="cash-drawer-opening-cash" type="number" min="0" step="0.01" inputmode="decimal" name="opening_cash" value="<%= Number(cashDrawerReading.openingCash || 0).toFixed(2) %>" class="w-full rounded-2xl border-slate-300 bg-white px-4 py-3 text-sm">
+        </div>
+      </div>
+      <button type="submit" class="mt-4 w-full rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white">Save Drawer Amount</button>
+      <% if (cashDrawerReading.updatedAt) { %>
+        <p class="mt-3 text-xs text-slate-500">Last saved by <%= cashDrawerReading.updatedByUsername || "User" %> on <%= formatDateTime(cashDrawerReading.updatedAt) %></p>
+      <% } %>
+    </form>
+
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div class="rounded-2xl bg-slate-950 p-4 text-white">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">Expected Drawer</p>
+        <p class="mt-2 text-2xl font-semibold">PHP <%= formatCurrency(cashDrawerReading.expectedDrawerCash) %></p>
+      </div>
+      <div class="rounded-2xl border border-slate-200 p-4">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Opening Cash</p>
+        <p class="mt-2 text-xl font-semibold text-slate-950">PHP <%= formatCurrency(cashDrawerReading.openingCash) %></p>
+      </div>
+      <div class="rounded-2xl border border-slate-200 p-4">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Cash Sales</p>
+        <p class="mt-2 text-xl font-semibold text-emerald-700">PHP <%= formatCurrency(cashDrawerReading.cashSales) %></p>
+      </div>
+      <div class="rounded-2xl border border-slate-200 p-4">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Cash Received</p>
+        <p class="mt-2 text-xl font-semibold text-slate-950">PHP <%= formatCurrency(cashDrawerReading.cashReceived) %></p>
+      </div>
+      <div class="rounded-2xl border border-slate-200 p-4">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Change Given</p>
+        <p class="mt-2 text-xl font-semibold text-rose-700">PHP <%= formatCurrency(cashDrawerReading.changeGiven) %></p>
+      </div>
+      <div class="rounded-2xl border border-slate-200 p-4">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Cash Transactions</p>
+        <p class="mt-2 text-xl font-semibold text-slate-950"><%= cashDrawerReading.cashTransactionCount %></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="mb-6 rounded-3xl bg-white p-5 shadow-soft sm:p-6">
+  <div class="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-[0.2em] text-amber-600">Daily sales</p>
+      <h2 class="mt-1 text-xl font-semibold text-slate-950">Sales per day</h2>
+    </div>
+    <p id="daily-sales-total-days" class="text-sm text-slate-500"><%= dailySales.length %> day<%= dailySales.length === 1 ? "" : "s" %></p>
+  </div>
+  <div class="table-scroll overflow-x-auto">
+    <table class="responsive-table min-w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-600">
+        <tr>
+          <th class="px-4 py-3">Date</th>
+          <th class="px-4 py-3">Transactions</th>
+          <th class="px-4 py-3">Total Sales</th>
+        </tr>
+      </thead>
+      <tbody id="daily-sales-tbody" class="divide-y divide-slate-200">
+        <% if (dailySales.length) { dailySales.forEach((day) => { %>
+          <tr>
+            <td data-label="Date" class="px-4 py-3 font-medium"><%= day.sales_date_label || day.sales_date %></td>
+            <td data-label="Transactions" class="px-4 py-3 text-slate-600"><%= Number(day.transaction_count || 0) %></td>
+            <td data-label="Total Sales" class="px-4 py-3 font-semibold text-emerald-700">PHP <%= formatCurrency(day.total_sales) %></td>
+          </tr>
+        <% }) } else { %>
+          <tr><td colspan="3" class="px-4 py-8 text-center text-slate-500">No daily sales found.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
 <%- include("../components/filter-sort-bar", {
   tableId: "reports-table",
   selectedSort,
@@ -34,7 +116,7 @@
     </button>
   </div>
   <div id="reports-pagination-top">
-    <%- include("../components/pagination", { pagination, baseUrl: "/reports", search, extras: { payment: selectedPayment, sort: selectedSort } }) %>
+    <%- include("../components/pagination", { pagination, baseUrl: "/reports", search, extras: { payment: selectedPayment, sort: selectedSort, reading_date: readingDate } }) %>
   </div>
   <div class="table-scroll overflow-x-auto">
     <table id="reports-table" class="responsive-table min-w-full text-left text-sm">
@@ -60,7 +142,9 @@
                 data-invoice="<%= formatInvoice(transaction.id) %>"
                 data-total="<%= formatCurrency(transaction.total_amount) %>"
                 data-date="<%= formatDateTime(transaction.created_at) %>"
-                data-created-by="<%= transaction.created_by_username || '-' %>">
+                data-created-by="<%= transaction.created_by_username || '-' %>"
+                data-cash-received="<%= formatCurrency(transaction.cash_received || 0) %>"
+                data-change-amount="<%= formatCurrency(transaction.change_amount || 0) %>">
                 View Details
               </button>
             </td>
@@ -72,7 +156,7 @@
     </table>
   </div>
   <div id="reports-pagination-bottom">
-    <%- include("../components/pagination", { pagination, baseUrl: "/reports", search: typeof search !== 'undefined' ? search : '' }) %>
+    <%- include("../components/pagination", { pagination, baseUrl: "/reports", search: typeof search !== 'undefined' ? search : '', extras: { payment: selectedPayment, sort: selectedSort, reading_date: readingDate } }) %>
   </div>
   <p id="reports-empty-search" class="hidden p-6 text-center text-sm text-slate-500">No reports found.</p>
 </section>
