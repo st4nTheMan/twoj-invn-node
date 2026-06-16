@@ -31,6 +31,7 @@ DROP TABLE IF EXISTS transactions;
 DROP TABLE IF EXISTS items;
 -- Drop the categories table before recreating it.
 DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS activity_logs;
 DROP TABLE IF EXISTS role_permissions;
 DROP TABLE IF EXISTS roles;
 -- Drop the users table before recreating it.
@@ -69,6 +70,29 @@ CREATE TABLE users (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_users_username (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Store admin audit trail entries for sign-ins and data changes.
+CREATE TABLE activity_logs (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id INT UNSIGNED NULL,
+  username_snapshot VARCHAR(50) NULL,
+  role_snapshot VARCHAR(20) NULL,
+  action VARCHAR(100) NOT NULL,
+  entity_type VARCHAR(100) NULL,
+  entity_id VARCHAR(100) NULL,
+  description VARCHAR(255) NOT NULL,
+  metadata_json LONGTEXT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_activity_logs_user_id (user_id),
+  KEY idx_activity_logs_action (action),
+  KEY idx_activity_logs_entity (entity_type, entity_id),
+  KEY idx_activity_logs_created_at (created_at),
+  CONSTRAINT fk_activity_logs_user
+    FOREIGN KEY (user_id) REFERENCES users (id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Store item categories used in inventory forms and lists.
@@ -380,6 +404,7 @@ INSERT INTO role_permissions (role_id, permission_key) VALUES
   (1, 'dashboard.view'),
   (1, 'inventory.view'),
   (1, 'inventory.create'),
+  (1, 'inventory.edit'),
   (1, 'inventory.archive_restore'),
   (1, 'inventory.adjust'),
   (1, 'inventory.export'),
