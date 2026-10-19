@@ -321,6 +321,27 @@
       setBarcodeVerificationStatus("", "");
     }
 
+    // Clears the add-item modal after a successful save so the next entry starts fresh.
+    function clearAddItemForm() {
+      if (!addItemForm) return;
+
+      addItemForm.reset();
+      addItemForm.querySelectorAll("input, select, textarea").forEach((field) => {
+        if (field.type === "checkbox" || field.type === "radio") {
+          field.checked = field.defaultChecked;
+        } else {
+          field.value = "";
+        }
+
+        field.classList.remove("field-invalid");
+        field.removeAttribute("aria-invalid");
+      });
+      addItemForm.querySelectorAll(".field-error-message").forEach((message) => {
+        message.remove();
+      });
+      resetBarcodeVerification();
+    }
+
     // Verifies whether the current item number already exists in inventory.
     async function verifyBarcode() {
       const barcode = normalizeText(barcodeInput?.value);
@@ -454,8 +475,7 @@
         }
 
         prependInventoryRow(payload.item);
-        addItemForm.reset();
-        resetBarcodeVerification();
+        clearAddItemForm();
       });
     }
 
