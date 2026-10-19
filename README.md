@@ -217,21 +217,6 @@ SSL_CERT_PATH=certs/localhost.pem
 - `npm start`: Start the HTTPS server.
 - `npm run dev`: Start the app with Node watch mode.
 
-## Mobile Testing
-
-### Android or iPhone on the same Wi-Fi
-
-1. Start the app with `npm start`.
-2. Check the terminal output for your LAN URL such as `https://192.168.x.x:4000`.
-3. Open that URL on your phone.
-
-If the phone cannot connect:
-
-- Make sure the phone and PC are on the same network.
-- Make sure Windows Firewall allows port `4000`.
-- Keep the app running while testing.
-- If you changed `PORT`, use that port instead.
-
 ## Notes
 
 - The server checks the database connection before it starts accepting requests.
